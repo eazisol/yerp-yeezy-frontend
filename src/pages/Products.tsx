@@ -24,6 +24,7 @@ const products = [
     usStock: 0,
     price: "$90",
     status: "active",
+    updated: "2025-01-12",
   },
   {
     id: 2,
@@ -34,6 +35,7 @@ const products = [
     usStock: 284,
     price: "$230",
     status: "active",
+    updated: "2025-01-11",
   },
   {
     id: 3,
@@ -44,6 +46,7 @@ const products = [
     usStock: 0,
     price: "$300",
     status: "active",
+    updated: "2025-01-10",
   },
   {
     id: 4,
@@ -54,6 +57,7 @@ const products = [
     usStock: 167,
     price: "$80",
     status: "active",
+    updated: "2025-01-12",
   },
   {
     id: 5,
@@ -64,12 +68,28 @@ const products = [
     usStock: 0,
     price: "$200",
     status: "active",
+    updated: "2025-01-09",
   },
 ];
 
 export default function Products() {
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
+
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  // Calculate total stock
+  const getTotalStock = (cnStock: number, usStock: number) => {
+    return cnStock + usStock;
+  };
 
   const filteredProducts = products.filter(
     (product) =>
@@ -121,63 +141,77 @@ export default function Products() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>SKU</TableHead>
-                <TableHead>Product Name</TableHead>
-                <TableHead>Origin</TableHead>
-                <TableHead className="text-right">CN Stock</TableHead>
-                <TableHead className="text-right">US Stock</TableHead>
-                <TableHead className="text-right">Price</TableHead>
+                <TableHead>Product</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Updated</TableHead>
+                <TableHead className="text-right">Stock</TableHead>
+                <TableHead className="text-right">Price</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredProducts.map((product) => (
-                <TableRow key={product.id} className="cursor-pointer hover:bg-secondary/50">
-                  <TableCell className="font-medium">{product.sku}</TableCell>
-                  <TableCell>{product.name}</TableCell>
-                  <TableCell>
-                    <Badge variant={product.origin === "CN" ? "secondary" : "outline"}>
-                      {product.origin}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <span
-                      className={
-                        product.cnStock > 0
-                          ? product.cnStock < 50
-                            ? "text-warning"
-                            : "text-foreground"
-                          : "text-muted-foreground"
-                      }
-                    >
-                      {product.cnStock}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <span
-                      className={
-                        product.usStock > 0
-                          ? product.usStock < 50
-                            ? "text-warning"
-                            : "text-foreground"
-                          : "text-muted-foreground"
-                      }
-                    >
-                      {product.usStock}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right font-medium">{product.price}</TableCell>
-                  <TableCell>
-                    <Badge variant="default">{product.status}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="sm" onClick={() => navigate(`/products/${product.id}`)}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {filteredProducts.map((product) => {
+                const totalStock = getTotalStock(product.cnStock, product.usStock);
+                return (
+                  <TableRow key={product.id} className="cursor-pointer hover:bg-secondary/50">
+                    {/* Product Column - Combined SKU + Name */}
+                    <TableCell>
+                      <div>
+                        <div className="font-medium text-foreground">{product.name}</div>
+                        <div className="text-xs text-muted-foreground">{product.sku}</div>
+                      </div>
+                    </TableCell>
+                    
+                    {/* Status Column */}
+                    <TableCell>
+                      <div className={`inline-flex items-center gap-2 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        product.status === "active" 
+                          ? "bg-green-100 text-green-700" 
+                          : "bg-gray-100 text-gray-600"
+                      }`}>
+                        <div 
+                          className={`h-2 w-2 rounded-full ${
+                            product.status === "active" 
+                              ? "bg-green-600" 
+                              : "bg-gray-500"
+                          }`}
+                        />
+                        <span className="capitalize">{product.status}</span>
+                      </div>
+                    </TableCell>
+                    
+                    {/* Updated Column */}
+                    <TableCell className="text-muted-foreground">
+                      {formatDate(product.updated)}
+                    </TableCell>
+                    
+                    {/* Stock Column */}
+                    <TableCell className="text-right">
+                      <span
+                        className={`font-medium ${
+                          totalStock > 0
+                            ? totalStock < 50
+                              ? "text-warning"
+                              : "text-foreground"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        {totalStock}
+                      </span>
+                    </TableCell>
+                    
+                    {/* Price Column */}
+                    <TableCell className="text-right font-medium">{product.price}</TableCell>
+                    
+                    {/* Actions Column */}
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm" onClick={() => navigate(`/products/${product.id}`)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>

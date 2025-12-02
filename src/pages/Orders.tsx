@@ -6,6 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, Filter, Eye, Download } from "lucide-react";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Table,
   TableBody,
   TableCell,
@@ -19,56 +25,51 @@ const orders = [
     id: "#ORD-1284",
     customer: "John Smith",
     email: "john@example.com",
-    items: 3,
-    value: "$489",
-    route: "CN",
-    status: "shipped",
-    tracking: "YX123456789CN",
     date: "2025-11-25",
+    payment: "paid",
+    paymentMethod: "paypal",
+    fulfillment: "fulfilled",
+    total: "$489",
   },
   {
     id: "#ORD-1283",
     customer: "Emma Wilson",
     email: "emma@example.com",
-    items: 2,
-    value: "$712",
-    route: "US",
-    status: "processing",
-    tracking: "33D987654321",
     date: "2025-11-25",
+    payment: "paid",
+    paymentMethod: "applepay",
+    fulfillment: "unfulfilled",
+    total: "$712",
   },
   {
     id: "#ORD-1282",
     customer: "Michael Brown",
     email: "michael@example.com",
-    items: 1,
-    value: "$298",
-    route: "Mixed",
-    status: "shipped",
-    tracking: "Multiple",
     date: "2025-11-24",
+    payment: "pending",
+    paymentMethod: "visa",
+    fulfillment: "fulfilled",
+    total: "$298",
   },
   {
     id: "#ORD-1281",
     customer: "Sarah Davis",
     email: "sarah@example.com",
-    items: 4,
-    value: "$1,024",
-    route: "CN",
-    status: "pending",
-    tracking: "-",
     date: "2025-11-24",
+    payment: "paid",
+    paymentMethod: "mastercard",
+    fulfillment: "partial",
+    total: "$1,024",
   },
   {
     id: "#ORD-1280",
     customer: "Robert Johnson",
     email: "robert@example.com",
-    items: 2,
-    value: "$560",
-    route: "US",
-    status: "shipped",
-    tracking: "33D111222333",
     date: "2025-11-23",
+    payment: "refunded",
+    paymentMethod: "paypal",
+    fulfillment: "fulfilled",
+    total: "$560",
   },
 ];
 
@@ -82,29 +83,140 @@ export default function Orders() {
       order.customer.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const getStatusVariant = (status: string) => {
-    switch (status) {
-      case "shipped":
-        return "default";
-      case "processing":
-        return "secondary";
-      case "pending":
-        return "outline";
+  // Format date for display
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  // Extract order number from order ID (e.g., "#ORD-1284" -> "1284")
+  const getOrderNumber = (orderId: string) => {
+    // Extract numbers from the order ID
+    const match = orderId.match(/\d+$/);
+    return match ? match[0] : orderId;
+  };
+
+  // Format payment method name for display
+  const formatPaymentMethodName = (method: string) => {
+    if (!method) return "";
+    return method
+      .replace(/([A-Z])/g, " $1")
+      .replace(/^./, (str) => str.toUpperCase())
+      .trim();
+  };
+
+  // Get payment method icon (small icons)
+  const getPaymentMethodIcon = (method: string) => {
+    if (!method) return null;
+    
+    switch (method?.toLowerCase()) {
+      case "paypal":
+        return (
+          <div className="flex items-center justify-center w-8 h-5 rounded bg-[#0070ba]">
+            <span className="text-[8px] font-bold text-white">PP</span>
+          </div>
+        );
+      case "applepay":
+      case "apple pay":
+        return (
+          <div className="flex items-center justify-center w-8 h-5 rounded bg-black">
+            <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+            </svg>
+          </div>
+        );
+      case "visa":
+        return (
+          <div className="flex items-center justify-center w-8 h-5 rounded bg-[#1434CB]">
+            <span className="text-[7px] font-bold text-white">VISA</span>
+          </div>
+        );
+      case "mastercard":
+        return (
+          <div className="flex items-center justify-center w-8 h-5 rounded relative overflow-hidden bg-gradient-to-r from-[#EB001B] to-[#F79E1B]">
+            <div className="absolute left-0 w-3 h-3 rounded-full bg-white opacity-80"></div>
+            <div className="absolute right-0 w-3 h-3 rounded-full bg-white opacity-80"></div>
+            <span className="text-[6px] font-semibold text-white relative z-10">MC</span>
+          </div>
+        );
       default:
-        return "outline";
+        return (
+          <div className="flex items-center justify-center w-8 h-5 rounded bg-gray-200">
+            <span className="text-[7px] font-medium text-gray-600">{method?.substring(0, 2).toUpperCase()}</span>
+          </div>
+        );
     }
   };
 
-  const getRouteColor = (route: string) => {
-    switch (route) {
-      case "CN":
-        return "bg-blue-100 text-blue-700 border-blue-200";
-      case "US":
-        return "bg-green-100 text-green-700 border-green-200";
-      case "Mixed":
-        return "bg-orange-100 text-orange-700 border-orange-200";
+  // Get payment status colors
+  const getPaymentStatus = (payment: string) => {
+    switch (payment) {
+      case "paid":
+        return { 
+          bgColor: "bg-green-100", 
+          textColor: "text-green-700", 
+          dotColor: "bg-green-600",
+          label: "Paid" 
+        };
+      case "pending":
+        return { 
+          bgColor: "bg-yellow-100", 
+          textColor: "text-yellow-700", 
+          dotColor: "bg-yellow-600",
+          label: "Pending" 
+        };
+      case "refunded":
+        return { 
+          bgColor: "bg-red-100", 
+          textColor: "text-red-700", 
+          dotColor: "bg-red-600",
+          label: "Refunded" 
+        };
       default:
-        return "";
+        return { 
+          bgColor: "bg-gray-100", 
+          textColor: "text-gray-600", 
+          dotColor: "bg-gray-500",
+          label: payment 
+        };
+    }
+  };
+
+  // Get fulfillment status colors
+  const getFulfillmentStatus = (fulfillment: string) => {
+    switch (fulfillment) {
+      case "fulfilled":
+        return { 
+          bgColor: "bg-green-100", 
+          textColor: "text-green-700", 
+          dotColor: "bg-green-600",
+          label: "Fulfilled" 
+        };
+      case "unfulfilled":
+        return { 
+          bgColor: "bg-orange-100", 
+          textColor: "text-orange-700", 
+          dotColor: "bg-orange-600",
+          label: "Unfulfilled" 
+        };
+      case "partial":
+        return { 
+          bgColor: "bg-blue-100", 
+          textColor: "text-blue-700", 
+          dotColor: "bg-blue-600",
+          label: "Partial" 
+        };
+      default:
+        return { 
+          bgColor: "bg-gray-100", 
+          textColor: "text-gray-600", 
+          dotColor: "bg-gray-500",
+          label: fulfillment 
+        };
     }
   };
 
@@ -198,46 +310,88 @@ export default function Orders() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Order ID</TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Items</TableHead>
-                <TableHead className="text-right">Value</TableHead>
-                <TableHead>Route</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Tracking</TableHead>
+                <TableHead>Order</TableHead>
                 <TableHead>Date</TableHead>
+                <TableHead>Customer</TableHead>
+                <TableHead>Payment</TableHead>
+                <TableHead className="w-12"></TableHead>
+                <TableHead>Fulfillment</TableHead>
+                <TableHead className="text-right">Total</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredOrders.map((order) => (
-                <TableRow key={order.id} className="cursor-pointer hover:bg-secondary/50">
-                  <TableCell className="font-medium">{order.id}</TableCell>
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{order.customer}</div>
-                      <div className="text-xs text-muted-foreground">{order.email}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{order.items}</TableCell>
-                  <TableCell className="text-right font-medium">{order.value}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={getRouteColor(order.route)}>
-                      {order.route}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusVariant(order.status)}>{order.status}</Badge>
-                  </TableCell>
-                  <TableCell className="font-mono text-xs">{order.tracking}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{order.date}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="sm" onClick={() => navigate(`/orders/${order.id}`)}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {filteredOrders.map((order) => {
+                const paymentStatus = getPaymentStatus(order.payment);
+                const fulfillmentStatus = getFulfillmentStatus(order.fulfillment);
+                return (
+                  <TableRow key={order.id} className="cursor-pointer hover:bg-secondary/50">
+                    {/* Order Column */}
+                    <TableCell className="font-medium">{getOrderNumber(order.id)}</TableCell>
+                    
+                    {/* Date Column */}
+                    <TableCell className="text-muted-foreground">
+                      {formatDate(order.date)}
+                    </TableCell>
+                    
+                    {/* Customer Column */}
+                    <TableCell>
+                      <div>
+                        <div className="font-medium text-foreground">{order.customer}</div>
+                        <div className="text-xs text-muted-foreground">{order.email}</div>
+                      </div>
+                    </TableCell>
+                    
+                    {/* Payment Column */}
+                    <TableCell>
+                      <div className={`inline-flex items-center gap-2 rounded-full px-2.5 py-0.5 text-xs font-medium ${paymentStatus.bgColor} ${paymentStatus.textColor}`}>
+                        <div className={`h-2 w-2 rounded-full ${paymentStatus.dotColor}`} />
+                        <span>{paymentStatus.label}</span>
+                      </div>
+                    </TableCell>
+                    
+                    {/* Payment Method Column */}
+                    <TableCell className="w-12">
+                      {order.paymentMethod ? (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="cursor-help inline-block">
+                                {getPaymentMethodIcon(order.paymentMethod)}
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{formatPaymentMethodName(order.paymentMethod)}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      ) : (
+                        <div className="inline-block">
+                          {getPaymentMethodIcon(order.paymentMethod)}
+                        </div>
+                      )}
+                    </TableCell>
+                    
+                    {/* Fulfillment Column */}
+                    <TableCell>
+                      <div className={`inline-flex items-center gap-2 rounded-full px-2.5 py-0.5 text-xs font-medium ${fulfillmentStatus.bgColor} ${fulfillmentStatus.textColor}`}>
+                        <div className={`h-2 w-2 rounded-full ${fulfillmentStatus.dotColor}`} />
+                        <span>{fulfillmentStatus.label}</span>
+                      </div>
+                    </TableCell>
+                    
+                    {/* Total Column */}
+                    <TableCell className="text-right font-medium">{order.total}</TableCell>
+                    
+                    {/* Actions Column */}
+                    <TableCell className="text-right">
+                      <Button variant="ghost" size="sm" onClick={() => navigate(`/orders/${order.id}`)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </CardContent>
