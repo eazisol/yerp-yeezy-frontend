@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, Filter, Eye, Download } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
   Tooltip,
   TooltipContent,
@@ -76,6 +77,7 @@ const orders = [
 export default function Orders() {
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
+  const { canRead, canModify } = usePermissions();
 
   const filteredOrders = orders.filter(
     (order) =>
@@ -230,10 +232,12 @@ export default function Orders() {
             Auto-imported orders from Swell with routing status
           </p>
         </div>
-        <Button variant="outline">
-          <Download className="h-4 w-4 mr-2" />
-          Export
-        </Button>
+        {canRead("ORDERS") && (
+          <Button variant="outline">
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -385,9 +389,11 @@ export default function Orders() {
                     
                     {/* Actions Column */}
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => navigate(`/orders/${order.id}`)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                      {canRead("ORDERS") && (
+                        <Button variant="ghost" size="sm" onClick={() => navigate(`/orders/${order.id}`)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 );

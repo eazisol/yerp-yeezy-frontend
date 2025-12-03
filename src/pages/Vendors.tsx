@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, Filter, Plus, Eye, TrendingUp } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
   Table,
   TableBody,
@@ -72,6 +73,7 @@ const vendors = [
 export default function Vendors() {
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
+  const { canRead, canModify, canDelete } = usePermissions();
 
   const filteredVendors = vendors.filter(
     (vendor) =>
@@ -93,10 +95,12 @@ export default function Vendors() {
           <h1 className="text-3xl font-bold text-foreground">Vendors</h1>
           <p className="text-muted-foreground mt-1">Manage vendor relationships and performance</p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Vendor
-        </Button>
+        {canModify("VENDORS") && (
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Vendor
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -211,9 +215,11 @@ export default function Vendors() {
                     <Badge variant="default">active</Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="sm" onClick={() => navigate(`/vendors/${vendor.id}`)}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
+                    {canRead("VENDORS") && (
+                      <Button variant="ghost" size="sm" onClick={() => navigate(`/vendors/${vendor.id}`)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

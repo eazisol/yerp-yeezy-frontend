@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Filter, Plus, Eye, Edit } from "lucide-react";
+import { Search, Filter, Plus, Eye, Edit, Shield } from "lucide-react";
+import { Link } from "react-router-dom";
 import {
   Table,
   TableBody,
@@ -12,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const users = [
   {
@@ -80,6 +82,7 @@ const roles = [
 
 export default function Users() {
   const [searchTerm, setSearchTerm] = useState("");
+  const { canRead, canModify, canDelete } = usePermissions();
 
   const filteredUsers = users.filter(
     (user) =>
@@ -103,10 +106,22 @@ export default function Users() {
           <h1 className="text-3xl font-bold text-foreground">User Management</h1>
           <p className="text-muted-foreground mt-1">Manage users, roles, and permissions</p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Add User
-        </Button>
+        <div className="flex items-center gap-2">
+          {canModify("USER_MANAGEMENT") && (
+            <>
+              <Button variant="outline" asChild>
+                <Link to="/roles">
+                  <Shield className="h-4 w-4 mr-2" />
+                  Manage Roles
+                </Link>
+              </Button>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Add User
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Stats */}
@@ -221,12 +236,16 @@ export default function Users() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Button variant="ghost" size="sm">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                      {canModify("USER_MANAGEMENT") && (
+                        <Button variant="ghost" size="sm">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {canRead("USER_MANAGEMENT") && (
+                        <Button variant="ghost" size="sm">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>

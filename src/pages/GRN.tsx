@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, Filter, Plus, Eye, FileText } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
   Table,
   TableBody,
@@ -56,6 +57,7 @@ const grnRecords = [
 export default function GRN() {
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
+  const { canRead, canModify } = usePermissions();
 
   const filteredGRN = grnRecords.filter(
     (grn) =>
@@ -97,10 +99,12 @@ export default function GRN() {
           <h1 className="text-3xl font-bold text-foreground">Goods Received Notes</h1>
           <p className="text-muted-foreground mt-1">Track warehouse receipts and verify deliveries</p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Create GRN
-        </Button>
+        {canModify("GRN") && (
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Create GRN
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -212,16 +216,18 @@ export default function GRN() {
                   <TableCell className="text-sm">{grn.receivedBy}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{grn.date}</TableCell>
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {grn.hasAttachment && (
-                        <Button variant="ghost" size="sm" title="View attachment">
-                          <FileText className="h-4 w-4 text-primary" />
+                    {canRead("GRN") && (
+                      <div className="flex items-center justify-end gap-2">
+                        {grn.hasAttachment && (
+                          <Button variant="ghost" size="sm" title="View attachment">
+                            <FileText className="h-4 w-4 text-primary" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="sm" onClick={() => navigate(`/grn/${grn.id}`)}>
+                          <Eye className="h-4 w-4" />
                         </Button>
-                      )}
-                      <Button variant="ghost" size="sm" onClick={() => navigate(`/grn/${grn.id}`)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </div>
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

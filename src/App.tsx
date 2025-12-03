@@ -21,6 +21,8 @@ import Vendors from "./pages/Vendors";
 import VendorDetail from "./pages/VendorDetail";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
+import Roles from "./pages/Roles";
+import RolePermissions from "./pages/RolePermissions";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,6 +50,8 @@ const App = () => (
               <Route path="/vendors" element={<Vendors />} />
               <Route path="/vendors/:id" element={<VendorDetail />} />
               <Route path="/users" element={<Users />} />
+              <Route path="/roles" element={<Roles />} />
+              <Route path="/roles/:id/permissions" element={<RolePermissions />} />
               <Route path="/settings" element={<Settings />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

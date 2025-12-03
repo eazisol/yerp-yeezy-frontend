@@ -3,10 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, CheckCircle, XCircle } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export default function PODetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { canModify } = usePermissions();
 
   // Mock PO data
   const po = {
@@ -39,10 +41,12 @@ export default function PODetail() {
         </div>
         <div className="flex items-center gap-3">
           <Badge variant="default">{po.status}</Badge>
-          <Button size="sm">
-            <CheckCircle className="h-4 w-4 mr-2" />
-            Approve
-          </Button>
+          {canModify("PURCHASE_ORDERS") && (
+            <Button size="sm">
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Approve
+            </Button>
+          )}
         </div>
       </div>
 

@@ -3,10 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Edit, Trash2 } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { canModify, canDelete } = usePermissions();
 
   // Mock product data (replace with real data fetch)
   const product = {
@@ -36,14 +38,18 @@ export default function ProductDetail() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm">
-            <Edit className="h-4 w-4 mr-2" />
-            Edit
-          </Button>
-          <Button variant="destructive" size="sm">
-            <Trash2 className="h-4 w-4 mr-2" />
-            Delete
-          </Button>
+          {canModify("PRODUCTS") && (
+            <Button variant="outline" size="sm">
+              <Edit className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
+          )}
+          {canDelete("PRODUCTS") && (
+            <Button variant="destructive" size="sm">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </Button>
+          )}
         </div>
       </div>
 

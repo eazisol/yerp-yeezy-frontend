@@ -21,6 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { LineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useNavigate } from "react-router-dom";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
   dailyOrderMetrics,
   orderStatusBreakdown,
@@ -39,6 +40,7 @@ import {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { canRead, canModify, canAccess } = usePermissions();
 
   // Format currency
   const formatCurrency = (value: number) => {
@@ -81,6 +83,17 @@ export default function Dashboard() {
     deliveries: v.totalDeliveries,
   }));
 
+  // Check if user has any dashboard-related permissions
+  const hasOrdersPermission = canRead("ORDERS");
+  const hasInventoryPermission = canRead("INVENTORY");
+  const hasGrnPermission = canRead("GRN");
+  const hasVendorsPermission = canRead("VENDORS");
+  const hasPurchaseOrdersPermission = canRead("PURCHASE_ORDERS");
+  const hasDashboardPermission = canAccess("DASHBOARD");
+  
+  // Check if user has any permission to view dashboard sections
+  const hasAnySectionPermission = hasOrdersPermission || hasInventoryPermission || hasGrnPermission || hasVendorsPermission || hasPurchaseOrdersPermission || hasDashboardPermission;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -98,6 +111,7 @@ export default function Dashboard() {
       </div>
 
       {/* Daily Metrics - Row 1 */}
+      {canRead("ORDERS") && (
       <div>
         <h2 className="text-xl font-semibold mb-4">Daily Metrics</h2>
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -189,10 +203,9 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
-      </div>
 
-      {/* Daily Metrics - Row 2 */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        {/* Daily Metrics - Row 2 */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {/* Partially Shipped */}
         <Card className="card-hover">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -264,9 +277,12 @@ export default function Dashboard() {
             </p>
           </CardContent>
         </Card>
-              </div>
-              
+        </div>
+      </div>
+      )}
+
       {/* Warehouse Inventory Levels */}
+      {canRead("INVENTORY") && (
       <div>
         <h2 className="text-xl font-semibold mb-4">Warehouse Inventory Levels</h2>
         <div className="grid gap-6 md:grid-cols-2">
@@ -307,10 +323,12 @@ export default function Dashboard() {
           ))}
         </div>
       </div>
+      )}
 
       {/* Stock Alerts & GRN Status */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Stock Alerts */}
+        {canRead("INVENTORY") && (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
@@ -319,10 +337,12 @@ export default function Dashboard() {
                 Critical: {criticalStockCount} | Low: {lowStockCount}
               </p>
             </div>
-            <Button variant="outline" size="sm" onClick={() => navigate("/inventory")}>
-              <Eye className="h-4 w-4 mr-2" />
-              View All
-            </Button>
+            {canRead("INVENTORY") && (
+              <Button variant="outline" size="sm" onClick={() => navigate("/inventory")}>
+                <Eye className="h-4 w-4 mr-2" />
+                View All
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -352,8 +372,10 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+        )}
 
         {/* GRN Status */}
+        {canRead("GRN") && (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
@@ -362,10 +384,12 @@ export default function Dashboard() {
                 Pending: {grnStatus.pending} | Completed: {grnStatus.completed}
               </p>
             </div>
-            <Button variant="outline" size="sm" onClick={() => navigate("/grn")}>
-              <Eye className="h-4 w-4 mr-2" />
-              View All
-            </Button>
+            {canRead("GRN") && (
+              <Button variant="outline" size="sm" onClick={() => navigate("/grn")}>
+                <Eye className="h-4 w-4 mr-2" />
+                View All
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -394,6 +418,7 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+        )}
       </div>
 
       {/* Charts Section */}
@@ -475,10 +500,12 @@ export default function Dashboard() {
       </div> */}
 
       {/* Monthly/Strategic Metrics */}
+      {(canRead("VENDORS") || canRead("PURCHASE_ORDERS") || canRead("INVENTORY")) && (
       <div>
         <h2 className="text-xl font-semibold mb-4">Monthly / Strategic Metrics</h2>
         
         {/* Vendor Balance & Performance */}
+        {canRead("VENDORS") && (
         <div className="grid gap-6 md:grid-cols-2 mb-6">
           {/* Vendor Balance Summary */}
           <Card>
@@ -506,10 +533,12 @@ export default function Dashboard() {
                     {formatCurrency(vendorBalances.reduce((sum, v) => sum + v.totalBalance, 0))}
                   </p>
                 </div>
-                <Button variant="outline" size="sm" className="w-full" onClick={() => navigate("/vendors")}>
-                  <Eye className="h-4 w-4 mr-2" />
-                  View Vendor Details
-                </Button>
+                {canRead("VENDORS") && (
+                  <Button variant="outline" size="sm" className="w-full" onClick={() => navigate("/vendors")}>
+                    <Eye className="h-4 w-4 mr-2" />
+                    View Vendor Details
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -553,10 +582,12 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
+        )}
 
         {/* PO Aging & Total Inventory Value */}
         <div className="grid gap-6 md:grid-cols-2">
           {/* PO Aging Report */}
+          {canRead("PURCHASE_ORDERS") && (
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">PO Aging Report</CardTitle>
@@ -601,8 +632,10 @@ export default function Dashboard() {
               </div>
             </CardContent>
           </Card>
+          )}
 
           {/* Total Inventory Value */}
+          {canRead("INVENTORY") && (
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Total Inventory Value</CardTitle>
@@ -645,8 +678,10 @@ export default function Dashboard() {
               </div>
             </CardContent>
           </Card>
+        )}
         </div>
       </div>
+      )}
 
       {/* Monthly Orders Trend */}
       {/* <Card>
@@ -698,16 +733,19 @@ export default function Dashboard() {
       </Card> */}
 
       {/* Recent Orders */}
+      {canRead("ORDERS") && (
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
               <CardTitle className="text-lg">Recent Orders</CardTitle>
               <p className="text-sm text-muted-foreground mt-1">Latest customer orders</p>
             </div>
-            <Button variant="outline" size="sm" onClick={() => navigate("/orders")}>
-              <Eye className="h-4 w-4 mr-2" />
-              View All
-            </Button>
+            {canRead("ORDERS") && (
+              <Button variant="outline" size="sm" onClick={() => navigate("/orders")}>
+                <Eye className="h-4 w-4 mr-2" />
+                View All
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -747,6 +785,7 @@ export default function Dashboard() {
             </div>
           </CardContent>
         </Card>
+      )}
 
       {/* Quick Actions */}
       <Card>
@@ -755,25 +794,45 @@ export default function Dashboard() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
-            <Button onClick={() => navigate("/purchase-orders")}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Purchase Order
-            </Button>
-            <Button variant="outline" onClick={() => navigate("/inventory")}>
-              <AlertTriangle className="h-4 w-4 mr-2" />
-              View Low Stock Items
-            </Button>
-            <Button variant="outline" onClick={() => navigate("/grn")}>
-              <FileText className="h-4 w-4 mr-2" />
-              View GRN
-            </Button>
-            <Button variant="outline">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Sync Inventory
-            </Button>
+            {canAccess("PURCHASE_ORDERS") && (
+              <Button onClick={() => navigate("/purchase-orders")}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Purchase Order
+              </Button>
+            )}
+            {canRead("INVENTORY") && (
+              <Button variant="outline" onClick={() => navigate("/inventory")}>
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                View Low Stock Items
+              </Button>
+            )}
+            {canRead("GRN") && (
+              <Button variant="outline" onClick={() => navigate("/grn")}>
+                <FileText className="h-4 w-4 mr-2" />
+                View GRN
+              </Button>
+            )}
+            {canModify("INVENTORY") && (
+              <Button variant="outline">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Sync Inventory
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
+
+      {/* No Data Message - Show if user has DASHBOARD permission but no section permissions */}
+      {hasDashboardPermission && !hasAnySectionPermission && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-8">
+              <p className="text-muted-foreground mb-2">You have Dashboard access, but you need specific permissions to view data.</p>
+              <p className="text-sm text-muted-foreground">Please contact your administrator to grant permissions for Orders, Inventory, GRN, Vendors, or Purchase Orders.</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

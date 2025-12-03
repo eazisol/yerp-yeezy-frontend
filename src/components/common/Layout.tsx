@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
 import { 
   LayoutDashboard, 
@@ -10,6 +10,7 @@ import {
   Users, 
   UserCog, 
   Settings,
+  Shield,
   Menu,
   X,
   LogOut
@@ -18,25 +19,64 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
+import { menuService, Menu as MenuType } from "@/services/menus";
+import { hasAnyPermission, isAdmin } from "@/utils/permissions";
 
-const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Products", href: "/products", icon: Package },
-  { name: "Orders", href: "/orders", icon: ShoppingCart },
-  { name: "Purchase Orders", href: "/purchase-orders", icon: FileText },
-  { name: "GRN", href: "/grn", icon: ClipboardCheck },
-  { name: "Inventory", href: "/inventory", icon: Warehouse },
-  { name: "Vendors", href: "/vendors", icon: Users },
-  { name: "User Management", href: "/users", icon: UserCog },
-  { name: "Settings", href: "/settings", icon: Settings },
-];
+// Icon mapping for dynamic menu icons
+const iconMap: Record<string, any> = {
+  LayoutDashboard,
+  Package,
+  ShoppingCart,
+  FileText,
+  ClipboardCheck,
+  Warehouse,
+  Users,
+  UserCog,
+  Shield,
+  Settings,
+};
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [menus, setMenus] = useState<MenuType[]>([]);
+  const [loadingMenus, setLoadingMenus] = useState(true);
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user, logout } = useAuth();
+
+  // Fetch menus from API
+  useEffect(() => {
+    const loadMenus = async () => {
+      try {
+        setLoadingMenus(true);
+        const fetchedMenus = await menuService.getMenus();
+        setMenus(fetchedMenus);
+      } catch (error) {
+        console.error("Failed to load menus:", error);
+        // Set empty array on error instead of showing error toast
+        setMenus([]);
+        // Only show toast if user is logged in
+        if (user) {
+          toast({
+            title: "Error",
+            description: "Failed to load navigation menus",
+            variant: "destructive",
+          });
+        }
+      } finally {
+        setLoadingMenus(false);
+      }
+    };
+
+    if (user) {
+      loadMenus();
+    } else {
+      // If no user, set loading to false and empty menus
+      setLoadingMenus(false);
+      setMenus([]);
+    }
+  }, [user, toast]);
 
   const handleLogout = async () => {
     try {
@@ -93,28 +133,52 @@ export default function Layout() {
 
           {/* Navigation */}
           <nav className="flex-1 overflow-y-auto px-3 py-4">
-            <ul className="space-y-1">
-              {navigation.map((item) => {
-                const isActive = location.pathname === item.href;
-                return (
-                  <li key={item.name}>
-                    <Link
-                      to={item.href}
-                      className={cn(
-                        "flex items-center space-x-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-smooth",
-                        isActive
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:bg-secondary hover:text-foreground"
-                      )}
-                      onClick={() => setSidebarOpen(false)}
-                    >
-                      <item.icon className="h-5 w-5" />
-                      <span>{item.name}</span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+            {loadingMenus ? (
+              <div className="flex items-center justify-center py-8">
+                <p className="text-sm text-muted-foreground">Loading menus...</p>
+              </div>
+            ) : (
+              <ul className="space-y-1">
+                {menus
+                  .filter((menu) => {
+                    // Filter menus based on user permissions
+                    if (!user) return false;
+                    
+                    // Admin can see all menus
+                    if (isAdmin(user.roles)) return true;
+                    
+                    // Check if user has any permission for this menu
+                    // Add null check for permissions
+                    if (!user.permissions || user.permissions.length === 0) return false;
+                    
+                    return hasAnyPermission(user.permissions, menu.code || "");
+                  })
+                  .map((menu) => {
+                    const isActive = location.pathname === menu.route;
+                    const IconComponent = menu.icon
+                      ? iconMap[menu.icon] || Menu
+                      : Menu;
+
+                    return (
+                      <li key={menu.id}>
+                        <Link
+                          to={menu.route || "#"}
+                          className={cn(
+                            "flex items-center space-x-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-smooth",
+                            isActive
+                              ? "bg-primary text-primary-foreground"
+                              : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                          )}
+                          onClick={() => setSidebarOpen(false)}
+                        >
+                          <IconComponent className="h-5 w-5" />
+                          <span>{menu.name}</span>
+                        </Link>
+                      </li>
+                    );
+                  })}
+              </ul>
+            )}
           </nav>
 
           {/* User section */}

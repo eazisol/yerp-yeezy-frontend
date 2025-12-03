@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, Filter, Plus, Eye } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
   Table,
   TableBody,
@@ -60,6 +61,7 @@ const purchaseOrders = [
 export default function PurchaseOrders() {
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
+  const { canRead, canModify } = usePermissions();
 
   const filteredPOs = purchaseOrders.filter(
     (po) =>
@@ -105,10 +107,12 @@ export default function PurchaseOrders() {
           <h1 className="text-3xl font-bold text-foreground">Purchase Orders</h1>
           <p className="text-muted-foreground mt-1">Create and manage purchase orders</p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Create PO
-        </Button>
+        {canModify("PURCHASE_ORDERS") && (
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Create PO
+          </Button>
+        )}
       </div>
 
       {/* Stats */}
@@ -220,9 +224,11 @@ export default function PurchaseOrders() {
                   <TableCell className="text-sm text-muted-foreground">{po.createdDate}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{po.dueDate}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="sm" onClick={() => navigate(`/purchase-orders/${po.id}`)}>
-                      <Eye className="h-4 w-4" />
-                    </Button>
+                    {canRead("PURCHASE_ORDERS") && (
+                      <Button variant="ghost" size="sm" onClick={() => navigate(`/purchase-orders/${po.id}`)}>
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

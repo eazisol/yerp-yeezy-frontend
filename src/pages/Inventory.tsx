@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const inventory = [
   {
@@ -78,6 +79,7 @@ const inventory = [
 
 export default function Inventory() {
   const [searchTerm, setSearchTerm] = useState("");
+  const { canRead, canModify } = usePermissions();
 
   const filteredInventory = inventory.filter(
     (item) =>
@@ -113,10 +115,12 @@ export default function Inventory() {
             Stock levels, alerts, and reorder suggestions
           </p>
         </div>
-        <Button variant="outline">
-          <Package className="h-4 w-4 mr-2" />
-          Export Report
-        </Button>
+        {canRead("INVENTORY") && (
+          <Button variant="outline">
+            <Package className="h-4 w-4 mr-2" />
+            Export Report
+          </Button>
+        )}
       </div>
 
       {/* Stats */}

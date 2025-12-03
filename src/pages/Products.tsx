@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, Filter, Plus, Eye } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
   Table,
   TableBody,
@@ -75,6 +76,7 @@ const products = [
 export default function Products() {
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
+  const { canRead, canModify, canDelete } = usePermissions();
 
   // Format date for display
   const formatDate = (dateString: string) => {
@@ -105,10 +107,12 @@ export default function Products() {
           <h1 className="text-3xl font-bold text-foreground">Products</h1>
           <p className="text-muted-foreground mt-1">Manage your product catalog from Swell</p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Product
-        </Button>
+        {canModify("PRODUCTS") && (
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Product
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -205,9 +209,11 @@ export default function Products() {
                     
                     {/* Actions Column */}
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" onClick={() => navigate(`/products/${product.id}`)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                      {canRead("PRODUCTS") && (
+                        <Button variant="ghost" size="sm" onClick={() => navigate(`/products/${product.id}`)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      )}
                     </TableCell>
                   </TableRow>
                 );

@@ -1,12 +1,14 @@
 // Authentication service for backend API
 
 import { apiClient } from "./api";
+import { Permission } from "./permissions";
 
 export interface User {
   id: number;
   email: string;
   fullName: string | null;
   roles: string[];
+  permissions?: Permission[]; // Make it optional
 }
 
 export interface AuthResponse {
@@ -96,12 +98,22 @@ class AuthService {
   // Set authentication data
   private setAuth(authResponse: AuthResponse): void {
     localStorage.setItem(this.tokenKey, authResponse.token);
-    localStorage.setItem(this.userKey, JSON.stringify(authResponse.user));
+    // Ensure permissions array exists
+    const userWithPermissions = {
+      ...authResponse.user,
+      permissions: authResponse.user.permissions || []
+    };
+    localStorage.setItem(this.userKey, JSON.stringify(userWithPermissions));
   }
 
   // Set user data
   private setUser(user: User): void {
-    localStorage.setItem(this.userKey, JSON.stringify(user));
+    // Ensure permissions array exists
+    const userWithPermissions = {
+      ...user,
+      permissions: user.permissions || []
+    };
+    localStorage.setItem(this.userKey, JSON.stringify(userWithPermissions));
   }
 
   // Clear authentication data

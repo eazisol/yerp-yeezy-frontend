@@ -3,10 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Edit, Mail, Phone, MapPin } from "lucide-react";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export default function VendorDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { canModify, canDelete } = usePermissions();
 
   // Mock vendor data
   const vendor = {
@@ -41,10 +43,12 @@ export default function VendorDetail() {
             <p className="text-muted-foreground mt-1">{vendor.location}</p>
           </div>
         </div>
-        <Button size="sm">
-          <Edit className="h-4 w-4 mr-2" />
-          Edit
-        </Button>
+        {canModify("VENDORS") && (
+          <Button size="sm">
+            <Edit className="h-4 w-4 mr-2" />
+            Edit
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
