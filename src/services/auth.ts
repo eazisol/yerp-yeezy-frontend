@@ -27,6 +27,12 @@ export interface RegisterRequest {
   fullName?: string;
 }
 
+export interface ChangePasswordRequest {
+  newPassword: string;
+  currentPassword?: string;
+  isAdminOverride?: boolean;
+}
+
 class AuthService {
   private tokenKey = "auth_token";
   private userKey = "auth_user";
@@ -41,7 +47,7 @@ class AuthService {
     return response;
   }
 
-  // Register new user
+  // Reg ister new user
   async register(data: RegisterRequest): Promise<AuthResponse> {
     const response = await apiClient.post<AuthResponse>(
       "/api/auth/register",
@@ -72,6 +78,11 @@ class AuthService {
     } finally {
       this.clearAuth();
     }
+  }
+
+  // Change password
+  async changePassword(data: ChangePasswordRequest): Promise<void> {
+    return apiClient.post("/api/auth/change-password", data);
   }
 
   // Check if user is authenticated
@@ -123,5 +134,7 @@ class AuthService {
   }
 }
 
-export const authService = new AuthService();
+// Export auth service instance
+const authService = new AuthService();
+export { authService };
 

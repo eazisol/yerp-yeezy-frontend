@@ -10,8 +10,11 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
+import ProductFormPage from "./pages/ProductFormPage";
 import Orders from "./pages/Orders";
 import OrderDetail from "./pages/OrderDetail";
+import Customers from "./pages/Customers";
+import CustomerDetail from "./pages/CustomerDetail";
 import PurchaseOrders from "./pages/PurchaseOrders";
 import PODetail from "./pages/PODetail";
 import GRN from "./pages/GRN";
@@ -39,9 +42,13 @@ const App = () => (
             <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/products" element={<Products />} />
+              <Route path="/products/new" element={<ProductFormPage />} />
               <Route path="/products/:id" element={<ProductDetail />} />
+              <Route path="/products/:id/edit" element={<ProductFormPage />} />
               <Route path="/orders" element={<Orders />} />
               <Route path="/orders/:id" element={<OrderDetail />} />
+              <Route path="/customers" element={<Customers />} />
+              <Route path="/customers/:id" element={<CustomerDetail />} />
               <Route path="/purchase-orders" element={<PurchaseOrders />} />
               <Route path="/purchase-orders/:id" element={<PODetail />} />
               <Route path="/grn" element={<GRN />} />

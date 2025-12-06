@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     }
   };
-
+ 
   const login = async (email: string, password: string) => {
     const response = await authService.login({ email, password });
     setUser(response.user);

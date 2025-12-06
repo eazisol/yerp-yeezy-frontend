@@ -11,10 +11,22 @@ export interface Role {
   isActive: boolean;
 }
 
+interface PaginatedResponse<T> {
+  data: T[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+}
+
 export const roleService = {
-  // Get all active roles
+  // Get all active roles (returns all roles, not paginated)
   async getRoles(): Promise<Role[]> {
-    return apiClient.get<Role[]>("/api/roles");
+    // Request with large pageSize to get all roles
+    const response = await apiClient.get<PaginatedResponse<Role>>("/api/roles?page=1&pageSize=1000");
+    return response.data || [];
   },
 
   // Get role by ID

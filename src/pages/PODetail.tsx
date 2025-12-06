@@ -42,10 +42,10 @@ export default function PODetail() {
         <div className="flex items-center gap-3">
           <Badge variant="default">{po.status}</Badge>
           {canModify("PURCHASE_ORDERS") && (
-            <Button size="sm">
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Approve
-            </Button>
+          <Button size="sm">
+            <CheckCircle className="h-4 w-4 mr-2" />
+            Approve
+          </Button>
           )}
         </div>
       </div>

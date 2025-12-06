@@ -31,15 +31,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { orderService, Order, OrderStats, OrderSyncResult } from "@/services/orders";
+import { customerService, Customer, CustomerSyncResult } from "@/services/customers";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
-export default function Orders() {
+export default function Customers() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize] = useState(50);
-  const [swellOrderCount, setSwellOrderCount] = useState<number | null>(null);
+  const [swellCustomerCount, setSwellCustomerCount] = useState<number | null>(null);
   const [showSyncConfirm, setShowSyncConfirm] = useState(false);
   const [syncProgress, setSyncProgress] = useState<string>("");
   const navigate = useNavigate();
@@ -47,66 +47,59 @@ export default function Orders() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch orders with pagination
-  const { data: ordersData, isLoading: loadingOrders } = useQuery({
-    queryKey: ["orders", page, pageSize, searchTerm],
-    queryFn: () => orderService.getOrders(page, pageSize, searchTerm || undefined),
+  // Fetch customers with pagination
+  const { data: customersData, isLoading: loadingCustomers } = useQuery({
+    queryKey: ["customers", page, pageSize, searchTerm],
+    queryFn: () => customerService.getCustomers(page, pageSize, searchTerm || undefined),
   });
 
-  // Fetch stats
-  const { data: stats, isLoading: loadingStats } = useQuery({
-    queryKey: ["orderStats"],
-    queryFn: () => orderService.getOrderStats(),
-  });
-
-  // Get Swell order count mutation
+  // Get Swell customer count mutation
   const countMutation = useMutation({
-    mutationFn: () => orderService.getSwellOrderCount(),
+    mutationFn: () => customerService.getSwellCustomerCount(),
     onSuccess: (data) => {
-      setSwellOrderCount(data.count);
+      setSwellCustomerCount(data.count);
       if (data.count > 0) {
         setShowSyncConfirm(true);
       } else {
         toast({
-          title: "No Orders",
-          description: "No orders found in Swell",
+          title: "No Customers",
+          description: "No customers found in Swell",
         });
       }
     },
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to fetch order count from Swell",
+        description: error.message || "Failed to fetch customer count from Swell",
         variant: "destructive",
       });
     },
   });
 
-  // Sync orders mutation
+  // Sync customers mutation
   const syncMutation = useMutation({
     mutationFn: async () => {
-      setSyncProgress("Fetching orders from Swell...");
+      setSyncProgress("Fetching customers from Swell...");
       await new Promise(resolve => setTimeout(resolve, 100));
-      setSyncProgress("Processing orders and syncing to database...");
-      return orderService.syncOrdersFromSwell();
+      setSyncProgress("Processing customers and syncing to database...");
+      return customerService.syncCustomersFromSwell();
     },
-    onSuccess: (result: OrderSyncResult) => {
+    onSuccess: (result: CustomerSyncResult) => {
       setSyncProgress("");
       toast({
         title: "Sync Completed",
         description: result.message || `Created: ${result.created}, Updated: ${result.updated}, Failed: ${result.failed}`,
         duration: 5000,
       });
-      queryClient.invalidateQueries({ queryKey: ["orders"] });
-      queryClient.invalidateQueries({ queryKey: ["orderStats"] });
+      queryClient.invalidateQueries({ queryKey: ["customers"] });
       setShowSyncConfirm(false);
-      setSwellOrderCount(null);
+      setSwellCustomerCount(null);
     },
     onError: (error: any) => {
       setSyncProgress("");
       toast({
         title: "Sync Failed",
-        description: error.message || "Failed to sync orders from Swell",
+        description: error.message || "Failed to sync customers from Swell",
         variant: "destructive",
         duration: 5000,
       });
@@ -123,14 +116,15 @@ export default function Orders() {
     syncMutation.mutate();
   };
 
-  const orders = ordersData?.data || [];
-  const totalCount = ordersData?.totalCount || 0;
-  const totalPages = ordersData?.totalPages || 1;
-  const hasNextPage = ordersData?.hasNextPage || false;
-  const hasPreviousPage = ordersData?.hasPreviousPage || false;
+  const customers = customersData?.data || [];
+  const totalCount = customersData?.totalCount || 0;
+  const totalPages = customersData?.totalPages || 1;
+  const hasNextPage = customersData?.hasNextPage || false;
+  const hasPreviousPage = customersData?.hasPreviousPage || false;
 
   // Format date for display
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "N/A";
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
       month: "short",
@@ -147,83 +141,13 @@ export default function Orders() {
     }).format(amount);
   };
 
-  // Get payment status colors
-  const getPaymentStatus = (payment: string | null) => {
-    if (!payment) {
-      return {
-        bgColor: "bg-gray-100",
-        textColor: "text-gray-600",
-        dotColor: "bg-gray-500",
-        label: "Unknown",
-      };
+  // Get customer name for display
+  const getCustomerName = (customer: Customer) => {
+    if (customer.name) return customer.name;
+    if (customer.firstName || customer.lastName) {
+      return `${customer.firstName || ""} ${customer.lastName || ""}`.trim();
     }
-
-    switch (payment.toLowerCase()) {
-      case "paid":
-        return {
-          bgColor: "bg-green-100",
-          textColor: "text-green-700",
-          dotColor: "bg-green-600",
-          label: "Paid",
-        };
-      case "pending":
-        return {
-          bgColor: "bg-yellow-100",
-          textColor: "text-yellow-700",
-          dotColor: "bg-yellow-600",
-          label: "Pending",
-        };
-      case "refunded":
-        return {
-          bgColor: "bg-red-100",
-          textColor: "text-red-700",
-          dotColor: "bg-red-600",
-          label: "Refunded",
-        };
-      default:
-        return {
-          bgColor: "bg-gray-100",
-          textColor: "text-gray-600",
-          dotColor: "bg-gray-500",
-          label: payment,
-        };
-    }
-  };
-
-  // Get fulfillment status from order status
-  const getFulfillmentStatus = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "delivered":
-      case "shipped":
-        return {
-          bgColor: "bg-green-100",
-          textColor: "text-green-700",
-          dotColor: "bg-green-600",
-          label: "Fulfilled",
-        };
-      case "pending":
-      case "processing":
-        return {
-          bgColor: "bg-orange-100",
-          textColor: "text-orange-700",
-          dotColor: "bg-orange-600",
-          label: "Unfulfilled",
-        };
-      case "paid":
-        return {
-          bgColor: "bg-blue-100",
-          textColor: "text-blue-700",
-          dotColor: "bg-blue-600",
-          label: "Partial",
-        };
-      default:
-        return {
-          bgColor: "bg-gray-100",
-          textColor: "text-gray-600",
-          dotColor: "bg-gray-500",
-          label: status,
-        };
-    }
+    return "N/A";
   };
 
   return (
@@ -231,13 +155,13 @@ export default function Orders() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Orders</h1>
+          <h1 className="text-3xl font-bold text-foreground">Customers</h1>
           <p className="text-muted-foreground mt-1">
-            Auto-imported orders from Swell with routing status
+            Auto-imported customers from Swell
           </p>
         </div>
         <div className="flex gap-2">
-          {canModify("ORDERS") && (
+          {canModify("CUSTOMERS") && (
             <>
               <Button
                 variant="outline"
@@ -247,13 +171,13 @@ export default function Orders() {
                 <Download className="h-4 w-4 mr-2" />
                 {countMutation.isPending
                   ? "Checking..."
-                  : swellOrderCount !== null
-                  ? `${swellOrderCount} Orders in Swell`
-                  : "Check Swell Orders"}
+                  : swellCustomerCount !== null
+                  ? `${swellCustomerCount} Customers in Swell`
+                  : "Check Swell Customers"}
               </Button>
             </>
           )}
-          {canRead("ORDERS") && (
+          {canRead("CUSTOMERS") && (
             <Button variant="outline">
               <Download className="h-4 w-4 mr-2" />
               Export
@@ -267,48 +191,48 @@ export default function Orders() {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total Customers
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {loadingCustomers ? "..." : totalCount}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
               Total Orders
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {loadingStats ? "..." : stats?.totalOrders || 0}
+              {loadingCustomers ? "..." : customers.reduce((sum, c) => sum + c.orderCount, 0)}
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              CN Routed
+              Total Order Value
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {loadingStats ? "..." : stats?.cnRouted || 0}
+              {loadingCustomers ? "..." : formatCurrency(customers.reduce((sum, c) => sum + c.orderValue, 0))}
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              US Routed
+              Email Opt-In
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {loadingStats ? "..." : stats?.usRouted || 0}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Mixed Orders
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {loadingStats ? "..." : stats?.mixedRouted || 0}
+              {loadingCustomers ? "..." : customers.filter(c => c.emailOptIn).length}
             </div>
           </CardContent>
         </Card>
@@ -321,7 +245,7 @@ export default function Orders() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search by order ID or customer..."
+                placeholder="Search by name, email..."
                 className="pl-9"
                 value={searchTerm}
                 onChange={(e) => {
@@ -338,103 +262,84 @@ export default function Orders() {
         </CardContent>
       </Card>
 
-      {/* Orders Table */}
+      {/* Customers Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Order List ({totalCount} total)</CardTitle>
+          <CardTitle>Customer List ({totalCount} total)</CardTitle>
         </CardHeader>
         <CardContent>
-          {loadingOrders ? (
+          {loadingCustomers ? (
             <div className="flex items-center justify-center py-8">
-              <p className="text-sm text-muted-foreground">Loading orders...</p>
+              <p className="text-sm text-muted-foreground">Loading customers...</p>
             </div>
           ) : (
             <>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Order</TableHead>
-                    <TableHead>Date</TableHead>
                     <TableHead>Customer</TableHead>
-                    <TableHead>Payment</TableHead>
-                    <TableHead>Fulfillment</TableHead>
-                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Orders</TableHead>
+                    <TableHead className="text-right">Order Value</TableHead>
+                    <TableHead>First Order</TableHead>
+                    <TableHead>Last Order</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {orders.length === 0 ? (
+                  {customers.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={7}
+                        colSpan={8}
                         className="text-center py-8 text-muted-foreground"
                       >
-                        No orders found
+                        No customers found
                       </TableCell>
                     </TableRow>
                   ) : (
-                    orders.map((order) => {
-                    const paymentStatus = getPaymentStatus(order.paymentStatus);
-                    const fulfillmentStatus = getFulfillmentStatus(order.status);
-                    return (
+                    customers.map((customer) => (
                       <TableRow
-                        key={order.orderId}
+                        key={customer.customerId}
                         className="cursor-pointer hover:bg-secondary/50"
                       >
                         <TableCell className="font-medium">
-                          {order.orderNumber || `#${order.orderId}`}
+                          {getCustomerName(customer)}
                         </TableCell>
                         <TableCell className="text-muted-foreground">
-                          {formatDate(order.createdDate)}
+                          {customer.email || "N/A"}
                         </TableCell>
                         <TableCell>
-                          <div>
-                            <div className="font-medium text-foreground">
-                              {order.customerName || "N/A"}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {order.customerEmail || ""}
-                            </div>
-                          </div>
+                          <span className="text-sm text-muted-foreground">
+                            {customer.type || "N/A"}
+                          </span>
                         </TableCell>
                         <TableCell>
-                          <div
-                            className={`inline-flex items-center gap-2 rounded-full px-2.5 py-0.5 text-xs font-medium ${paymentStatus.bgColor} ${paymentStatus.textColor}`}
-                          >
-                            <div
-                              className={`h-2 w-2 rounded-full ${paymentStatus.dotColor}`}
-                            />
-                            <span>{paymentStatus.label}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div
-                            className={`inline-flex items-center gap-2 rounded-full px-2.5 py-0.5 text-xs font-medium ${fulfillmentStatus.bgColor} ${fulfillmentStatus.textColor}`}
-                          >
-                            <div
-                              className={`h-2 w-2 rounded-full ${fulfillmentStatus.dotColor}`}
-                            />
-                            <span>{fulfillmentStatus.label}</span>
-                          </div>
+                          <span className="font-medium">{customer.orderCount}</span>
                         </TableCell>
                         <TableCell className="text-right font-medium">
-                          {formatCurrency(order.total, order.currency || "USD")}
+                          {formatCurrency(customer.orderValue, customer.currency || "USD")}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {formatDate(customer.dateFirstOrder)}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {formatDate(customer.dateLastOrder)}
                         </TableCell>
                         <TableCell className="text-right">
-                          {canRead("ORDERS") && (
+                          {canRead("CUSTOMERS") && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => navigate(`/orders/${order.orderId}`)}
+                              onClick={() => navigate(`/customers/${customer.customerId}`)}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
                           )}
                         </TableCell>
                       </TableRow>
-                    );
-                  })
-                )}
+                    ))
+                  )}
                 </TableBody>
               </Table>
               
@@ -485,7 +390,7 @@ export default function Orders() {
                     </PaginationContent>
                   </Pagination>
                   <div className="text-center text-sm text-muted-foreground mt-2">
-                    Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, totalCount)} of {totalCount} orders
+                    Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, totalCount)} of {totalCount} customers
                   </div>
                 </div>
               )}
@@ -510,7 +415,7 @@ export default function Orders() {
               {syncMutation.isPending && (
                 <RefreshCw className="h-5 w-5 animate-spin text-primary" />
               )}
-              {syncMutation.isPending ? "Syncing Orders..." : "Sync Orders from Swell"}
+              {syncMutation.isPending ? "Syncing Customers..." : "Sync Customers from Swell"}
             </AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div>
@@ -521,9 +426,9 @@ export default function Orders() {
                       {syncProgress && (
                         <p className="text-sm text-muted-foreground">{syncProgress}</p>
                       )}
-                      {swellOrderCount !== null && (
+                      {swellCustomerCount !== null && (
                         <p className="text-sm text-muted-foreground">
-                          Syncing <strong>{swellOrderCount}</strong> orders from Swell. Please wait...
+                          Syncing <strong>{swellCustomerCount}</strong> customers from Swell. Please wait...
                         </p>
                       )}
                     </div>
@@ -534,7 +439,7 @@ export default function Orders() {
                         </div>
                         <div className="flex-1 space-y-1">
                           <p className="text-sm text-muted-foreground">
-                            ⏳ This may take a few minutes depending on the number of orders.
+                            ⏳ This may take a few minutes depending on the number of customers.
                           </p>
                           <p className="text-sm text-muted-foreground">
                             Please do not close this dialog or refresh the page.
@@ -544,16 +449,16 @@ export default function Orders() {
                     </div>
                   </div>
                 ) : (
-                  swellOrderCount !== null && (
+                  swellCustomerCount !== null && (
                     <div className="space-y-2 mt-4">
                       <p>
-                        Found <strong>{swellOrderCount}</strong> orders in Swell.
+                        Found <strong>{swellCustomerCount}</strong> customers in Swell.
                       </p>
                       <p>
-                        This will sync all orders from Swell. New orders will be created and existing orders will be updated.
+                        This will sync all customers from Swell. New customers will be created and existing customers will be updated.
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        This may take a few minutes depending on the number of orders.
+                        This may take a few minutes depending on the number of customers.
                       </p>
                     </div>
                   )
