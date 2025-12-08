@@ -271,7 +271,7 @@ export default function Vendors() {
                 onClick={() => setIsActiveFilter(false)}
               >
                 Inactive
-              </Button>
+            </Button>
             </div>
           </div>
         </CardContent>
@@ -291,59 +291,59 @@ export default function Vendors() {
             <div className="text-center py-8 text-muted-foreground">No vendors found</div>
           ) : (
             <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Vendor Name</TableHead>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Vendor Name</TableHead>
                     <TableHead>Address</TableHead>
                     <TableHead>City, State</TableHead>
-                    <TableHead>Contact</TableHead>
+                <TableHead>Contact</TableHead>
                     <TableHead>Phone</TableHead>
                     <TableHead>Email</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
                   {vendors.map((vendor) => (
                     <TableRow key={vendor.vendorId}>
-                      <TableCell className="font-medium">{vendor.name}</TableCell>
-                      <TableCell>
+                  <TableCell className="font-medium">{vendor.name}</TableCell>
+                  <TableCell>
                         <div className="text-sm">
                           {vendor.address && <div>{vendor.address}</div>}
                           {vendor.zipCode && <div>{vendor.zipCode}</div>}
                         </div>
-                      </TableCell>
-                      <TableCell>
+                  </TableCell>
+                  <TableCell>
                         <div className="text-sm">
                           {vendor.city && vendor.state && `${vendor.city}, ${vendor.state}`}
                           {vendor.country && <div className="text-muted-foreground">{vendor.country}</div>}
-                        </div>
-                      </TableCell>
-                      <TableCell>
+                    </div>
+                  </TableCell>
+                  <TableCell>
                         <div className="text-sm">
                           {vendor.contactPerson && <div>{vendor.contactPerson}</div>}
                           {vendor.attention && <div className="text-muted-foreground">{vendor.attention}</div>}
-                        </div>
-                      </TableCell>
+                    </div>
+                  </TableCell>
                       <TableCell>{vendor.phone || "-"}</TableCell>
                       <TableCell>{vendor.email || "-"}</TableCell>
-                      <TableCell>
+                  <TableCell>
                         <Badge variant={vendor.isActive ? "default" : "secondary"}>
                           {vendor.status || (vendor.isActive ? "Active" : "Inactive")}
                         </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
+                  </TableCell>
+                  <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          {canRead("VENDORS") && (
+                    {canRead("VENDORS") && (
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleEditVendor(vendor)}
                             >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          )}
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    )}
                           {canModify("VENDORS") && (
                             <Button
                               variant="ghost"
@@ -363,11 +363,11 @@ export default function Vendors() {
                             </Button>
                           )}
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
 
               {/* Pagination */}
               {totalPages > 1 && (

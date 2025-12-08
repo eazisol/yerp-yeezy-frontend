@@ -490,11 +490,11 @@ export default function Users() {
                                 )}
                               </>
                             )}
-                            {canRead("USER_MANAGEMENT") && (
-                              <Button variant="ghost" size="sm">
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            )}
+                            {/* {canRead("USER_MANAGEMENT") && (
+                        <Button variant="ghost" size="sm">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      )} */}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -584,6 +584,18 @@ export default function Users() {
           <form onSubmit={handleSubmit}>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
+                <Label htmlFor="fullName">Full Name</Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  placeholder="John Doe"
+                  value={formData.fullName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, fullName: e.target.value })
+                  }
+                />
+              </div>
+              <div className="grid gap-2">
                 <Label htmlFor="email">Email *</Label>
                 <Input
                   id="email"
@@ -610,18 +622,6 @@ export default function Users() {
                   }
                   required={!isEditMode}
                   minLength={6}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="fullName">Full Name</Label>
-                <Input
-                  id="fullName"
-                  type="text"
-                  placeholder="John Doe"
-                  value={formData.fullName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, fullName: e.target.value })
-                  }
                 />
               </div>
               <div className="grid gap-2">
@@ -685,8 +685,8 @@ export default function Users() {
                 {createMutation.isPending || updateMutation.isPending
                   ? "Saving..."
                   : isEditMode
-                  ? "Update User"
-                  : "Create User"}
+                    ? "Update User"
+                    : "Create User"}
               </Button>
             </DialogFooter>
           </form>
