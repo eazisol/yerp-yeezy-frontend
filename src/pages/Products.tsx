@@ -211,10 +211,10 @@ export default function Products() {
                   ? `${swellProductCount} Products in Swell`
                   : "Check Swell Products"}
               </Button>
-              <Button onClick={handleAddProduct}>
+              {/*<Button onClick={handleAddProduct}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Product
-              </Button>
+              </Button>*/}
             </>
           )}
         </div>
@@ -350,7 +350,7 @@ export default function Products() {
                                 <Eye className="h-4 w-4" />
                               </Button>
                             )}
-                            {canModify("PRODUCTS") && (
+                            {/* {canModify("PRODUCTS") && (
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -358,7 +358,7 @@ export default function Products() {
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
-                            )}
+                            )} */}
                             {canDelete("PRODUCTS") && (
                               <Button
                                 variant="ghost"

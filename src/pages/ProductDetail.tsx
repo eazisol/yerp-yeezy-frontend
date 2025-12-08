@@ -109,12 +109,12 @@ export default function ProductDetail() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {canModify("PRODUCTS") && (
+          {/* {canModify("PRODUCTS") && (
             <Button variant="outline" size="sm" onClick={handleEdit}>
               <Edit className="h-4 w-4 mr-2" />
               Edit
             </Button>
-          )}
+          )} */}
           {canDelete("PRODUCTS") && (
             <Button variant="destructive" size="sm" onClick={handleDelete}>
               <Trash2 className="h-4 w-4 mr-2" />
@@ -171,7 +171,10 @@ export default function ProductDetail() {
             {productDetail.description && (
               <div className="flex flex-col gap-2">
                 <span className="text-muted-foreground">Description</span>
-                <p className="text-sm text-foreground">{productDetail.description}</p>
+                <div 
+                  className="text-sm text-foreground whitespace-pre-wrap"
+                  dangerouslySetInnerHTML={{ __html: productDetail.description }}
+                />
               </div>
             )}
           </CardContent>

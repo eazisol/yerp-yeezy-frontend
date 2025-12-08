@@ -7,6 +7,8 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import Layout from "./components/common/Layout";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
 import ProductDetail from "./pages/ProductDetail";
@@ -22,6 +24,7 @@ import GRNDetail from "./pages/GRNDetail";
 import Inventory from "./pages/Inventory";
 import Vendors from "./pages/Vendors";
 import VendorDetail from "./pages/VendorDetail";
+import Warehouses from "./pages/Warehouses";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Roles from "./pages/Roles";
@@ -39,6 +42,8 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/products" element={<Products />} />
@@ -56,6 +61,7 @@ const App = () => (
               <Route path="/inventory" element={<Inventory />} />
               <Route path="/vendors" element={<Vendors />} />
               <Route path="/vendors/:id" element={<VendorDetail />} />
+              <Route path="/warehouses" element={<Warehouses />} />
               <Route path="/users" element={<Users />} />
               <Route path="/roles" element={<Roles />} />
               <Route path="/roles/:id/permissions" element={<RolePermissions />} />

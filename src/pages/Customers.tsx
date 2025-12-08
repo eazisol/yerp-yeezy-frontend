@@ -42,6 +42,7 @@ export default function Customers() {
   const [swellCustomerCount, setSwellCustomerCount] = useState<number | null>(null);
   const [showSyncConfirm, setShowSyncConfirm] = useState(false);
   const [syncProgress, setSyncProgress] = useState<string>("");
+  const [maxCustomers, setMaxCustomers] = useState<number | undefined>(undefined);
   const navigate = useNavigate();
   const { canRead, canModify } = usePermissions();
   const { toast } = useToast();
@@ -82,7 +83,7 @@ export default function Customers() {
       setSyncProgress("Fetching customers from Swell...");
       await new Promise(resolve => setTimeout(resolve, 100));
       setSyncProgress("Processing customers and syncing to database...");
-      return customerService.syncCustomersFromSwell();
+      return customerService.syncCustomersFromSwell(maxCustomers);
     },
     onSuccess: (result: CustomerSyncResult) => {
       setSyncProgress("");
@@ -94,6 +95,7 @@ export default function Customers() {
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       setShowSyncConfirm(false);
       setSwellCustomerCount(null);
+      setMaxCustomers(undefined); // Reset limit after sync
     },
     onError: (error: any) => {
       setSyncProgress("");
@@ -450,13 +452,41 @@ export default function Customers() {
                   </div>
                 ) : (
                   swellCustomerCount !== null && (
-                    <div className="space-y-2 mt-4">
-                      <p>
-                        Found <strong>{swellCustomerCount}</strong> customers in Swell.
-                      </p>
-                      <p>
-                        This will sync all customers from Swell. New customers will be created and existing customers will be updated.
-                      </p>
+                    <div className="space-y-4 mt-4">
+                      <div className="space-y-2">
+                        <p>
+                          Found <strong>{swellCustomerCount}</strong> customers in Swell.
+                        </p>
+                        <p>
+                          This will sync customers from Swell. New customers will be created and existing customers will be updated.
+                        </p>
+                      </div>
+                      
+                      {/* Max Customers Limit Input */}
+                      <div className="space-y-2">
+                        <label htmlFor="maxCustomers" className="text-sm font-medium text-foreground">
+                          Limit Sync (Optional)
+                        </label>
+                        <Input
+                          id="maxCustomers"
+                          type="number"
+                          placeholder="Leave empty to sync all customers"
+                          value={maxCustomers || ""}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setMaxCustomers(value === "" ? undefined : parseInt(value, 10) || undefined);
+                          }}
+                          min="1"
+                          disabled={syncMutation.isPending}
+                          className="w-full"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          {maxCustomers 
+                            ? `Will sync only the first ${maxCustomers} customers.`
+                            : "Will sync all customers from Swell."}
+                        </p>
+                      </div>
+                      
                       <p className="text-sm text-muted-foreground">
                         This may take a few minutes depending on the number of customers.
                       </p>

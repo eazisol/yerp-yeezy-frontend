@@ -47,30 +47,32 @@ import {
 } from "@/components/ui/pagination";
 import { Search, Plus, Edit, Trash2, Eye } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
-import { vendorService, Vendor, CreateVendorRequest, UpdateVendorRequest } from "@/services/vendors";
+import { warehouseService, Warehouse, CreateWarehouseRequest, UpdateWarehouseRequest } from "@/services/warehouses";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
-export default function Vendors() {
+export default function Warehouses() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize] = useState(50);
   const [isActiveFilter, setIsActiveFilter] = useState<boolean | undefined>(undefined);
-  const [showVendorForm, setShowVendorForm] = useState(false);
+  const [showWarehouseForm, setShowWarehouseForm] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
-  const [deleteVendorId, setDeleteVendorId] = useState<number | null>(null);
-  const [formData, setFormData] = useState<CreateVendorRequest>({
+  const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
+  const [deleteWarehouseId, setDeleteWarehouseId] = useState<number | null>(null);
+  const [formData, setFormData] = useState<CreateWarehouseRequest>({
+    warehouseCode: "",
     name: "",
     address: "",
     city: "",
     state: "",
     zipCode: "",
-    country: "USA",
-    phone: "",
+    country: "China",
+    contactPerson1: "",
+    contactPhone1: "",
+    contactPerson2: "",
+    contactPhone2: "",
     email: "",
-    contactPerson: "",
-    attention: "",
     status: "Active",
   });
   const [isEditMode, setIsEditMode] = useState(false);
@@ -79,71 +81,71 @@ export default function Vendors() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch vendors with pagination
-  const { data: vendorsData, isLoading: loadingVendors } = useQuery({
-    queryKey: ["vendors", page, pageSize, searchTerm, isActiveFilter],
-    queryFn: () => vendorService.getVendors(page, pageSize, searchTerm || undefined, isActiveFilter),
+  // Fetch warehouses with pagination
+  const { data: warehousesData, isLoading: loadingWarehouses } = useQuery({
+    queryKey: ["warehouses", page, pageSize, searchTerm, isActiveFilter],
+    queryFn: () => warehouseService.getWarehouses(page, pageSize, searchTerm || undefined, isActiveFilter),
   });
 
-  // Create vendor mutation
-  const createVendorMutation = useMutation({
-    mutationFn: (data: CreateVendorRequest) => vendorService.createVendor(data),
+  // Create warehouse mutation
+  const createWarehouseMutation = useMutation({
+    mutationFn: (data: CreateWarehouseRequest) => warehouseService.createWarehouse(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["warehouses"] });
       toast({
         title: "Success",
-        description: "Vendor created successfully",
+        description: "Warehouse created successfully",
       });
-      setShowVendorForm(false);
+      setShowWarehouseForm(false);
       resetForm();
     },
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error?.response?.data?.message || "Failed to create vendor",
+        description: error?.response?.data?.message || "Failed to create warehouse",
         variant: "destructive",
       });
     },
   });
 
-  // Update vendor mutation
-  const updateVendorMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: UpdateVendorRequest }) =>
-      vendorService.updateVendor(id, data),
+  // Update warehouse mutation
+  const updateWarehouseMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: UpdateWarehouseRequest }) =>
+      warehouseService.updateWarehouse(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["warehouses"] });
       toast({
         title: "Success",
-        description: "Vendor updated successfully",
+        description: "Warehouse updated successfully",
       });
-      setShowVendorForm(false);
+      setShowWarehouseForm(false);
       resetForm();
     },
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error?.response?.data?.message || "Failed to update vendor",
+        description: error?.response?.data?.message || "Failed to update warehouse",
         variant: "destructive",
       });
     },
   });
 
-  // Delete vendor mutation
-  const deleteVendorMutation = useMutation({
-    mutationFn: (id: number) => vendorService.deleteVendor(id),
+  // Delete warehouse mutation
+  const deleteWarehouseMutation = useMutation({
+    mutationFn: (id: number) => warehouseService.deleteWarehouse(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["warehouses"] });
       toast({
         title: "Success",
-        description: "Vendor deleted successfully",
+        description: "Warehouse deleted successfully",
       });
       setShowDeleteDialog(false);
-      setDeleteVendorId(null);
+      setDeleteWarehouseId(null);
     },
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error?.response?.data?.message || "Failed to delete vendor",
+        description: error?.response?.data?.message || "Failed to delete warehouse",
         variant: "destructive",
       });
     },
@@ -151,88 +153,92 @@ export default function Vendors() {
 
   const resetForm = () => {
     setFormData({
+      warehouseCode: "",
       name: "",
       address: "",
       city: "",
       state: "",
       zipCode: "",
-      country: "USA",
-      phone: "",
+      country: "China",
+      contactPerson1: "",
+      contactPhone1: "",
+      contactPerson2: "",
+      contactPhone2: "",
       email: "",
-      contactPerson: "",
-      attention: "",
       status: "Active",
     });
     setIsEditMode(false);
-    setSelectedVendor(null);
+    setSelectedWarehouse(null);
   };
 
-  const handleAddVendor = () => {
+  const handleAddWarehouse = () => {
     resetForm();
     setIsEditMode(false);
-    setShowVendorForm(true);
+    setShowWarehouseForm(true);
   };
 
-  const handleEditVendor = (vendor: Vendor) => {
+  const handleEditWarehouse = (warehouse: Warehouse) => {
     // Sync status from IsActive if status is not set
-    const status = vendor.status || (vendor.isActive ? "Active" : "Inactive");
+    const status = warehouse.status || (warehouse.isActive ? "Active" : "Inactive");
     setFormData({
-      name: vendor.name,
-      address: vendor.address || "",
-      city: vendor.city || "",
-      state: vendor.state || "",
-      zipCode: vendor.zipCode || "",
-      country: vendor.country || "USA",
-      phone: vendor.phone || "",
-      email: vendor.email || "",
-      contactPerson: vendor.contactPerson || "",
-      attention: vendor.attention || "",
+      warehouseCode: warehouse.warehouseCode,
+      name: warehouse.name,
+      address: warehouse.address || "",
+      city: warehouse.city || "",
+      state: warehouse.state || "",
+      zipCode: warehouse.zipCode || "",
+      country: warehouse.country || "China",
+      contactPerson1: warehouse.contactPerson1 || "",
+      contactPhone1: warehouse.contactPhone1 || "",
+      contactPerson2: warehouse.contactPerson2 || "",
+      contactPhone2: warehouse.contactPhone2 || "",
+      email: warehouse.email || "",
       status: status,
     });
     setIsEditMode(true);
-    setSelectedVendor(vendor);
-    setShowVendorForm(true);
+    setSelectedWarehouse(warehouse);
+    setShowWarehouseForm(true);
   };
 
-  const handleDeleteVendor = (vendorId: number) => {
-    setDeleteVendorId(vendorId);
+  const handleDeleteWarehouse = (warehouseId: number) => {
+    setDeleteWarehouseId(warehouseId);
     setShowDeleteDialog(true);
   };
 
   const handleConfirmDelete = () => {
-    if (deleteVendorId) {
-      deleteVendorMutation.mutate(deleteVendorId);
+    if (deleteWarehouseId) {
+      deleteWarehouseMutation.mutate(deleteWarehouseId);
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isEditMode && selectedVendor) {
+    if (isEditMode && selectedWarehouse) {
       // Status will automatically sync IsActive in backend
-      const updateData: UpdateVendorRequest = {
+      const updateData: UpdateWarehouseRequest = {
         ...formData,
       };
-      updateVendorMutation.mutate({ id: selectedVendor.vendorId, data: updateData });
+      updateWarehouseMutation.mutate({ id: selectedWarehouse.warehouseId, data: updateData });
     } else {
-      createVendorMutation.mutate(formData);
+      createWarehouseMutation.mutate(formData);
     }
   };
 
-  const vendors = vendorsData?.data || [];
-  const totalPages = vendorsData?.totalPages || 1;
+  const warehouses = warehousesData?.data || [];
+  const totalPages = warehousesData?.totalPages || 1;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Vendors</h1>
-          <p className="text-muted-foreground mt-1">Manage vendor relationships and information</p>
+          <h1 className="text-3xl font-bold text-foreground">Warehouses</h1>
+          <p className="text-muted-foreground mt-1">Manage warehouse locations and information</p>
         </div>
-        {canModify("VENDORS") && (
-          <Button onClick={handleAddVendor}>
+        {canModify("WAREHOUSES") && (
+          <Button onClick={handleAddWarehouse}>
             <Plus className="h-4 w-4 mr-2" />
-            Add Vendor
+            Add Warehouse
           </Button>
         )}
       </div>
@@ -244,7 +250,7 @@ export default function Vendors() {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search by vendor name, city, state, phone, or email..."
+                placeholder="Search by warehouse name, code, city, state, phone, or email..."
                 className="pl-9"
                 value={searchTerm}
                 onChange={(e) => {
@@ -277,87 +283,96 @@ export default function Vendors() {
         </CardContent>
       </Card>
 
-      {/* Vendors Table */}
+      {/* Warehouses Table */}
       <Card>
         <CardHeader>
           <CardTitle>
-            Vendor List ({vendorsData?.totalCount || 0})
+            Warehouse List ({warehousesData?.totalCount || 0})
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {loadingVendors ? (
-            <div className="text-center py-8">Loading vendors...</div>
-          ) : vendors.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">No vendors found</div>
+          {loadingWarehouses ? (
+            <div className="text-center py-8">Loading warehouses...</div>
+          ) : warehouses.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">No warehouses found</div>
           ) : (
             <>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Vendor Name</TableHead>
+                    <TableHead>Code</TableHead>
+                    <TableHead>Warehouse Name</TableHead>
                     <TableHead>Address</TableHead>
                     <TableHead>City, State</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Email</TableHead>
+                    <TableHead>Contacts</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {vendors.map((vendor) => (
-                    <TableRow key={vendor.vendorId}>
-                      <TableCell className="font-medium">{vendor.name}</TableCell>
+                  {warehouses.map((warehouse) => (
+                    <TableRow key={warehouse.warehouseId}>
+                      <TableCell className="font-medium">{warehouse.warehouseCode}</TableCell>
+                      <TableCell className="font-medium">{warehouse.name}</TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          {vendor.address && <div>{vendor.address}</div>}
-                          {vendor.zipCode && <div>{vendor.zipCode}</div>}
+                          {warehouse.address && <div>{warehouse.address}</div>}
+                          {warehouse.zipCode && <div>{warehouse.zipCode}</div>}
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="text-sm">
-                          {vendor.city && vendor.state && `${vendor.city}, ${vendor.state}`}
-                          {vendor.country && <div className="text-muted-foreground">{vendor.country}</div>}
+                          {warehouse.city && warehouse.state && `${warehouse.city}, ${warehouse.state}`}
+                          {warehouse.country && <div className="text-muted-foreground">{warehouse.country}</div>}
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="text-sm">
-                          {vendor.contactPerson && <div>{vendor.contactPerson}</div>}
-                          {vendor.attention && <div className="text-muted-foreground">{vendor.attention}</div>}
+                        <div className="text-sm space-y-1">
+                          {warehouse.contactPerson1 && warehouse.contactPhone1 && (
+                            <div>
+                              <span className="font-medium">{warehouse.contactPerson1}:</span> {warehouse.contactPhone1}
+                            </div>
+                          )}
+                          {warehouse.contactPerson2 && warehouse.contactPhone2 && (
+                            <div>
+                              <span className="font-medium">{warehouse.contactPerson2}:</span> {warehouse.contactPhone2}
+                            </div>
+                          )}
+                          {warehouse.email && (
+                            <div className="text-muted-foreground">{warehouse.email}</div>
+                          )}
                         </div>
                       </TableCell>
-                      <TableCell>{vendor.phone || "-"}</TableCell>
-                      <TableCell>{vendor.email || "-"}</TableCell>
                       <TableCell>
-                        <Badge variant={vendor.isActive ? "default" : "secondary"}>
-                          {vendor.status || (vendor.isActive ? "Active" : "Inactive")}
+                        <Badge variant={warehouse.isActive ? "default" : "secondary"}>
+                          {warehouse.status || (warehouse.isActive ? "Active" : "Inactive")}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          {canRead("VENDORS") && (
+                          {canRead("WAREHOUSES") && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleEditVendor(vendor)}
+                              onClick={() => handleEditWarehouse(warehouse)}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
                           )}
-                          {canModify("VENDORS") && (
+                          {canModify("WAREHOUSES") && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleEditVendor(vendor)}
+                              onClick={() => handleEditWarehouse(warehouse)}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
                           )}
-                          {canDelete("VENDORS") && (
+                          {canDelete("WAREHOUSES") && (
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDeleteVendor(vendor.vendorId)}
+                              onClick={() => handleDeleteWarehouse(warehouse.warehouseId)}
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
@@ -406,27 +421,28 @@ export default function Vendors() {
         </CardContent>
       </Card>
 
-      {/* Vendor Form Dialog */}
-      <Dialog open={showVendorForm} onOpenChange={setShowVendorForm}>
+      {/* Warehouse Form Dialog */}
+      <Dialog open={showWarehouseForm} onOpenChange={setShowWarehouseForm}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{isEditMode ? "Edit Vendor" : "Add New Vendor"}</DialogTitle>
+            <DialogTitle>{isEditMode ? "Edit Warehouse" : "Add New Warehouse"}</DialogTitle>
             <DialogDescription>
-              {isEditMode ? "Update vendor information" : "Create a new vendor in the system"}
+              {isEditMode ? "Update warehouse information" : "Create a new warehouse in the system"}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">
-                    Vendor Name <span className="text-destructive">*</span>
+                  <Label htmlFor="warehouseCode">
+                    Warehouse Code <span className="text-destructive">*</span>
                   </Label>
                   <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    id="warehouseCode"
+                    value={formData.warehouseCode}
+                    onChange={(e) => setFormData({ ...formData, warehouseCode: e.target.value })}
                     required
+                    placeholder="e.g., DG-MIKEDO"
                   />
                 </div>
                 <div className="space-y-2">
@@ -444,6 +460,18 @@ export default function Vendors() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="name">
+                  Warehouse Name <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                />
               </div>
 
               <div className="space-y-2">
@@ -465,7 +493,7 @@ export default function Vendors() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="state">State</Label>
+                  <Label htmlFor="state">State/Province</Label>
                   <Input
                     id="state"
                     value={formData.state}
@@ -493,42 +521,56 @@ export default function Vendors() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone</Label>
+                  <Label htmlFor="contactPerson1">Primary Contact Person</Label>
                   <Input
-                    id="phone"
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    id="contactPerson1"
+                    value={formData.contactPerson1}
+                    onChange={(e) => setFormData({ ...formData, contactPerson1: e.target.value })}
+                    placeholder="e.g., Terry, Mr Lee"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="contactPhone1">Primary Contact Phone</Label>
                   <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    id="contactPhone1"
+                    type="tel"
+                    value={formData.contactPhone1}
+                    onChange={(e) => setFormData({ ...formData, contactPhone1: e.target.value })}
+                    placeholder="e.g., 15819851440"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="contactPerson">Contact Person</Label>
+                  <Label htmlFor="contactPerson2">Secondary Contact Person</Label>
                   <Input
-                    id="contactPerson"
-                    value={formData.contactPerson}
-                    onChange={(e) => setFormData({ ...formData, contactPerson: e.target.value })}
+                    id="contactPerson2"
+                    value={formData.contactPerson2}
+                    onChange={(e) => setFormData({ ...formData, contactPerson2: e.target.value })}
+                    placeholder="e.g., Cally"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="attention">Attention</Label>
+                  <Label htmlFor="contactPhone2">Secondary Contact Phone</Label>
                   <Input
-                    id="attention"
-                    value={formData.attention}
-                    onChange={(e) => setFormData({ ...formData, attention: e.target.value })}
+                    id="contactPhone2"
+                    type="tel"
+                    value={formData.contactPhone2}
+                    onChange={(e) => setFormData({ ...formData, contactPhone2: e.target.value })}
+                    placeholder="e.g., 156 5796 3655"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
               </div>
             </div>
             <DialogFooter>
@@ -536,14 +578,14 @@ export default function Vendors() {
                 type="button"
                 variant="outline"
                 onClick={() => {
-                  setShowVendorForm(false);
+                  setShowWarehouseForm(false);
                   resetForm();
                 }}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={createVendorMutation.isPending || updateVendorMutation.isPending}>
-                {isEditMode ? "Update" : "Create"} Vendor
+              <Button type="submit" disabled={createWarehouseMutation.isPending || updateWarehouseMutation.isPending}>
+                {isEditMode ? "Update" : "Create"} Warehouse
               </Button>
             </DialogFooter>
           </form>
@@ -556,7 +598,7 @@ export default function Vendors() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will soft delete the vendor. This action cannot be undone.
+              This will soft delete the warehouse. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -573,3 +615,4 @@ export default function Vendors() {
     </div>
   );
 }
+

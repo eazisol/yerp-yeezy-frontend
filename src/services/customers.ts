@@ -56,8 +56,9 @@ class CustomerService {
   }
 
   // Sync all customers from Swell
-  async syncCustomersFromSwell(): Promise<CustomerSyncResult> {
-    return apiClient.post<CustomerSyncResult>("/api/Customers/sync");
+  async syncCustomersFromSwell(maxCustomers?: number): Promise<CustomerSyncResult> {
+    const url = maxCustomers ? `/api/Customers/sync?maxCustomers=${maxCustomers}` : "/api/Customers/sync";
+    return apiClient.post<CustomerSyncResult>(url);
   }
 }
 

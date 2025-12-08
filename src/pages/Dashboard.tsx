@@ -22,12 +22,9 @@ import { Badge } from "@/components/ui/badge";
 import { LineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useNavigate } from "react-router-dom";
 import { usePermissions } from "@/hooks/usePermissions";
+import { dashboardService, DashboardMetrics } from "@/services/dashboard";
+import { useQuery } from "@tanstack/react-query";
 import {
-  dailyOrderMetrics,
-  orderStatusBreakdown,
-  dailyShipments,
-  warehouseInventory,
-  stockAlerts,
   grnStatus,
   vendorBalances,
   vendorPerformance,
@@ -41,6 +38,41 @@ import {
 export default function Dashboard() {
   const navigate = useNavigate();
   const { canRead, canModify, canAccess } = usePermissions();
+
+  // Fetch real-time dashboard metrics
+  const { data: dashboardMetrics, isLoading: loadingMetrics } = useQuery({
+    queryKey: ["dashboard-metrics"],
+    queryFn: () => dashboardService.getDashboardMetrics(),
+    refetchInterval: 60000, // Refetch every 60 seconds for real-time updates
+  });
+
+  // Use real data if available, otherwise use empty defaults
+  const dailyOrderMetrics = dashboardMetrics?.dailyOrderMetrics || {
+    totalOrders: 0,
+    totalOrderValue: 0,
+    previousDayOrders: 0,
+    previousDayValue: 0,
+    changePercentage: 0,
+    valueChangePercentage: 0,
+  };
+
+  const orderStatusBreakdown = dashboardMetrics?.orderStatusBreakdown || {
+    fulfilled: 0,
+    pending: 0,
+    partiallyShipped: 0,
+    total: 0,
+  };
+
+  const dailyShipments = dashboardMetrics?.dailyShipments || {
+    cnShipments: 0,
+    usShipments: 0,
+    totalShipments: 0,
+    date: new Date().toISOString().split('T')[0],
+  };
+
+  const warehouseInventory = dashboardMetrics?.warehouseInventory || [];
+
+  const stockAlerts = dashboardMetrics?.stockAlerts || [];
 
   // Format currency
   const formatCurrency = (value: number) => {
@@ -103,9 +135,14 @@ export default function Dashboard() {
           <p className="text-muted-foreground mt-1">Overview of your Yeezy Global operations</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => window.location.reload()}
+            disabled={loadingMetrics}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${loadingMetrics ? 'animate-spin' : ''}`} />
+            {loadingMetrics ? 'Loading...' : 'Refresh'}
           </Button>
         </div>
       </div>

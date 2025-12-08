@@ -33,6 +33,19 @@ export interface ChangePasswordRequest {
   isAdminOverride?: boolean;
 }
 
+export interface ForgotPasswordRequest {
+  email: string;
+}
+
+export interface ResetPasswordRequest {
+  token: string;
+  newPassword: string;
+}
+
+export interface ValidateTokenRequest {
+  token: string;
+}
+
 class AuthService {
   private tokenKey = "auth_token";
   private userKey = "auth_user";
@@ -83,6 +96,21 @@ class AuthService {
   // Change password
   async changePassword(data: ChangePasswordRequest): Promise<void> {
     return apiClient.post("/api/auth/change-password", data);
+  }
+
+  // Forgot password - request password reset
+  async forgotPassword(data: ForgotPasswordRequest): Promise<{ message: string }> {
+    return apiClient.post("/api/auth/forgot-password", data);
+  }
+
+  // Validate reset token
+  async validateResetToken(data: ValidateTokenRequest): Promise<{ message: string }> {
+    return apiClient.post("/api/auth/validate-reset-token", data);
+  }
+
+  // Reset password
+  async resetPassword(data: ResetPasswordRequest): Promise<{ message: string }> {
+    return apiClient.post("/api/auth/reset-password", data);
   }
 
   // Check if user is authenticated
