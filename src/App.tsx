@@ -20,8 +20,11 @@ import Customers from "./pages/Customers";
 import CustomerDetail from "./pages/CustomerDetail";
 import PurchaseOrders from "./pages/PurchaseOrders";
 import PODetail from "./pages/PODetail";
+import POFormPage from "./pages/POFormPage";
 import GRN from "./pages/GRN";
 import GRNDetail from "./pages/GRNDetail";
+import GRNFormPage from "./pages/GRNFormPage";
+import VendorAcceptPO from "./pages/VendorAcceptPO";
 import Inventory from "./pages/Inventory";
 import Vendors from "./pages/Vendors";
 import VendorDetail from "./pages/VendorDetail";
@@ -45,6 +48,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/vendor/accept-po" element={<VendorAcceptPO />} />
             <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
               <Route path="/" element={<Dashboard />} />
               <Route path="/products" element={<Products />} />
@@ -56,9 +60,13 @@ const App = () => (
               <Route path="/customers" element={<Customers />} />
               <Route path="/customers/:id" element={<CustomerDetail />} />
               <Route path="/purchase-orders" element={<PurchaseOrders />} />
+              <Route path="/purchase-orders/new" element={<POFormPage />} />
               <Route path="/purchase-orders/:id" element={<PODetail />} />
+              <Route path="/purchase-orders/:id/edit" element={<POFormPage />} />
               <Route path="/grn" element={<GRN />} />
+              <Route path="/grn/new" element={<GRNFormPage />} />
               <Route path="/grn/:id" element={<GRNDetail />} />
+              <Route path="/grn/:id/edit" element={<GRNFormPage />} />
               <Route path="/inventory" element={<Inventory />} />
               <Route path="/vendors" element={<Vendors />} />
               <Route path="/vendors/:id" element={<VendorDetail />} />

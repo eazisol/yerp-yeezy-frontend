@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Filter, Plus, Eye, FileText } from "lucide-react";
+import { Search, Filter, Plus, Eye, FileText, Loader2, Pencil } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import {
   Table,
@@ -14,59 +14,74 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-const grnRecords = [
-  {
-    id: "GRN-2024-245",
-    poId: "PO-2024-127",
-    vendor: "Guangzhou Manufacturing Co.",
-    warehouse: "China",
-    items: 5,
-    receivedQty: 500,
-    status: "completed",
-    receivedBy: "Wang Li",
-    date: "2025-11-18",
-    hasAttachment: true,
-  },
-  {
-    id: "GRN-2024-246",
-    poId: "PO-2024-128",
-    vendor: "Shanghai Textiles Ltd.",
-    warehouse: "China",
-    items: 3,
-    receivedQty: 250,
-    status: "partial",
-    receivedBy: "Chen Wei",
-    date: "2025-11-20",
-    hasAttachment: true,
-  },
-  {
-    id: "GRN-2024-247",
-    poId: "PO-2024-129",
-    vendor: "US Footwear Supplies",
-    warehouse: "US",
-    items: 4,
-    receivedQty: 180,
-    status: "pending",
-    receivedBy: "John Smith",
-    date: "2025-11-22",
-    hasAttachment: false,
-  },
-];
+import { getGRNs, GRN } from "@/services/grn";
+import { useToast } from "@/hooks/use-toast";
 
 export default function GRN() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(50);
+  const [loading, setLoading] = useState(true);
+  const [grns, setGRNs] = useState<GRN[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [stats, setStats] = useState({
+    total: 0,
+    pendingVerification: 0,
+    thisMonth: 0,
+    totalItemsReceived: 0,
+  });
   const navigate = useNavigate();
   const { canRead, canModify } = usePermissions();
+  const { toast } = useToast();
 
-  const filteredGRN = grnRecords.filter(
+  // Fetch GRNs
+  useEffect(() => {
+    const fetchGRNs = async () => {
+      try {
+        setLoading(true);
+        const response = await getGRNs(page, pageSize);
+        setGRNs(response.data);
+        setTotalCount(response.totalCount);
+
+        // Calculate stats
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const thisMonthGRNs = response.data.filter(
+          (grn) => new Date(grn.createdDate) >= startOfMonth
+        );
+        const totalItemsReceived = response.data.reduce(
+          (sum, grn) => sum + grn.lineItems.reduce((itemSum, item) => itemSum + item.receivedQuantity, 0),
+          0
+        );
+
+        setStats({
+          total: response.totalCount,
+          pendingVerification: response.data.filter((grn) => grn.status === "Pending").length,
+          thisMonth: thisMonthGRNs.length,
+          totalItemsReceived,
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "Failed to load GRNs",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGRNs();
+  }, [page, pageSize, toast]);
+
+  const filteredGRN = grns.filter(
     (grn) =>
-      grn.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      grn.poId.toLowerCase().includes(searchTerm.toLowerCase())
+      grn.grnNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (grn.poNumber && grn.poNumber.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const getStatusVariant = (status: string) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case "completed":
         return "default";
       case "partial":
@@ -79,7 +94,7 @@ export default function GRN() {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch (status?.toLowerCase()) {
       case "completed":
         return "bg-green-100 text-green-700 border-green-200";
       case "partial":
@@ -91,6 +106,27 @@ export default function GRN() {
     }
   };
 
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -100,7 +136,7 @@ export default function GRN() {
           <p className="text-muted-foreground mt-1">Track warehouse receipts and verify deliveries</p>
         </div>
         {canModify("GRN") && (
-          <Button>
+          <Button onClick={() => navigate("/grn/new")}>
             <Plus className="h-4 w-4 mr-2" />
             Create GRN
           </Button>
@@ -116,7 +152,7 @@ export default function GRN() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">247</div>
+            <div className="text-2xl font-bold">{stats.total}</div>
           </CardContent>
         </Card>
         <Card>
@@ -126,7 +162,7 @@ export default function GRN() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
+            <div className="text-2xl font-bold">{stats.pendingVerification}</div>
           </CardContent>
         </Card>
         <Card>
@@ -136,7 +172,7 @@ export default function GRN() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">45</div>
+            <div className="text-2xl font-bold">{stats.thisMonth}</div>
           </CardContent>
         </Card>
         <Card>
@@ -146,7 +182,7 @@ export default function GRN() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12,450</div>
+            <div className="text-2xl font-bold">{stats.totalItemsReceived.toLocaleString()}</div>
           </CardContent>
         </Card>
       </div>
@@ -178,61 +214,101 @@ export default function GRN() {
           <CardTitle>GRN Records ({filteredGRN.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>GRN ID</TableHead>
-                <TableHead>PO ID</TableHead>
-                <TableHead>Vendor</TableHead>
-                <TableHead>Warehouse</TableHead>
-                <TableHead className="text-right">Items</TableHead>
-                <TableHead className="text-right">Qty Received</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Received By</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredGRN.map((grn) => (
-                <TableRow key={grn.id} className="cursor-pointer hover:bg-secondary/50">
-                  <TableCell className="font-medium">{grn.id}</TableCell>
-                  <TableCell>
-                    <Button variant="link" className="h-auto p-0 text-primary">
-                      {grn.poId}
-                    </Button>
-                  </TableCell>
-                  <TableCell>{grn.vendor}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{grn.warehouse}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right">{grn.items}</TableCell>
-                  <TableCell className="text-right font-medium">{grn.receivedQty}</TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusVariant(grn.status)} className={getStatusColor(grn.status)}>
-                      {grn.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm">{grn.receivedBy}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{grn.date}</TableCell>
-                  <TableCell className="text-right">
-                    {canRead("GRN") && (
-                      <div className="flex items-center justify-end gap-2">
-                        {grn.hasAttachment && (
-                          <Button variant="ghost" size="sm" title="View attachment">
-                            <FileText className="h-4 w-4 text-primary" />
-                          </Button>
-                        )}
-                        <Button variant="ghost" size="sm" onClick={() => navigate(`/grn/${grn.id}`)}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </TableCell>
+          {filteredGRN.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">No GRNs found</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>GRN ID</TableHead>
+                  <TableHead>PO ID</TableHead>
+                  <TableHead>Warehouse</TableHead>
+                  <TableHead className="text-right">Items</TableHead>
+                  <TableHead className="text-right">Qty Received</TableHead>
+                  <TableHead className="text-right">Value</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Received By</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredGRN.map((grn) => (
+                  <TableRow
+                    key={grn.grnId}
+                    className="cursor-pointer hover:bg-secondary/50"
+                    onClick={() => navigate(`/grn/${grn.grnId}`)}
+                  >
+                    <TableCell className="font-medium">{grn.grnNumber}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="link"
+                        className="h-auto p-0 text-primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/purchase-orders/${grn.purchaseOrderId}`);
+                        }}
+                      >
+                        {grn.poNumber || `PO-${grn.purchaseOrderId}`}
+                      </Button>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{grn.warehouseName || "N/A"}</Badge>
+                    </TableCell>
+                    <TableCell className="text-right">{grn.lineItems.length}</TableCell>
+                    <TableCell className="text-right font-medium">
+                      {grn.lineItems.reduce((sum, item) => sum + item.receivedQuantity, 0)}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatCurrency(grn.totalReceivedValue)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={getStatusVariant(grn.status || "")}
+                        className={getStatusColor(grn.status || "")}
+                      >
+                        {grn.status || "N/A"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm">{grn.receivedBy || "N/A"}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatDate(grn.receivedDate)}
+                    </TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      {canRead("GRN") && (
+                        <div className="flex items-center justify-end gap-2">
+                          {(grn.attachmentPath || (grn.attachments && grn.attachments.length > 0)) && (
+                            <Button variant="ghost" size="sm" title="View attachments">
+                              <FileText className="h-4 w-4 text-primary" />
+                              {grn.attachments && grn.attachments.length > 0 && (
+                                <span className="ml-1 text-xs">({grn.attachments.length})</span>
+                              )}
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate(`/grn/${grn.grnId}`)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          {canModify("GRN") && grn.status === "Pending" && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => navigate(`/grn/${grn.grnId}/edit`)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

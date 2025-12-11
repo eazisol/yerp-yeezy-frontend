@@ -396,18 +396,18 @@ export default function Users() {
             </div>
           ) : (
             <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
                     <TableHead>Roles</TableHead>
                     <TableHead>Created</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
                   {users.length === 0 ? (
                     <TableRow>
                       <TableCell
@@ -420,23 +420,23 @@ export default function Users() {
                   ) : (
                     users.map((user) => (
                       <TableRow key={user.id} className="hover:bg-secondary/50">
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground font-medium text-sm">
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground font-medium text-sm">
                               {(user.fullName || user.email)
-                                .split(" ")
-                                .map((n) => n[0])
+                          .split(" ")
+                          .map((n) => n[0])
                                 .join("")
                                 .toUpperCase()
                                 .slice(0, 2)}
-                            </div>
+                      </div>
                             <span className="font-medium">
                               {user.fullName || user.email}
                             </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">{user.email}</TableCell>
-                        <TableCell>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{user.email}</TableCell>
+                  <TableCell>
                           <div className="flex flex-wrap gap-1">
                             {user.roles && user.roles.length > 0 ? (
                               user.roles.map((roleCode) => (
@@ -446,7 +446,7 @@ export default function Users() {
                                   className={getRoleColor(roleCode)}
                                 >
                                   {getRoleLabel(roleCode)}
-                                </Badge>
+                    </Badge>
                               ))
                             ) : (
                               <span className="text-sm text-muted-foreground">No roles</span>
@@ -455,8 +455,8 @@ export default function Users() {
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
                           {formatDate(user.createdDate)}
-                        </TableCell>
-                        <TableCell>
+                  </TableCell>
+                  <TableCell>
                           <Badge
                             variant={user.isActive ? "default" : "secondary"}
                             className={
@@ -467,18 +467,18 @@ export default function Users() {
                           >
                             {user.isActive ? "Active" : "Inactive"}
                           </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            {canModify("USER_MANAGEMENT") && (
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      {canModify("USER_MANAGEMENT") && (
                               <>
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => handleEditUser(user)}
                                 >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
+                          <Edit className="h-4 w-4" />
+                        </Button>
                                 {canDelete("USER_MANAGEMENT") && (
                                   <Button
                                     variant="ghost"
@@ -489,19 +489,19 @@ export default function Users() {
                                   </Button>
                                 )}
                               </>
-                            )}
-                            {/* {canRead("USER_MANAGEMENT") && (
+                      )}
+                       {/* {canRead("USER_MANAGEMENT") && (
                         <Button variant="ghost" size="sm">
                           <Eye className="h-4 w-4" />
                         </Button>
                       )} */}
-                          </div>
-                        </TableCell>
-                      </TableRow>
+                    </div>
+                  </TableCell>
+                </TableRow>
                     ))
                   )}
-                </TableBody>
-              </Table>
+            </TableBody>
+          </Table>
 
               {/* Pagination */}
               {totalPages > 1 && (
@@ -583,7 +583,7 @@ export default function Users() {
           </DialogHeader>
           <form onSubmit={handleSubmit}>
             <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
+            <div className="grid gap-2">
                 <Label htmlFor="fullName">Full Name</Label>
                 <Input
                   id="fullName"
@@ -685,8 +685,8 @@ export default function Users() {
                 {createMutation.isPending || updateMutation.isPending
                   ? "Saving..."
                   : isEditMode
-                    ? "Update User"
-                    : "Create User"}
+                  ? "Update User"
+                  : "Create User"}
               </Button>
             </DialogFooter>
           </form>

@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Filter, Plus, Eye } from "lucide-react";
+import { Search, Filter, Plus, Eye, Loader2, Pencil } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import {
   Table,
@@ -14,70 +14,86 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-const purchaseOrders = [
-  {
-    id: "PO-2024-127",
-    vendor: "Guangzhou Manufacturing Co.",
-    items: 5,
-    totalValue: "$45,890",
-    receivedValue: "$45,890",
-    status: "completed",
-    createdDate: "2025-10-15",
-    dueDate: "2025-11-15",
-  },
-  {
-    id: "PO-2024-128",
-    vendor: "Shanghai Textiles Ltd.",
-    items: 3,
-    totalValue: "$28,450",
-    receivedValue: "$14,225",
-    status: "partial",
-    createdDate: "2025-11-01",
-    dueDate: "2025-12-01",
-  },
-  {
-    id: "PO-2024-129",
-    vendor: "US Footwear Supplies",
-    items: 4,
-    totalValue: "$62,300",
-    receivedValue: "$0",
-    status: "pending",
-    createdDate: "2025-11-20",
-    dueDate: "2025-12-20",
-  },
-  {
-    id: "PO-2024-130",
-    vendor: "Guangzhou Manufacturing Co.",
-    items: 2,
-    totalValue: "$18,900",
-    receivedValue: "$0",
-    status: "approved",
-    createdDate: "2025-11-22",
-    dueDate: "2025-12-22",
-  },
-];
+import { getPurchaseOrders, PurchaseOrder } from "@/services/purchaseOrders";
+import { useToast } from "@/hooks/use-toast";
 
 export default function PurchaseOrders() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(50);
+  const [loading, setLoading] = useState(true);
+  const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [stats, setStats] = useState({
+    total: 0,
+    pendingApproval: 0,
+    inProgress: 0,
+    totalValue: 0,
+  });
   const navigate = useNavigate();
   const { canRead, canModify } = usePermissions();
+  const { toast } = useToast();
+
+  // Fetch purchase orders
+  useEffect(() => {
+    const fetchPOs = async () => {
+      try {
+        setLoading(true);
+        const response = await getPurchaseOrders(page, pageSize);
+        setPurchaseOrders(response.data);
+        setTotalCount(response.totalCount);
+
+        // Calculate stats
+        const pendingApproval = response.data.filter(
+          (po) => po.approvalStatus === "Pending" || po.status === "PendingApproval"
+        ).length;
+        const inProgress = response.data.filter(
+          (po) =>
+            po.status === "VendorAccepted" ||
+            po.status === "PartiallyReceived" ||
+            po.status === "Released"
+        ).length;
+        const totalValue = response.data.reduce((sum, po) => sum + po.totalValue, 0);
+
+        setStats({
+          total: response.totalCount,
+          pendingApproval,
+          inProgress,
+          totalValue,
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: error instanceof Error ? error.message : "Failed to load purchase orders",
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPOs();
+  }, [page, pageSize, toast]);
 
   const filteredPOs = purchaseOrders.filter(
     (po) =>
-      po.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      po.vendor.toLowerCase().includes(searchTerm.toLowerCase())
+      po.poNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (po.vendorName && po.vendorName.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const getStatusVariant = (status: string) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case "completed":
+      case "fullyreceived":
         return "default";
       case "partial":
+      case "partiallyreceived":
         return "secondary";
       case "approved":
         return "outline";
       case "pending":
+      case "pendingapproval":
+      case "draft":
         return "outline";
       default:
         return "outline";
@@ -85,19 +101,44 @@ export default function PurchaseOrders() {
   };
 
   const getStatusColor = (status: string) => {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case "completed":
+      case "fullyreceived":
         return "bg-green-100 text-green-700 border-green-200";
       case "partial":
+      case "partiallyreceived":
         return "bg-yellow-100 text-yellow-700 border-yellow-200";
       case "approved":
         return "bg-blue-100 text-blue-700 border-blue-200";
       case "pending":
+      case "pendingapproval":
+      case "draft":
         return "bg-gray-100 text-gray-700 border-gray-200";
       default:
         return "";
     }
   };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -108,7 +149,7 @@ export default function PurchaseOrders() {
           <p className="text-muted-foreground mt-1">Create and manage purchase orders</p>
         </div>
         {canModify("PURCHASE_ORDERS") && (
-          <Button>
+          <Button onClick={() => navigate("/purchase-orders/new")}>
             <Plus className="h-4 w-4 mr-2" />
             Create PO
           </Button>
@@ -124,7 +165,7 @@ export default function PurchaseOrders() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">130</div>
+            <div className="text-2xl font-bold">{stats.total}</div>
           </CardContent>
         </Card>
         <Card>
@@ -134,7 +175,7 @@ export default function PurchaseOrders() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">8</div>
+            <div className="text-2xl font-bold">{stats.pendingApproval}</div>
           </CardContent>
         </Card>
         <Card>
@@ -144,7 +185,7 @@ export default function PurchaseOrders() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">15</div>
+            <div className="text-2xl font-bold">{stats.inProgress}</div>
           </CardContent>
         </Card>
         <Card>
@@ -154,7 +195,7 @@ export default function PurchaseOrders() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">$2.4M</div>
+            <div className="text-2xl font-bold">{formatCurrency(stats.totalValue)}</div>
           </CardContent>
         </Card>
       </div>
@@ -186,54 +227,99 @@ export default function PurchaseOrders() {
           <CardTitle>Purchase Order List ({filteredPOs.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>PO ID</TableHead>
-                <TableHead>Vendor</TableHead>
-                <TableHead>Items</TableHead>
-                <TableHead className="text-right">Total Value</TableHead>
-                <TableHead className="text-right">Received</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Due Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredPOs.map((po) => (
-                <TableRow key={po.id} className="cursor-pointer hover:bg-secondary/50">
-                  <TableCell className="font-medium">{po.id}</TableCell>
-                  <TableCell>{po.vendor}</TableCell>
-                  <TableCell>{po.items} items</TableCell>
-                  <TableCell className="text-right font-medium">{po.totalValue}</TableCell>
-                  <TableCell className="text-right">
-                    {po.status === "completed" ? (
-                      <span className="text-success">{po.receivedValue}</span>
-                    ) : po.status === "partial" ? (
-                      <span className="text-warning">{po.receivedValue}</span>
-                    ) : (
-                      <span className="text-muted-foreground">{po.receivedValue}</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusVariant(po.status)} className={getStatusColor(po.status)}>
-                      {po.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{po.createdDate}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{po.dueDate}</TableCell>
-                  <TableCell className="text-right">
-                    {canRead("PURCHASE_ORDERS") && (
-                      <Button variant="ghost" size="sm" onClick={() => navigate(`/purchase-orders/${po.id}`)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </TableCell>
+          {filteredPOs.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No purchase orders found
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>PO ID</TableHead>
+                  <TableHead>Vendor</TableHead>
+                  <TableHead>Items</TableHead>
+                  <TableHead className="text-right">Total Value</TableHead>
+                  <TableHead className="text-right">Received</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Due Date</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredPOs.map((po) => (
+                  <TableRow
+                    key={po.purchaseOrderId}
+                    className="cursor-pointer hover:bg-secondary/50"
+                    onClick={() => navigate(`/purchase-orders/${po.purchaseOrderId}`)}
+                  >
+                    <TableCell className="font-medium">{po.poNumber}</TableCell>
+                    <TableCell>{po.vendorName || "N/A"}</TableCell>
+                    <TableCell>{po.lineItems.length} items</TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatCurrency(po.totalValue)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {po.receivedValue > 0 ? (
+                        <span
+                          className={
+                            po.receivedValue === po.totalValue
+                              ? "text-green-600"
+                              : "text-yellow-600"
+                          }
+                        >
+                          {formatCurrency(po.receivedValue)}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">
+                          {formatCurrency(0)}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={getStatusVariant(po.status)}
+                        className={getStatusColor(po.status)}
+                      >
+                        {po.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatDate(po.createdDate)}
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {po.expectedDeliveryDate
+                        ? formatDate(po.expectedDeliveryDate)
+                        : "N/A"}
+                    </TableCell>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-2">
+                        {canRead("PURCHASE_ORDERS") && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate(`/purchase-orders/${po.purchaseOrderId}`)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {canModify("PURCHASE_ORDERS") && 
+                         (po.status === "Draft" || po.status === "PendingApproval") && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate(`/purchase-orders/${po.purchaseOrderId}/edit`)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

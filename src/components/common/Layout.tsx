@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { Outlet, Link, useLocation, useNavigate } from "react-router-dom";
-import {
-  LayoutDashboard,
-  Package,
-  ShoppingCart,
-  FileText,
-  ClipboardCheck,
-  Warehouse,
-  Users,
-  UserCog,
+import { 
+  LayoutDashboard, 
+  Package, 
+  ShoppingCart, 
+  FileText, 
+  ClipboardCheck, 
+  Warehouse, 
+  Users, 
+  UserCog, 
   Settings,
   Shield,
   Menu,
@@ -217,14 +217,14 @@ export default function Layout() {
                   .filter((menu) => {
                     // Filter menus based on user permissions
                     if (!user) return false;
-
+                    
                     // Admin can see all menus
                     if (isAdmin(user.roles)) return true;
-
+                    
                     // Check if user has any permission for this menu
                     // Add null check for permissions
                     if (!user.permissions || user.permissions.length === 0) return false;
-
+                    
                     return hasAnyPermission(user.permissions, menu.code || "");
                   })
                   .map((menu) => {
