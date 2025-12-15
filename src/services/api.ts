@@ -22,9 +22,13 @@ class ApiClient {
     const token = localStorage.getItem("auth_token");
     
     const headers: HeadersInit = {
-      "Content-Type": "application/json",
       ...options.headers,
     };
+
+    // Only set Content-Type if not FormData (browser will set it with boundary for FormData)
+    if (!(options.body instanceof FormData)) {
+      headers["Content-Type"] = headers["Content-Type"] || "application/json";
+    }
 
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
@@ -55,10 +59,20 @@ class ApiClient {
     return this.request<T>(endpoint, { method: "GET" });
   }
 
-  async post<T>(endpoint: string, data?: unknown): Promise<T> {
+  async post<T>(endpoint: string, data?: unknown, options?: RequestInit): Promise<T> {
+    const isFormData = data instanceof FormData;
+    const headers: HeadersInit = {};
+    
+    if (!isFormData) {
+      headers["Content-Type"] = "application/json";
+    }
+    // For FormData, let browser set Content-Type with boundary
+
     return this.request<T>(endpoint, {
       method: "POST",
-      body: data ? JSON.stringify(data) : undefined,
+      body: isFormData ? data : (data ? JSON.stringify(data) : undefined),
+      headers,
+      ...options,
     });
   }
 

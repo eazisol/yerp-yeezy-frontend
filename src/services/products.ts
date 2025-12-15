@@ -11,6 +11,7 @@ export interface Product {
   currency: string | null;
   status: string;
   type: string;
+  isActive: boolean;
   origin: string | null;
   category: string | null;
   createdDate: string;
@@ -77,7 +78,7 @@ class ProductService {
     page: number = 1,
     pageSize: number = 50,
     search?: string,
-    status?: string,
+    isActive?: string,
     origin?: string
   ): Promise<ProductsResponse> {
     const params = new URLSearchParams({
@@ -85,7 +86,7 @@ class ProductService {
       pageSize: pageSize.toString(),
     });
     if (search) params.append("search", search);
-    if (status) params.append("status", status);
+    if (isActive !== undefined) params.append("isActive", isActive);
     if (origin) params.append("origin", origin);
 
     return apiClient.get<ProductsResponse>(`/api/Products?${params.toString()}`);
@@ -116,6 +117,14 @@ class ProductService {
   async syncProductsFromSwell(): Promise<ProductSyncResult> {
     return apiClient.post<ProductSyncResult>("/api/Products/sync");
   }
+
+  // Import products from Excel file
+  async importProductsFromExcel(file: File): Promise<ProductImportResult> {
+    const formData = new FormData();
+    formData.append("file", file);
+    
+    return apiClient.post<ProductImportResult>("/api/Products/import-excel", formData);
+  }
 }
 
 export interface ProductSyncResult {
@@ -125,6 +134,18 @@ export interface ProductSyncResult {
   failed: number;
   errors: string[];
   syncDate: string;
+  message: string;
+}
+
+export interface ProductImportResult {
+  totalRows: number;
+  totalVariantsInFile: number; // Total variants found in Excel file
+  productsCreated: number;
+  productsUpdated: number;
+  variantsCreated: number;
+  variantsUpdated: number;
+  errors: number;
+  errorMessages: string[];
   message: string;
 }
 

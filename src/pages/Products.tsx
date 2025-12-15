@@ -1,9 +1,16 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Filter, Plus, Eye, Edit, Trash2, RefreshCw, Download } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Search, Filter, Plus, Eye, Edit, Trash2, RefreshCw, Download, Upload, FileSpreadsheet } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import {
   Table,
@@ -32,18 +39,22 @@ import {
   PaginationPrevious,
   PaginationEllipsis,
 } from "@/components/ui/pagination";
-import { productService, Product, ProductSyncResult } from "@/services/products";
+import { productService, Product, ProductSyncResult, ProductImportResult } from "@/services/products";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Products() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeFilter, setActiveFilter] = useState<string | null>(null); // null = all, "true" = active, "false" = inactive
   const [page, setPage] = useState(1);
   const [pageSize] = useState(50);
   const [deleteProductId, setDeleteProductId] = useState<number | null>(null);
   const [swellProductCount, setSwellProductCount] = useState<number | null>(null);
   const [showSyncConfirm, setShowSyncConfirm] = useState(false);
   const [syncProgress, setSyncProgress] = useState<string>("");
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [importResult, setImportResult] = useState<ProductImportResult | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { canRead, canModify, canDelete } = usePermissions();
   const { toast } = useToast();
@@ -51,8 +62,8 @@ export default function Products() {
 
   // Fetch products with pagination
   const { data: productsData, isLoading: loadingProducts } = useQuery({
-    queryKey: ["products", page, pageSize, searchTerm],
-    queryFn: () => productService.getProducts(page, pageSize, searchTerm || undefined),
+    queryKey: ["products", page, pageSize, searchTerm, activeFilter],
+    queryFn: () => productService.getProducts(page, pageSize, searchTerm || undefined, activeFilter || undefined),
   });
 
   const products = productsData?.data || [];
@@ -188,6 +199,77 @@ export default function Products() {
     syncMutation.mutate();
   };
 
+  // Excel import mutation
+  const importMutation = useMutation({
+    mutationFn: (file: File) => productService.importProductsFromExcel(file),
+    onSuccess: (result: ProductImportResult) => {
+      setImportResult(result);
+      toast({
+        title: "Import Completed",
+        description: result.message || `Created: ${result.productsCreated}, Updated: ${result.productsUpdated}`,
+        duration: 5000,
+      });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Import Failed",
+        description: error.message || "Failed to import products from Excel",
+        variant: "destructive",
+        duration: 5000,
+      });
+    },
+  });
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type
+      const allowedTypes = [
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-excel",
+      ];
+      if (!allowedTypes.includes(file.type) && !file.name.endsWith(".xlsx") && !file.name.endsWith(".xls")) {
+        toast({
+          title: "Invalid File",
+          description: "Please select an Excel file (.xlsx or .xls)",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validate file size (50MB max)
+      const maxSize = 50 * 1024 * 1024; // 50MB
+      if (file.size > maxSize) {
+        toast({
+          title: "File Too Large",
+          description: "File size must be less than 50MB",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setShowImportDialog(true);
+      setImportResult(null);
+      importMutation.mutate(file);
+    }
+  };
+
+  const handleCloseImportDialog = () => {
+    setShowImportDialog(false);
+    setImportResult(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -199,6 +281,21 @@ export default function Products() {
         <div className="flex gap-2">
           {canModify("PRODUCTS") && (
             <>
+              <Button
+                variant="outline"
+                onClick={handleImportClick}
+                disabled={importMutation.isPending}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                {importMutation.isPending ? "Importing..." : "Import Excel"}
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleFileChange}
+                className="hidden"
+              />
               <Button
                 variant="outline"
                 onClick={handleCheckSwellCount}
@@ -236,10 +333,22 @@ export default function Products() {
                 }}
               />
             </div>
-            <Button variant="outline">
-              <Filter className="h-4 w-4 mr-2" />
-              Filters
-            </Button>
+            <Select
+              value={activeFilter || "all"}
+              onValueChange={(value) => {
+                setActiveFilter(value === "all" ? null : value);
+                setPage(1); // Reset to first page on filter change
+              }}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Products</SelectItem>
+                <SelectItem value="true">Active</SelectItem>
+                <SelectItem value="false">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -256,15 +365,15 @@ export default function Products() {
             </div>
           ) : (
             <>
-              <Table>
+              <Table className="table-fixed w-full">
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Product</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Updated</TableHead>
-                    <TableHead className="text-right">Stock</TableHead>
-                    <TableHead className="text-right">Price</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="w-[20%]">Product</TableHead>
+                    <TableHead className="w-[15%]">Stock</TableHead>
+                    <TableHead className="w-[15%]">Price</TableHead>
+                    <TableHead className="w-[15%]">Status</TableHead>
+                    <TableHead className="w-[15%]">Updated</TableHead>
+                    <TableHead className="text-right w-[20%]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -285,7 +394,7 @@ export default function Products() {
                         key={product.productId}
                         className="cursor-pointer hover:bg-secondary/50"
                       >
-                        <TableCell>
+                        <TableCell className="w-[20%]">
                           <div>
                             <div className="font-medium text-foreground">
                               {product.name}
@@ -295,30 +404,7 @@ export default function Products() {
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div
-                            className={`inline-flex items-center gap-2 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                              product.status.toLowerCase() === "active"
-                                ? "bg-green-100 text-green-700"
-                                : "bg-gray-100 text-gray-600"
-                            }`}
-                          >
-                            <div
-                              className={`h-2 w-2 rounded-full ${
-                                product.status.toLowerCase() === "active"
-                                  ? "bg-green-600"
-                                  : "bg-gray-500"
-                              }`}
-                            />
-                            <span className="capitalize">{product.status}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {formatDate(
-                            product.editDate || product.createdDate
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="w-[15%]">
                           <span
                             className={`font-medium ${
                               totalStock > 0
@@ -331,13 +417,36 @@ export default function Products() {
                             {totalStock}
                           </span>
                         </TableCell>
-                        <TableCell className="text-right font-medium">
+                        <TableCell className="font-medium w-[15%]">
                           {formatCurrency(
                             product.price,
                             product.currency || "USD"
                           )}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="w-[15%]">
+                          <div
+                            className={`inline-flex items-center gap-2 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                              product.isActive
+                                ? "bg-green-100 text-green-700"
+                                : "bg-gray-100 text-gray-600"
+                            }`}
+                          >
+                            <div
+                              className={`h-2 w-2 rounded-full ${
+                                product.isActive
+                                  ? "bg-green-600"
+                                  : "bg-gray-500"
+                              }`}
+                            />
+                            <span>{product.isActive ? "Active" : "Inactive"}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground w-[15%]">
+                          {formatDate(
+                            product.editDate || product.createdDate
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right w-[20%]">
                           <div className="flex items-center justify-end gap-2">
                             {canRead("PRODUCTS") && (
                               <Button
@@ -548,6 +657,106 @@ export default function Products() {
                 <RefreshCw className="h-4 w-4 animate-spin" />
                 <span>Syncing...</span>
               </div>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Excel Import Dialog */}
+      <AlertDialog open={showImportDialog} onOpenChange={handleCloseImportDialog}>
+        <AlertDialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              {importMutation.isPending && (
+                <RefreshCw className="h-5 w-5 animate-spin text-primary" />
+              )}
+              {importMutation.isPending
+                ? "Importing Products..."
+                : importResult
+                ? "Import Completed"
+                : "Import Products from Excel"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {importMutation.isPending
+                ? "Please wait while we process your Excel file. This may take a few moments..."
+                : importResult
+                ? "Products have been imported successfully."
+                : "Select an Excel file (.xlsx or .xls) to import products."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {importMutation.isPending && (
+            <div className="py-4">
+              <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                <RefreshCw className="h-5 w-5 animate-spin" />
+                <span>Processing Excel file...</span>
+              </div>
+            </div>
+          )}
+
+          {importResult && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-muted rounded-lg">
+                  <div className="text-sm text-muted-foreground">Total Rows</div>
+                  <div className="text-2xl font-bold">{importResult.totalRows}</div>
+                </div>
+                <div className="p-4 bg-muted rounded-lg">
+                  <div className="text-sm text-muted-foreground">Total Variants in File</div>
+                  <div className="text-2xl font-bold text-purple-600">{importResult.totalVariantsInFile || importResult.totalRows}</div>
+                </div>
+                <div className="p-4 bg-muted rounded-lg">
+                  <div className="text-sm text-muted-foreground">Products Created</div>
+                  <div className="text-2xl font-bold text-green-600">{importResult.productsCreated}</div>
+                </div>
+                <div className="p-4 bg-muted rounded-lg">
+                  <div className="text-sm text-muted-foreground">Products Updated</div>
+                  <div className="text-2xl font-bold text-blue-600">{importResult.productsUpdated}</div>
+                </div>
+                <div className="p-4 bg-muted rounded-lg">
+                  <div className="text-sm text-muted-foreground">Variants Created</div>
+                  <div className="text-2xl font-bold text-green-600">{importResult.variantsCreated}</div>
+                </div>
+                <div className="p-4 bg-muted rounded-lg">
+                  <div className="text-sm text-muted-foreground">Variants Updated</div>
+                  <div className="text-2xl font-bold text-blue-600">{importResult.variantsUpdated}</div>
+                </div>
+                <div className="p-4 bg-muted rounded-lg">
+                  <div className="text-sm text-muted-foreground">Errors</div>
+                  <div className="text-2xl font-bold text-red-600">{importResult.errors}</div>
+                </div>
+              </div>
+
+              {importResult.errorMessages && importResult.errorMessages.length > 0 && (
+                <div className="mt-4">
+                  <div className="text-sm font-semibold mb-2 text-red-600">Error Messages:</div>
+                  <div className="max-h-40 overflow-y-auto space-y-1">
+                    {importResult.errorMessages.map((error, index) => (
+                      <div key={index} className="text-sm text-muted-foreground p-2 bg-red-50 dark:bg-red-950 rounded">
+                        {error}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {importResult.message && (
+                <div className="mt-4 p-3 bg-green-50 dark:bg-green-950 rounded text-sm text-green-800 dark:text-green-200">
+                  {importResult.message}
+                </div>
+              )}
+            </div>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleCloseImportDialog} disabled={importMutation.isPending}>
+              {importMutation.isPending ? "Importing..." : "Close"}
+            </AlertDialogCancel>
+            {!importMutation.isPending && !importResult && (
+              <AlertDialogAction onClick={handleImportClick} className="bg-primary text-primary-foreground hover:bg-primary/90">
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Select File
+              </AlertDialogAction>
             )}
           </AlertDialogFooter>
         </AlertDialogContent>
