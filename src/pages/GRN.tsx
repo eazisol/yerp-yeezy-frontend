@@ -50,7 +50,7 @@ export default function GRN() {
           (grn) => new Date(grn.createdDate) >= startOfMonth
         );
         const totalItemsReceived = response.data.reduce(
-          (sum, grn) => sum + grn.lineItems.reduce((itemSum, item) => itemSum + item.receivedQuantity, 0),
+          (sum, grn) => sum + (grn.lineItems || []).reduce((itemSum, item) => itemSum + (item.receivedQuantity || 0), 0),
           0
         );
 
@@ -253,11 +253,11 @@ export default function GRN() {
                       </Button>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline">{grn.warehouseName || "N/A"}</Badge>
+                      {grn.warehouseName || "N/A"}
                     </TableCell>
-                    <TableCell className="text-right">{grn.lineItems.length}</TableCell>
+                    <TableCell className="text-right">{grn.lineItems?.length || 0}</TableCell>
                     <TableCell className="text-right font-medium">
-                      {grn.lineItems.reduce((sum, item) => sum + item.receivedQuantity, 0)}
+                      {grn.lineItems?.reduce((sum, item) => sum + (item.receivedQuantity || 0), 0) || 0}
                     </TableCell>
                     <TableCell className="text-right font-medium">
                       {formatCurrency(grn.totalReceivedValue)}
@@ -292,7 +292,7 @@ export default function GRN() {
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          {canModify("GRN") && grn.status === "Pending" && (
+                          {canModify("GRN") && (
                             <Button
                               variant="ghost"
                               size="sm"

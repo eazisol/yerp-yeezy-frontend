@@ -91,7 +91,7 @@ export default function GRNDetail() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {canModify("GRN") && grn.status === "Pending" && (
+          {canModify("GRN") && (
             <Button
               variant="outline"
               onClick={() => navigate(`/grn/${id}/edit`)}

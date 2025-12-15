@@ -255,7 +255,7 @@ export default function PurchaseOrders() {
                   >
                     <TableCell className="font-medium">{po.poNumber}</TableCell>
                     <TableCell>{po.vendorName || "N/A"}</TableCell>
-                    <TableCell>{po.lineItems.length} items</TableCell>
+                    <TableCell>{po.lineItems?.length || 0} items</TableCell>
                     <TableCell className="text-right font-medium">
                       {formatCurrency(po.totalValue)}
                     </TableCell>
