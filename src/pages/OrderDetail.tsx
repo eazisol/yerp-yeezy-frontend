@@ -1,30 +1,195 @@
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, RefreshCw, Loader2 } from "lucide-react";
+import { orderService } from "@/services/orders";
+import { useQuery } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+
+interface OrderItem {
+  orderItemId: number;
+  productId?: number | null;
+  variantId?: number | null;
+  productName?: string | null;
+  productSku?: string | null;
+  variantName?: string | null; // Variant name
+  quantity: number;
+  quantityFulfilled: number;
+  quantityCanceled: number;
+  quantityReturned: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+interface OrderDetail {
+  orderId: number;
+  swellOrderId?: string | null;
+  orderNumber?: string | null;
+  status: string;
+  fulfillmentStatus?: string | null;
+  comments?: string | null;
+  notes?: string | null;
+  isCanceled: boolean;
+  customerId?: number | null;
+  customerName?: string | null;
+  customerEmail?: string | null;
+  subtotal: number;
+  tax: number;
+  shipping: number;
+  total: number;
+  currency?: string | null;
+  paymentStatus?: string | null;
+  route?: string | null;
+  shippingAddress?: string | null; // Formatted string for backward compatibility
+  shippingName?: string | null;
+  shippingAddress1?: string | null;
+  shippingAddress2?: string | null;
+  shippingCity?: string | null;
+  shippingState?: string | null;
+  shippingZip?: string | null;
+  shippingCountry?: string | null;
+  shippingPhone?: string | null;
+  shippingTaxId?: string | null;
+  billingAddress?: string | null;
+  createdDate: string;
+  editDate?: string | null;
+  orderItems: OrderItem[];
+  statusHistory: any[];
+}
 
 export default function OrderDetail() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Mock order data
-  const order = {
-    id,
-    orderId: "#ORD-1284",
-    customer: "John Smith",
-    email: "john@example.com",
-    value: "$489",
-    status: "shipped",
-    route: "CN",
-    items: [
-      { sku: "YZY-SLIDE-BN-42", name: "Yeezy Slide Bone", qty: 1, price: "$89.99" },
-      { sku: "YZY-350-CW-40", name: "Yeezy 350 Cloud White", qty: 2, price: "$199.99" },
-    ],
-    shippingAddress: "123 Main St, New York, NY 10001",
-    trackingNumber: "1Z999AA10123456784",
-    createdAt: "2024-01-15",
+  // Real-time data fetching with auto-refresh every 5 seconds
+  const {
+    data: order,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery<OrderDetail>({
+    queryKey: ["order", id],
+    queryFn: async () => {
+      if (!id) throw new Error("Order ID is required");
+      const orderId = parseInt(id);
+      if (isNaN(orderId)) throw new Error("Invalid order ID");
+      return await orderService.getOrderById(orderId);
+    },
+    enabled: !!id,
+    refetchInterval: 5000, // Auto-refresh every 5 seconds for real-time updates
+    refetchIntervalInBackground: true, // Continue refreshing even when tab is in background
+    retry: 2,
+  });
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refetch();
+      toast({
+        title: "Refreshed",
+        description: "Order data has been updated",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to refresh order data",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
   };
+
+  // Format currency
+  const formatCurrency = (amount: number, currency: string = "USD") => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: currency || "USD",
+    }).format(amount);
+  };
+
+  // Format date
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // Build shipping address from separate fields
+  const buildShippingAddress = () => {
+    if (!order) return "N/A";
+    
+    const parts: string[] = [];
+    
+    if (order.shippingName) parts.push(order.shippingName);
+    if (order.shippingAddress1) parts.push(order.shippingAddress1);
+    if (order.shippingAddress2) parts.push(order.shippingAddress2);
+    
+    const cityStateZip: string[] = [];
+    if (order.shippingCity) cityStateZip.push(order.shippingCity);
+    if (order.shippingState) cityStateZip.push(order.shippingState);
+    if (order.shippingZip) cityStateZip.push(order.shippingZip);
+    if (cityStateZip.length > 0) parts.push(cityStateZip.join(", "));
+    
+    if (order.shippingCountry) parts.push(order.shippingCountry);
+    if (order.shippingPhone) parts.push(`Phone: ${order.shippingPhone}`);
+    if (order.shippingTaxId) parts.push(`Tax ID: ${order.shippingTaxId}`);
+    
+    // Fallback to formatted string if separate fields not available
+    if (parts.length === 0 && order.shippingAddress) {
+      try {
+        const addr = JSON.parse(order.shippingAddress);
+        const addrParts = [
+          addr.name,
+          addr.address1,
+          addr.address2,
+          addr.city,
+          addr.state,
+          addr.zip,
+          addr.country,
+        ].filter(Boolean);
+        return addrParts.join(", ") || "N/A";
+      } catch {
+        return order.shippingAddress || "N/A";
+      }
+    }
+    
+    return parts.length > 0 ? parts.join(", ") : "N/A";
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (error || !order) {
+    return (
+      <div className="space-y-6">
+        <Button variant="ghost" size="sm" onClick={() => navigate("/orders")}>
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back
+        </Button>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-destructive">
+              {error instanceof Error ? error.message : "Order not found"}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -35,14 +200,83 @@ export default function OrderDetail() {
             Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Order {order.orderId}</h1>
-            <p className="text-muted-foreground mt-1">{order.customer}</p>
+            <h1 className="text-3xl font-bold text-foreground">
+              Order {order.orderNumber || `#${order.orderId}`}
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              {order.customerName || order.customerEmail || "N/A"}
+            </p>
           </div>
         </div>
-        <Badge variant="default">{order.status}</Badge>
+        <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleManualRefresh}
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+          {/* <Badge variant={order.isCanceled ? "destructive" : "default"}>
+            {order.status}
+          </Badge> */}
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Order Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Order Number</span>
+              <span className="font-medium text-foreground">
+                {order.orderNumber || `#${order.orderId}`}
+              </span>
+            </div>
+            {order.swellOrderId && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Swell Order ID</span>
+                <span className="font-medium text-foreground text-sm">{order.swellOrderId}</span>
+              </div>
+            )}
+            {/* <div className="flex justify-between">
+              <span className="text-muted-foreground">Status</span>
+              <Badge variant={order.isCanceled ? "destructive" : "default"}>
+                {order.status}
+              </Badge>
+            </div> */}
+            {order.fulfillmentStatus && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Fulfillment Status</span>
+                <Badge variant="outline">{order.fulfillmentStatus}</Badge>
+              </div>
+            )}
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Payment Status</span>
+              <Badge variant="outline">{order.paymentStatus || "N/A"}</Badge>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Canceled</span>
+              <Badge variant={order.isCanceled ? "destructive" : "secondary"}>
+                {order.isCanceled ? "Yes" : "No"}
+              </Badge>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Created Date</span>
+              <span className="font-medium text-foreground">{formatDate(order.createdDate)}</span>
+            </div>
+            {order.editDate && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Last Updated</span>
+                <span className="font-medium text-foreground">{formatDate(order.editDate)}</span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Customer Information</CardTitle>
@@ -50,16 +284,18 @@ export default function OrderDetail() {
           <CardContent className="space-y-4">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Name</span>
-              <span className="font-medium text-foreground">{order.customer}</span>
+              <span className="font-medium text-foreground">{order.customerName || "N/A"}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Email</span>
-              <span className="font-medium text-foreground">{order.email}</span>
+              <span className="font-medium text-foreground">{order.customerEmail || "N/A"}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Order Date</span>
-              <span className="font-medium text-foreground">{order.createdAt}</span>
-            </div>
+            {order.customerId && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Customer ID</span>
+                <span className="font-medium text-foreground">{order.customerId}</span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -68,43 +304,158 @@ export default function OrderDetail() {
             <CardTitle className="text-lg">Shipping Information</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Route</span>
-              <Badge variant="outline">{order.route}</Badge>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Tracking Number</span>
-              <span className="font-medium text-foreground text-sm">{order.trackingNumber}</span>
-            </div>
-            <div>
+            {order.route && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Route</span>
+                <Badge variant="outline">{order.route}</Badge>
+              </div>
+            )}
+            <div className="space-y-2">
               <span className="text-muted-foreground">Shipping Address</span>
-              <p className="font-medium text-foreground mt-1">{order.shippingAddress}</p>
+              <div className="font-medium text-foreground text-sm space-y-1">
+                {order.shippingName && <p>{order.shippingName}</p>}
+                {order.shippingAddress1 && <p>{order.shippingAddress1}</p>}
+                {order.shippingAddress2 && <p>{order.shippingAddress2}</p>}
+                {(order.shippingCity || order.shippingState || order.shippingZip) && (
+                  <p>
+                    {[order.shippingCity, order.shippingState, order.shippingZip]
+                      .filter(Boolean)
+                      .join(", ")}
+                  </p>
+                )}
+                {order.shippingCountry && <p>{order.shippingCountry}</p>}
+                {order.shippingPhone && <p className="text-muted-foreground">Phone: {order.shippingPhone}</p>}
+                {order.shippingTaxId && <p className="text-muted-foreground">Tax ID: {order.shippingTaxId}</p>}
+                {!order.shippingName && !order.shippingAddress1 && order.shippingAddress && (
+                  <p>{buildShippingAddress()}</p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Financial Summary</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Subtotal</span>
+              <span className="font-medium text-foreground">
+                {formatCurrency(order.subtotal, order.currency || "USD")}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Tax</span>
+              <span className="font-medium text-foreground">
+                {formatCurrency(order.tax, order.currency || "USD")}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Shipping</span>
+              <span className="font-medium text-foreground">
+                {formatCurrency(order.shipping, order.currency || "USD")}
+              </span>
+            </div>
+            <div className="flex justify-between pt-3 border-t">
+              <span className="text-lg font-semibold text-foreground">Total</span>
+              <span className="text-lg font-semibold text-foreground">
+                {formatCurrency(order.total, order.currency || "USD")}
+              </span>
             </div>
           </CardContent>
         </Card>
       </div>
 
+      {/* Comments and Notes */}
+      {(order.comments || order.notes) && (
+        <div className="grid gap-6 md:grid-cols-2">
+          {order.comments && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Comments</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-foreground whitespace-pre-wrap">{order.comments}</p>
+              </CardContent>
+            </Card>
+          )}
+          {order.notes && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Notes</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-foreground whitespace-pre-wrap">{order.notes}</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* Order Items */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Order Items</CardTitle>
+          <CardTitle className="text-lg">Order Items ({order.orderItems.length})</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {order.items.map((item, index) => (
-              <div key={index} className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg">
-                <div>
-                  <p className="font-medium text-foreground">{item.name}</p>
-                  <p className="text-sm text-muted-foreground">{item.sku}</p>
+            {order.orderItems.map((item) => (
+              <div
+                key={item.orderItemId}
+                className="flex justify-between items-start p-4 bg-secondary/50 rounded-lg"
+              >
+                <div className="flex-1">
+                  <p className="font-medium text-foreground">{item.productName || "N/A"}</p>
+                  <div className="text-sm text-muted-foreground space-y-0.5 mt-1">
+                    <p>SKU: {item.productSku || "N/A"}</p>
+                    {item.variantName && (
+                      <p className="text-xs">Variant: {item.variantName}</p>
+                    )}
+                  </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-medium text-foreground">{item.price}</p>
-                  <p className="text-sm text-muted-foreground">Qty: {item.qty}</p>
+                <div className="text-right space-y-2">
+                  <div>
+                    <p className="font-medium text-foreground">
+                      {formatCurrency(item.totalPrice, order.currency || "USD")}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {formatCurrency(item.unitPrice, order.currency || "USD")} × {item.quantity}
+                    </p>
+                  </div>
+                  {/* Quantity Status - Always show all fields */}
+                  <div className="text-xs space-y-0.5 pt-1 border-t">
+                    <div className="flex items-center justify-end gap-3">
+                      <span className="text-muted-foreground">Qty:</span>
+                      <span className="font-medium">{item.quantity}</span>
+                    </div>
+                    <div className="flex items-center justify-end gap-2">
+                      <span className="text-muted-foreground">Fulfilled:</span>
+                      <span className={`font-medium ${item.quantityFulfilled > 0 ? "text-green-600" : "text-muted-foreground"}`}>
+                        {item.quantityFulfilled}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-end gap-2">
+                      <span className="text-muted-foreground">Canceled:</span>
+                      <span className={`font-medium ${item.quantityCanceled > 0 ? "text-red-600" : "text-muted-foreground"}`}>
+                        {item.quantityCanceled}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-end gap-2">
+                      <span className="text-muted-foreground">Returned:</span>
+                      <span className={`font-medium ${item.quantityReturned > 0 ? "text-orange-600" : "text-muted-foreground"}`}>
+                        {item.quantityReturned}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}
             <div className="flex justify-between items-center pt-3 border-t">
               <span className="text-lg font-semibold text-foreground">Total</span>
-              <span className="text-lg font-semibold text-foreground">{order.value}</span>
+              <span className="text-lg font-semibold text-foreground">
+                {formatCurrency(order.total, order.currency || "USD")}
+              </span>
             </div>
           </div>
         </CardContent>

@@ -1,6 +1,7 @@
 // API client for backend communication
 
-export const API_URL = import.meta.env.VITE_API_URL || "https://yerp-yeezy.yehtohoga.com";
+// export const API_URL = import.meta.env.VITE_API_URL || "https://yerp-yeezy.yehtohoga.com";
+export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5234";
 
 export interface ApiError {
   message: string;

@@ -2,9 +2,10 @@ import { apiClient } from "./api";
 
 export interface Order {
   orderId: number;
-  swellOrderId: string;
+  swellOrderId: string | null;
   orderNumber: string | null;
   status: string;
+  fulfillmentStatus?: string | null; // Fulfillment status from backend
   customerName: string | null;
   customerEmail: string | null;
   subtotal: number;
@@ -20,9 +21,8 @@ export interface Order {
 
 export interface OrderStats {
   totalOrders: number;
-  cnRouted: number;
-  usRouted: number;
-  mixedRouted: number;
+  paidOrders: number;
+  unpaidOrders: number;
 }
 
 export interface OrdersResponse {
@@ -40,7 +40,8 @@ class OrderService {
     page: number = 1,
     pageSize: number = 50,
     search?: string,
-    status?: string
+    status?: string,
+    paymentStatus?: string
   ): Promise<OrdersResponse> {
     const params = new URLSearchParams({
       page: page.toString(),
@@ -48,6 +49,7 @@ class OrderService {
     });
     if (search) params.append("search", search);
     if (status) params.append("status", status);
+    if (paymentStatus) params.append("paymentStatus", paymentStatus);
 
     return apiClient.get<OrdersResponse>(`/api/Orders?${params.toString()}`);
   }
@@ -69,6 +71,14 @@ class OrderService {
   async syncOrdersFromSwell(): Promise<OrderSyncResult> {
     return apiClient.post<OrderSyncResult>("/api/Orders/sync");
   }
+
+  // Import orders from Excel file
+  async importOrdersFromExcel(file: File): Promise<OrderImportResult> {
+    const formData = new FormData();
+    formData.append("file", file);
+    
+    return apiClient.post<OrderImportResult>("/api/Orders/import-excel", formData);
+  }
 }
 
 export interface OrderSyncResult {
@@ -78,6 +88,17 @@ export interface OrderSyncResult {
   failed: number;
   errors: string[];
   syncDate: string;
+  message: string;
+}
+
+export interface OrderImportResult {
+  totalRows: number;
+  ordersCreated: number;
+  ordersUpdated: number;
+  orderItemsCreated: number;
+  orderItemsUpdated: number;
+  errors: number;
+  errorMessages: string[];
   message: string;
 }
 

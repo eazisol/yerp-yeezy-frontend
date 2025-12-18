@@ -1,9 +1,16 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Filter, Eye, Download, RefreshCw } from "lucide-react";
+import { Search, Filter, Eye, Download, RefreshCw, Upload } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { usePermissions } from "@/hooks/usePermissions";
 import {
   Table,
@@ -31,17 +38,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { orderService, Order, OrderStats, OrderSyncResult } from "@/services/orders";
+import { orderService, Order, OrderStats, OrderSyncResult, OrderImportResult } from "@/services/orders";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Orders() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [paymentFilter, setPaymentFilter] = useState<string | null>(null); // null = all, "paid" = paid, "unpaid" = unpaid
+  const [fulfillmentFilter, setFulfillmentFilter] = useState<string | null>(null); // null = all, "fulfilled" = fulfilled, "unfulfilled" = unfulfilled
   const [page, setPage] = useState(1);
   const [pageSize] = useState(50);
   const [swellOrderCount, setSwellOrderCount] = useState<number | null>(null);
   const [showSyncConfirm, setShowSyncConfirm] = useState(false);
   const [syncProgress, setSyncProgress] = useState<string>("");
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [importResult, setImportResult] = useState<OrderImportResult | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { canRead, canModify } = usePermissions();
   const { toast } = useToast();
@@ -49,8 +61,8 @@ export default function Orders() {
 
   // Fetch orders with pagination
   const { data: ordersData, isLoading: loadingOrders } = useQuery({
-    queryKey: ["orders", page, pageSize, searchTerm],
-    queryFn: () => orderService.getOrders(page, pageSize, searchTerm || undefined),
+    queryKey: ["orders", page, pageSize, searchTerm, paymentFilter, fulfillmentFilter],
+    queryFn: () => orderService.getOrders(page, pageSize, searchTerm || undefined, fulfillmentFilter || undefined, paymentFilter || undefined),
   });
 
   // Fetch stats
@@ -123,6 +135,78 @@ export default function Orders() {
     syncMutation.mutate();
   };
 
+  // Excel import mutation
+  const importMutation = useMutation({
+    mutationFn: (file: File) => orderService.importOrdersFromExcel(file),
+    onSuccess: (result: OrderImportResult) => {
+      setImportResult(result);
+      toast({
+        title: "Import Completed",
+        description: result.message || `Created: ${result.ordersCreated}, Updated: ${result.ordersUpdated}`,
+        duration: 5000,
+      });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      queryClient.invalidateQueries({ queryKey: ["orderStats"] });
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Import Failed",
+        description: error.message || "Failed to import orders from Excel",
+        variant: "destructive",
+        duration: 5000,
+      });
+    },
+  });
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type
+      const allowedTypes = [
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-excel",
+      ];
+      if (!allowedTypes.includes(file.type) && !file.name.endsWith(".xlsx") && !file.name.endsWith(".xls")) {
+        toast({
+          title: "Invalid File",
+          description: "Please select an Excel file (.xlsx or .xls)",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validate file size (50MB max)
+      const maxSize = 50 * 1024 * 1024; // 50MB
+      if (file.size > maxSize) {
+        toast({
+          title: "File Too Large",
+          description: "File size must be less than 50MB",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setShowImportDialog(true);
+      setImportResult(null);
+      importMutation.mutate(file);
+    }
+  };
+
+  const handleCloseImportDialog = () => {
+    setShowImportDialog(false);
+    setImportResult(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   const orders = ordersData?.data || [];
   const totalCount = ordersData?.totalCount || 0;
   const totalPages = ordersData?.totalPages || 1;
@@ -190,17 +274,21 @@ export default function Orders() {
     }
   };
 
-  // Get fulfillment status from order status
-  const getFulfillmentStatus = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "delivered":
+  // Get fulfillment status from FulfillmentStatus field or fallback to Status
+  const getFulfillmentStatus = (order: Order) => {
+    const fulfillmentStatus = order.fulfillmentStatus || order.status;
+    
+    switch (fulfillmentStatus?.toLowerCase()) {
+      case "fulfilled":
       case "shipped":
+      case "delivered":
         return {
           bgColor: "bg-green-100",
           textColor: "text-green-700",
           dotColor: "bg-green-600",
           label: "Fulfilled",
         };
+      case "unfulfilled":
       case "pending":
       case "processing":
         return {
@@ -209,19 +297,28 @@ export default function Orders() {
           dotColor: "bg-orange-600",
           label: "Unfulfilled",
         };
-      case "paid":
+      case "partial":
+      case "partially fulfilled":
         return {
           bgColor: "bg-blue-100",
           textColor: "text-blue-700",
           dotColor: "bg-blue-600",
           label: "Partial",
         };
+      case "cancelled":
+      case "canceled":
+        return {
+          bgColor: "bg-red-100",
+          textColor: "text-red-700",
+          dotColor: "bg-red-600",
+          label: "Cancelled",
+        };
       default:
         return {
           bgColor: "bg-gray-100",
           textColor: "text-gray-600",
           dotColor: "bg-gray-500",
-          label: status,
+          label: fulfillmentStatus || "Unknown",
         };
     }
   };
@@ -241,6 +338,21 @@ export default function Orders() {
             <>
               <Button
                 variant="outline"
+                onClick={handleImportClick}
+                disabled={importMutation.isPending}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                {importMutation.isPending ? "Importing..." : "Import Excel"}
+              </Button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              <Button
+                variant="outline"
                 onClick={handleCheckSwellCount}
                 disabled={countMutation.isPending}
               >
@@ -253,17 +365,17 @@ export default function Orders() {
               </Button>
             </>
           )}
-          {canRead("ORDERS") && (
+          {/* {canRead("ORDERS") && (
             <Button variant="outline">
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
-          )}
+          )} */}
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid gap-6 md:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -276,39 +388,27 @@ export default function Orders() {
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-green-200 dark:border-green-800">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              CN Routed
+              Paid Orders
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {loadingStats ? "..." : stats?.cnRouted || 0}
+            <div className="text-2xl font-bold text-green-600">
+              {loadingStats ? "..." : stats?.paidOrders || 0}
             </div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="border-orange-200 dark:border-orange-800">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              US Routed
+              Unpaid Orders
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {loadingStats ? "..." : stats?.usRouted || 0}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Mixed Orders
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {loadingStats ? "..." : stats?.mixedRouted || 0}
+            <div className="text-2xl font-bold text-orange-600">
+              {loadingStats ? "..." : stats?.unpaidOrders || 0}
             </div>
           </CardContent>
         </Card>
@@ -330,10 +430,38 @@ export default function Orders() {
                 }}
               />
             </div>
-            <Button variant="outline">
-              <Filter className="h-4 w-4 mr-2" />
-              Filters
-            </Button>
+            <Select
+              value={paymentFilter || "all"}
+              onValueChange={(value) => {
+                setPaymentFilter(value === "all" ? null : value);
+                setPage(1); // Reset to first page on filter change
+              }}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Payment Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Payment</SelectItem>
+                <SelectItem value="paid">Paid</SelectItem>
+                <SelectItem value="unpaid">Unpaid</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={fulfillmentFilter || "all"}
+              onValueChange={(value) => {
+                setFulfillmentFilter(value === "all" ? null : value);
+                setPage(1); // Reset to first page on filter change
+              }}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Fulfillment Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Fulfillment</SelectItem>
+                <SelectItem value="fulfilled">Fulfilled</SelectItem>
+                <SelectItem value="unfulfilled">Unfulfilled</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -375,7 +503,7 @@ export default function Orders() {
                   ) : (
                     orders.map((order) => {
                     const paymentStatus = getPaymentStatus(order.paymentStatus);
-                    const fulfillmentStatus = getFulfillmentStatus(order.status);
+                    const fulfillmentStatus = getFulfillmentStatus(order);
                     return (
                       <TableRow
                         key={order.orderId}
@@ -589,6 +717,155 @@ export default function Orders() {
                 <span>Syncing...</span>
               </div>
             )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Import Dialog */}
+      <AlertDialog 
+        open={showImportDialog} 
+        onOpenChange={(open) => {
+          // Prevent closing dialog during import
+          if (!importMutation.isPending && !open) {
+            handleCloseImportDialog();
+          }
+        }}
+      >
+        <AlertDialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              {importMutation.isPending && (
+                <RefreshCw className="h-5 w-5 animate-spin text-primary" />
+              )}
+              {importMutation.isPending ? "Importing Orders..." : importResult ? "Import Completed" : "Import Orders from Excel"}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                {importMutation.isPending ? (
+                  <div className="space-y-4 mt-4">
+                    <div className="space-y-2">
+                      <p className="font-medium text-foreground">Processing import...</p>
+                      <p className="text-sm text-muted-foreground">
+                        Please wait while we import orders from your Excel file.
+                      </p>
+                    </div>
+                    <div className="bg-muted rounded-md p-3 border">
+                      <div className="flex items-start gap-2">
+                        <div className="flex-shrink-0 mt-0.5">
+                          <div className="h-2 w-2 bg-primary rounded-full animate-pulse"></div>
+                        </div>
+                        <div className="flex-1 space-y-1">
+                          <p className="text-sm text-muted-foreground">
+                            ⏳ This may take a few minutes depending on the number of orders.
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Please do not close this dialog or refresh the page.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : importResult ? (
+                  <div className="space-y-4 mt-4">
+                    {/* Success Summary */}
+                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 mt-0.5">
+                          <div className="h-5 w-5 bg-green-600 rounded-full flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">✓</span>
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-green-900 dark:text-green-100">
+                            Import completed successfully!
+                          </p>
+                          <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                            {importResult.message}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Statistics */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-muted rounded-md p-3 border">
+                        <div className="text-sm text-muted-foreground">Total Rows</div>
+                        <div className="text-2xl font-bold mt-1">{importResult.totalRows}</div>
+                      </div>
+                      <div className="bg-muted rounded-md p-3 border">
+                        <div className="text-sm text-muted-foreground">Errors</div>
+                        <div className="text-2xl font-bold mt-1 text-red-600">{importResult.errors}</div>
+                      </div>
+                      <div className="bg-muted rounded-md p-3 border">
+                        <div className="text-sm text-muted-foreground">Orders Created</div>
+                        <div className="text-2xl font-bold mt-1 text-green-600">{importResult.ordersCreated}</div>
+                      </div>
+                      <div className="bg-muted rounded-md p-3 border">
+                        <div className="text-sm text-muted-foreground">Orders Updated</div>
+                        <div className="text-2xl font-bold mt-1 text-blue-600">{importResult.ordersUpdated}</div>
+                      </div>
+                      <div className="bg-muted rounded-md p-3 border">
+                        <div className="text-sm text-muted-foreground">Items Created</div>
+                        <div className="text-2xl font-bold mt-1 text-green-600">{importResult.orderItemsCreated}</div>
+                      </div>
+                      <div className="bg-muted rounded-md p-3 border">
+                        <div className="text-sm text-muted-foreground">Items Updated</div>
+                        <div className="text-2xl font-bold mt-1 text-blue-600">{importResult.orderItemsUpdated}</div>
+                      </div>
+                    </div>
+
+                    {/* Error Messages */}
+                    {importResult.errorMessages && importResult.errorMessages.length > 0 && (
+                      <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-4">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 mt-0.5">
+                            <div className="h-5 w-5 bg-red-600 rounded-full flex items-center justify-center">
+                              <span className="text-white text-xs font-bold">!</span>
+                            </div>
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium text-red-900 dark:text-red-100 mb-2">
+                              Errors ({importResult.errorMessages.length})
+                            </p>
+                            <div className="space-y-1 max-h-40 overflow-y-auto">
+                              {importResult.errorMessages.map((error, index) => (
+                                <p key={index} className="text-sm text-red-700 dark:text-red-300">
+                                  • {error}
+                                </p>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2 mt-4">
+                    <p>
+                      Select an Excel file (.xlsx or .xls) containing orders data.
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      The file should have columns: Order Number, Email, Payment Status, Fulfillment Status, Date Created, Item SKU, Item Quantity, Item Quantity Fulfilled, Item Quantity Canceled, Item Quantity Returned, Shipping Name, Shipping Address Line 1, Shipping Address Line 2, Shipping City, Shipping State, Shipping Zip, Shipping Country, Shipping Phone, Shipping Tax ID, Comments, Notes, and Canceled.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction
+              onClick={handleCloseImportDialog}
+              disabled={importMutation.isPending}
+            >
+              {importMutation.isPending ? (
+                <>
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                  Importing...
+                </>
+              ) : (
+                "Close"
+              )}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

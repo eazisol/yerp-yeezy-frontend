@@ -179,12 +179,12 @@ export default function Customers() {
               </Button>
             </>
           )}
-          {canRead("CUSTOMERS") && (
+          {/*{canRead("CUSTOMERS") && (
             <Button variant="outline">
               <Download className="h-4 w-4 mr-2" />
               Export
             </Button>
-          )}
+          )}*/}
         </div>
       </div>
 
