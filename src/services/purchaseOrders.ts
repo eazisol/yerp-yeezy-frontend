@@ -43,6 +43,19 @@ export interface PurchaseOrder {
   createdBy?: number;
   createdByName?: string;
   lineItems: PurchaseOrderLineItem[];
+  approvals?: Array<{
+    poApprovalId: number;
+    purchaseOrderId: number;
+    userId: number;
+    userName?: string;
+    userEmail?: string;
+    status: string;
+    comment?: string;
+    signatureUrl?: string;
+    approvedDate?: string;
+    rejectedDate?: string;
+    createdDate: string;
+  }>;
 }
 
 export interface CreatePurchaseOrderRequest {
@@ -133,6 +146,15 @@ export const updatePurchaseOrder = async (
 // Delete purchase order
 export const deletePurchaseOrder = async (id: number): Promise<void> => {
   return apiClient.delete<void>(`/api/PurchaseOrders/${id}`);
+};
+
+// Submit PO for approval
+export const submitForApproval = async (
+  id: number
+): Promise<{ message: string }> => {
+  return apiClient.post<{ message: string }>(
+    `/api/PurchaseOrders/${id}/submit-for-approval`
+  );
 };
 
 // Approve purchase order

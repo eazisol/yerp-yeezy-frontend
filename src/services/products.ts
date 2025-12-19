@@ -79,7 +79,9 @@ class ProductService {
     pageSize: number = 50,
     search?: string,
     isActive?: string,
-    origin?: string
+    origin?: string,
+    startDate?: string,
+    endDate?: string
   ): Promise<ProductsResponse> {
     const params = new URLSearchParams({
       page: page.toString(),
@@ -88,8 +90,42 @@ class ProductService {
     if (search) params.append("search", search);
     if (isActive !== undefined) params.append("isActive", isActive);
     if (origin) params.append("origin", origin);
+    if (startDate) params.append("startDate", startDate);
+    if (endDate) params.append("endDate", endDate);
 
     return apiClient.get<ProductsResponse>(`/api/Products?${params.toString()}`);
+  }
+
+  // Export products to CSV
+  async exportProductsToCsv(
+    search?: string,
+    isActive?: string,
+    origin?: string,
+    startDate?: string,
+    endDate?: string
+  ): Promise<Blob> {
+    const params = new URLSearchParams();
+    if (search) params.append("search", search);
+    if (isActive !== undefined) params.append("isActive", isActive);
+    if (origin) params.append("origin", origin);
+    if (startDate) params.append("startDate", startDate);
+    if (endDate) params.append("endDate", endDate);
+
+    const token = localStorage.getItem("auth_token");
+    const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:5234";
+    
+    const response = await fetch(`${baseUrl}/api/Products/export-csv?${params.toString()}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to export products");
+    }
+
+    return response.blob();
   }
 
   async getProductById(id: number): Promise<any> {

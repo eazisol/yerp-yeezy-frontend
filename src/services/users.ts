@@ -7,6 +7,7 @@ export interface User {
   fullName: string | null;
   roles: string[];
   isActive: boolean;
+  isPOApprover: boolean;
   createdDate: string;
   editDate: string | null;
 }
@@ -28,6 +29,7 @@ export interface CreateUserRequest {
   password: string;
   fullName?: string;
   roleIds?: number[];
+  isPOApprover?: boolean;
 }
 
 // Update user request
@@ -37,6 +39,7 @@ export interface UpdateUserRequest {
   fullName?: string;
   isActive?: boolean;
   roleIds?: number[];
+  isPOApprover?: boolean;
 }
 
 class UserService {

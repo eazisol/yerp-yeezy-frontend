@@ -21,6 +21,7 @@ import CustomerDetail from "./pages/CustomerDetail";
 import PurchaseOrders from "./pages/PurchaseOrders";
 import PODetail from "./pages/PODetail";
 import POFormPage from "./pages/POFormPage";
+import POPreview from "./pages/POPreview";
 import GRN from "./pages/GRN";
 import GRNDetail from "./pages/GRNDetail";
 import GRNFormPage from "./pages/GRNFormPage";
@@ -33,6 +34,7 @@ import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Roles from "./pages/Roles";
 import RolePermissions from "./pages/RolePermissions";
+import KPI from "./pages/KPI";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -63,6 +65,7 @@ const App = () => (
               <Route path="/purchase-orders/new" element={<POFormPage />} />
               <Route path="/purchase-orders/:id" element={<PODetail />} />
               <Route path="/purchase-orders/:id/edit" element={<POFormPage />} />
+              <Route path="/po/preview/:id" element={<POPreview />} />
               <Route path="/grn" element={<GRN />} />
               <Route path="/grn/new" element={<GRNFormPage />} />
               <Route path="/grn/:id" element={<GRNDetail />} />
@@ -76,6 +79,7 @@ const App = () => (
               <Route path="/roles/:id/permissions" element={<RolePermissions />} />
               <Route path="/change-password" element={<ChangePassword />} />
               <Route path="/settings" element={<Settings />} />
+              <Route path="/kpi" element={<KPI />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

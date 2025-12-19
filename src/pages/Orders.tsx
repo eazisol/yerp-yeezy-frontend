@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Filter, Eye, Download, RefreshCw, Upload } from "lucide-react";
+import { Search, Filter, Eye, Download, RefreshCw, Upload, Calendar, FileSpreadsheet } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -46,6 +46,8 @@ export default function Orders() {
   const [searchTerm, setSearchTerm] = useState("");
   const [paymentFilter, setPaymentFilter] = useState<string | null>(null); // null = all, "paid" = paid, "unpaid" = unpaid
   const [fulfillmentFilter, setFulfillmentFilter] = useState<string | null>(null); // null = all, "fulfilled" = fulfilled, "unfulfilled" = unfulfilled
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
   const [page, setPage] = useState(1);
   const [pageSize] = useState(50);
   const [swellOrderCount, setSwellOrderCount] = useState<number | null>(null);
@@ -53,6 +55,7 @@ export default function Orders() {
   const [syncProgress, setSyncProgress] = useState<string>("");
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [importResult, setImportResult] = useState<OrderImportResult | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { canRead, canModify } = usePermissions();
@@ -61,8 +64,16 @@ export default function Orders() {
 
   // Fetch orders with pagination
   const { data: ordersData, isLoading: loadingOrders } = useQuery({
-    queryKey: ["orders", page, pageSize, searchTerm, paymentFilter, fulfillmentFilter],
-    queryFn: () => orderService.getOrders(page, pageSize, searchTerm || undefined, fulfillmentFilter || undefined, paymentFilter || undefined),
+    queryKey: ["orders", page, pageSize, searchTerm, paymentFilter, fulfillmentFilter, startDate, endDate],
+    queryFn: () => orderService.getOrders(
+      page, 
+      pageSize, 
+      searchTerm || undefined, 
+      fulfillmentFilter || undefined, 
+      paymentFilter || undefined,
+      startDate || undefined,
+      endDate || undefined
+    ),
   });
 
   // Fetch stats
@@ -204,6 +215,43 @@ export default function Orders() {
     setImportResult(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
+    }
+  };
+
+  // Export to CSV handler
+  const handleExportToCsv = async () => {
+    try {
+      setIsExporting(true);
+      const blob = await orderService.exportOrdersToCsv(
+        searchTerm || undefined,
+        fulfillmentFilter || undefined,
+        paymentFilter || undefined,
+        startDate || undefined,
+        endDate || undefined
+      );
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `orders_export_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Export Successful",
+        description: "Orders exported to CSV successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Export Failed",
+        description: error.message || "Failed to export orders",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -363,6 +411,14 @@ export default function Orders() {
                   ? `${swellOrderCount} Orders in Swell`
                   : "Check Swell Orders"}
               </Button>
+              <Button
+                variant="outline"
+                onClick={handleExportToCsv}
+                disabled={isExporting || loadingOrders}
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                {isExporting ? "Exporting..." : "Export CSV"}
+              </Button>
             </>
           )}
           {/* {canRead("ORDERS") && (
@@ -417,51 +473,95 @@ export default function Orders() {
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search by order ID or customer..."
-                className="pl-9"
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setPage(1); // Reset to first page on search
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search by order ID or customer..."
+                  className="pl-9"
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setPage(1); // Reset to first page on search
+                  }}
+                />
+              </div>
+              <Select
+                value={paymentFilter || "all"}
+                onValueChange={(value) => {
+                  setPaymentFilter(value === "all" ? null : value);
+                  setPage(1); // Reset to first page on filter change
                 }}
-              />
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Payment Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Payment</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="unpaid">Unpaid</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={fulfillmentFilter || "all"}
+                onValueChange={(value) => {
+                  setFulfillmentFilter(value === "all" ? null : value);
+                  setPage(1); // Reset to first page on filter change
+                }}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Fulfillment Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Fulfillment</SelectItem>
+                  <SelectItem value="fulfilled">Fulfilled</SelectItem>
+                  <SelectItem value="unfulfilled">Unfulfilled</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Select
-              value={paymentFilter || "all"}
-              onValueChange={(value) => {
-                setPaymentFilter(value === "all" ? null : value);
-                setPage(1); // Reset to first page on filter change
-              }}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Payment Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Payment</SelectItem>
-                <SelectItem value="paid">Paid</SelectItem>
-                <SelectItem value="unpaid">Unpaid</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select
-              value={fulfillmentFilter || "all"}
-              onValueChange={(value) => {
-                setFulfillmentFilter(value === "all" ? null : value);
-                setPage(1); // Reset to first page on filter change
-              }}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Fulfillment Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Fulfillment</SelectItem>
-                <SelectItem value="fulfilled">Fulfilled</SelectItem>
-                <SelectItem value="unfulfilled">Unfulfilled</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* Date Range Filter */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="date"
+                  placeholder="Start Date"
+                  className="pl-9"
+                  value={startDate}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    setPage(1);
+                  }}
+                />
+              </div>
+              <div className="relative flex-1">
+                <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="date"
+                  placeholder="End Date"
+                  className="pl-9"
+                  value={endDate}
+                  onChange={(e) => {
+                    setEndDate(e.target.value);
+                    setPage(1);
+                  }}
+                />
+              </div>
+              {(startDate || endDate) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setStartDate("");
+                    setEndDate("");
+                    setPage(1);
+                  }}
+                >
+                  Clear Dates
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

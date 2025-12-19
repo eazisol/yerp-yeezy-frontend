@@ -241,6 +241,7 @@ export default function PurchaseOrders() {
                   <TableHead className="text-right">Total Value</TableHead>
                   <TableHead className="text-right">Received</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Approval</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead>Due Date</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -283,6 +284,24 @@ export default function PurchaseOrders() {
                       >
                         {po.status}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {po.approvals && po.approvals.length > 0 ? (
+                        <div className="flex flex-col gap-1">
+                          <Badge variant="outline" className="text-xs">
+                            {po.approvals.filter(a => a.status === "Approved").length}/{po.approvals.length} Approved
+                          </Badge>
+                          {po.approvals.some(a => a.status === "Rejected") && (
+                            <Badge variant="destructive" className="text-xs">
+                              {po.approvals.filter(a => a.status === "Rejected").length} Rejected
+                            </Badge>
+                          )}
+                        </div>
+                      ) : po.status === "PendingApproval" ? (
+                        <Badge variant="outline" className="text-xs">Pending</Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">-</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {formatDate(po.createdDate)}

@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Filter, Plus, Eye, Edit, Trash2, RefreshCw, Download, Upload, FileSpreadsheet } from "lucide-react";
+import { Search, Filter, Plus, Eye, Edit, Trash2, RefreshCw, Download, Upload, FileSpreadsheet, Calendar } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import {
   Table,
@@ -46,6 +46,8 @@ import { useToast } from "@/hooks/use-toast";
 export default function Products() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState<string | null>(null); // null = all, "true" = active, "false" = inactive
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
   const [page, setPage] = useState(1);
   const [pageSize] = useState(50);
   const [deleteProductId, setDeleteProductId] = useState<number | null>(null);
@@ -54,6 +56,7 @@ export default function Products() {
   const [syncProgress, setSyncProgress] = useState<string>("");
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [importResult, setImportResult] = useState<ProductImportResult | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { canRead, canModify, canDelete } = usePermissions();
@@ -62,8 +65,16 @@ export default function Products() {
 
   // Fetch products with pagination
   const { data: productsData, isLoading: loadingProducts } = useQuery({
-    queryKey: ["products", page, pageSize, searchTerm, activeFilter],
-    queryFn: () => productService.getProducts(page, pageSize, searchTerm || undefined, activeFilter || undefined),
+    queryKey: ["products", page, pageSize, searchTerm, activeFilter, startDate, endDate],
+    queryFn: () => productService.getProducts(
+      page, 
+      pageSize, 
+      searchTerm || undefined, 
+      activeFilter || undefined,
+      undefined, // origin
+      startDate || undefined,
+      endDate || undefined
+    ),
   });
 
   const products = productsData?.data || [];
@@ -270,6 +281,43 @@ export default function Products() {
     }
   };
 
+  // Export to CSV handler
+  const handleExportToCsv = async () => {
+    try {
+      setIsExporting(true);
+      const blob = await productService.exportProductsToCsv(
+        searchTerm || undefined,
+        activeFilter || undefined,
+        undefined, // origin
+        startDate || undefined,
+        endDate || undefined
+      );
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `products_export_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({
+        title: "Export Successful",
+        description: "Products exported to CSV successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Export Failed",
+        description: error.message || "Failed to export products",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -308,6 +356,14 @@ export default function Products() {
                   ? `${swellProductCount} Products in Swell`
                   : "Check Swell Products"}
               </Button>
+              <Button
+                variant="outline"
+                onClick={handleExportToCsv}
+                disabled={isExporting || loadingProducts}
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                {isExporting ? "Exporting..." : "Export CSV"}
+              </Button>
               {/*<Button onClick={handleAddProduct}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add Product
@@ -320,35 +376,79 @@ export default function Products() {
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search by SKU or product name..."
-                className="pl-9"
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setPage(1); // Reset to first page on search
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search by SKU or product name..."
+                  className="pl-9"
+                  value={searchTerm}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setPage(1); // Reset to first page on search
+                  }}
+                />
+              </div>
+              <Select
+                value={activeFilter || "all"}
+                onValueChange={(value) => {
+                  setActiveFilter(value === "all" ? null : value);
+                  setPage(1); // Reset to first page on filter change
                 }}
-              />
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Products</SelectItem>
+                  <SelectItem value="true">Active</SelectItem>
+                  <SelectItem value="false">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Select
-              value={activeFilter || "all"}
-              onValueChange={(value) => {
-                setActiveFilter(value === "all" ? null : value);
-                setPage(1); // Reset to first page on filter change
-              }}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Products</SelectItem>
-                <SelectItem value="true">Active</SelectItem>
-                <SelectItem value="false">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* Date Range Filter */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="date"
+                  placeholder="Start Date"
+                  className="pl-9"
+                  value={startDate}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    setPage(1);
+                  }}
+                />
+              </div>
+              <div className="relative flex-1">
+                <Calendar className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="date"
+                  placeholder="End Date"
+                  className="pl-9"
+                  value={endDate}
+                  onChange={(e) => {
+                    setEndDate(e.target.value);
+                    setPage(1);
+                  }}
+                />
+              </div>
+              {(startDate || endDate) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setStartDate("");
+                    setEndDate("");
+                    setPage(1);
+                  }}
+                >
+                  Clear Dates
+                </Button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -1,88 +1,89 @@
-import { API_URL } from "./api";
+import { apiClient } from "./api";
 
 export interface FileUploadResponse {
-  filePath?: string; // Relative path to the uploaded file
-  fileName?: string; // Original file name
-  fileSize?: number; // File size in bytes
-  fileType?: string; // File extension
-  error?: string; // Error message if upload failed
+  filePath: string;
+  fileName: string;
+  fileSize: number;
+  fileType: string;
+  error?: string;
 }
 
-// Upload a single file for GRN attachment
-export const uploadGRNAttachment = async (file: File): Promise<FileUploadResponse> => {
-  const formData = new FormData();
-  formData.append("file", file);
+class FileUploadService {
+  // Upload PO signature
+  async uploadPOSignature(file: File): Promise<FileUploadResponse> {
+    const formData = new FormData();
+    formData.append("file", file);
 
-  const token = localStorage.getItem("auth_token");
-  const headers: HeadersInit = {};
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+    const token = localStorage.getItem("auth_token");
+    const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:5234";
+
+    const response = await fetch(`${baseUrl}/api/FileUpload/po-signature`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Failed to upload signature");
+    }
+
+    return response.json();
   }
 
-  const response = await fetch(`${API_URL}/api/FileUpload/grn-attachment`, {
-    method: "POST",
-    headers,
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({
-      message: response.statusText || "Failed to upload file",
-    }));
-    throw new Error(errorData.message || "Failed to upload file");
+  // Get signature file URL
+  getSignatureUrl(filePath: string): string {
+    const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:5234";
+    return `${baseUrl}/api/FileUpload/po-signature?filePath=${encodeURIComponent(filePath)}`;
   }
 
-  const result = await response.json();
-  // Ensure camelCase mapping
-  return {
-    filePath: result.filePath || result.FilePath,
-    fileName: result.fileName || result.FileName,
-    fileSize: result.fileSize || result.FileSize,
-    fileType: result.fileType || result.FileType,
-    error: result.error || result.Error,
-  };
-};
+  // Upload GRN attachment
+  async uploadGRNAttachment(file: File): Promise<FileUploadResponse> {
+    const formData = new FormData();
+    formData.append("file", file);
 
-// Upload multiple files for GRN attachments
-export const uploadGRNAttachments = async (files: File[]): Promise<FileUploadResponse[]> => {
-  const formData = new FormData();
-  files.forEach((file) => {
-    formData.append("files", file);
-  });
+    const token = localStorage.getItem("auth_token");
+    const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:5234";
 
-  const token = localStorage.getItem("auth_token");
-  const headers: HeadersInit = {};
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
+    const response = await fetch(`${baseUrl}/api/FileUpload/grn-attachment`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || "Failed to upload GRN attachment");
+    }
+
+    return response.json();
   }
 
-  const response = await fetch(`${API_URL}/api/FileUpload/grn-attachments`, {
-    method: "POST",
-    headers,
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({
-      message: response.statusText || "Failed to upload files",
-    }));
-    throw new Error(errorData.message || "Failed to upload files");
+  // Get GRN attachment file download URL
+  getGRNAttachmentUrl(filePath: string): string {
+    const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:5234";
+    return `${baseUrl}/api/FileUpload/grn-attachment?filePath=${encodeURIComponent(filePath)}`;
   }
+}
 
-  const results = await response.json();
-  // Ensure camelCase mapping for array
-  return Array.isArray(results) 
-    ? results.map((result: any) => ({
-        filePath: result.filePath || result.FilePath,
-        fileName: result.fileName || result.FileName,
-        fileSize: result.fileSize || result.FileSize,
-        fileType: result.fileType || result.FileType,
-        error: result.error || result.Error,
-      }))
-    : [];
-};
+export const fileUploadService = new FileUploadService();
 
-// Get file download URL
+// Export individual functions for backward compatibility
 export const getFileDownloadUrl = (filePath: string): string => {
-  return `${API_URL}/api/FileUpload/grn-attachment?filePath=${encodeURIComponent(filePath)}`;
+  // Determine file type based on path and return appropriate URL
+  if (filePath.includes("po-signatures")) {
+    return fileUploadService.getSignatureUrl(filePath);
+  } else if (filePath.includes("grn-attachments")) {
+    return fileUploadService.getGRNAttachmentUrl(filePath);
+  }
+  // Default to GRN attachment for backward compatibility
+  return fileUploadService.getGRNAttachmentUrl(filePath);
+};
+
+export const uploadGRNAttachment = (file: File): Promise<FileUploadResponse> => {
+  return fileUploadService.uploadGRNAttachment(file);
 };

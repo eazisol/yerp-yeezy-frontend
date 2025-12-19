@@ -3,15 +3,18 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, CheckCircle, XCircle, Loader2, Send, DollarSign, Pencil } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Loader2, Send, DollarSign, Pencil, FileCheck, Users } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import {
   getPurchaseOrderById,
+  submitForApproval,
   approvePurchaseOrder,
   sendPurchaseOrderToVendor,
   updatePaymentStatus,
   PurchaseOrder,
 } from "@/services/purchaseOrders";
+import { getPOApprovals, POApproval } from "@/services/poApprovals";
+import { fileUploadService } from "@/services/fileUpload";
 import { useToast } from "@/hooks/use-toast";
 import {
   Select,
@@ -27,6 +30,7 @@ export default function PODetail() {
   const { canModify } = usePermissions();
   const { toast } = useToast();
   const [po, setPO] = useState<PurchaseOrder | null>(null);
+  const [approvals, setApprovals] = useState<POApproval[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
 
@@ -48,8 +52,12 @@ export default function PODetail() {
 
       try {
         setLoading(true);
-        const data = await getPurchaseOrderById(poId);
-        setPO(data);
+        const [poData, approvalsData] = await Promise.all([
+          getPurchaseOrderById(poId),
+          getPOApprovals(poId).catch(() => []), // If no approvals, return empty array
+        ]);
+        setPO(poData);
+        setApprovals(approvalsData);
       } catch (error) {
         toast({
           title: "Error",
@@ -82,6 +90,29 @@ export default function PODetail() {
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to update PO",
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleSubmitForApproval = async () => {
+    if (!id) return;
+    try {
+      setActionLoading(true);
+      await submitForApproval(parseInt(id));
+      toast({
+        title: "Success",
+        description: "PO submitted for approval successfully. Approvers will be notified via email.",
+      });
+      // Refresh PO data
+      const data = await getPurchaseOrderById(parseInt(id));
+      setPO(data);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to submit PO for approval",
         variant: "destructive",
       });
     } finally {
@@ -162,6 +193,7 @@ export default function PODetail() {
     );
   }
 
+  const canSubmitForApproval = po.status === "Draft" && canModify("PURCHASE_ORDERS");
   const canApprove = po.approvalStatus === "Pending" && canModify("PURCHASE_ORDERS");
   const canSendToVendor = po.status === "Approved" && !po.isSentToVendor && canModify("PURCHASE_ORDERS");
   const canEdit = (po.status === "Draft" || po.status === "PendingApproval") && canModify("PURCHASE_ORDERS");
@@ -191,7 +223,26 @@ export default function PODetail() {
               Edit
             </Button>
           )}
-          {canApprove && (
+          {canSubmitForApproval && (
+            <Button
+              size="sm"
+              onClick={handleSubmitForApproval}
+              disabled={actionLoading}
+            >
+              {actionLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <FileCheck className="h-4 w-4 mr-2" />
+                  Submit for Approval
+                </>
+              )}
+            </Button>
+          )}
+          {/* {canApprove && (
             <>
               <Button
                 size="sm"
@@ -211,7 +262,7 @@ export default function PODetail() {
                 Reject
               </Button>
             </>
-          )}
+          )} */}
           {canSendToVendor && (
             <Button size="sm" onClick={handleSendToVendor} disabled={actionLoading}>
               <Send className="h-4 w-4 mr-2" />
@@ -398,6 +449,65 @@ export default function PODetail() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Approval Status */}
+      {approvals.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Approval Status ({approvals.filter(a => a.status === "Approved").length}/{approvals.length} Approved)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {approvals.map((approval) => (
+                <div
+                  key={approval.poApprovalId}
+                  className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg"
+                >
+                  <div className="flex-1">
+                    <p className="font-medium">{approval.userName || approval.userEmail || "Unknown"}</p>
+                    {approval.comment && (
+                      <p className="text-sm text-muted-foreground mt-1">{approval.comment}</p>
+                    )}
+                    {approval.signatureUrl && (
+                      <img
+                        src={fileUploadService.getSignatureUrl(approval.signatureUrl)}
+                        alt="Signature"
+                        className="mt-2 max-w-xs h-auto border rounded"
+                      />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Badge
+                      variant={
+                        approval.status === "Approved"
+                          ? "default"
+                          : approval.status === "Rejected"
+                          ? "destructive"
+                          : "outline"
+                      }
+                    >
+                      {approval.status}
+                    </Badge>
+                    {approval.approvedDate && (
+                      <span className="text-sm text-muted-foreground">
+                        {formatDate(approval.approvedDate)}
+                      </span>
+                    )}
+                    {approval.rejectedDate && (
+                      <span className="text-sm text-muted-foreground">
+                        {formatDate(approval.rejectedDate)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Notes */}
       {po.notes && (

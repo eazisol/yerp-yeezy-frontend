@@ -41,7 +41,9 @@ class OrderService {
     pageSize: number = 50,
     search?: string,
     status?: string,
-    paymentStatus?: string
+    paymentStatus?: string,
+    startDate?: string,
+    endDate?: string
   ): Promise<OrdersResponse> {
     const params = new URLSearchParams({
       page: page.toString(),
@@ -50,8 +52,42 @@ class OrderService {
     if (search) params.append("search", search);
     if (status) params.append("status", status);
     if (paymentStatus) params.append("paymentStatus", paymentStatus);
+    if (startDate) params.append("startDate", startDate);
+    if (endDate) params.append("endDate", endDate);
 
     return apiClient.get<OrdersResponse>(`/api/Orders?${params.toString()}`);
+  }
+
+  // Export orders to CSV
+  async exportOrdersToCsv(
+    search?: string,
+    status?: string,
+    paymentStatus?: string,
+    startDate?: string,
+    endDate?: string
+  ): Promise<Blob> {
+    const params = new URLSearchParams();
+    if (search) params.append("search", search);
+    if (status) params.append("status", status);
+    if (paymentStatus) params.append("paymentStatus", paymentStatus);
+    if (startDate) params.append("startDate", startDate);
+    if (endDate) params.append("endDate", endDate);
+
+    const token = localStorage.getItem("auth_token");
+    const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:5234";
+    
+    const response = await fetch(`${baseUrl}/api/Orders/export-csv?${params.toString()}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to export orders");
+    }
+
+    return response.blob();
   }
 
   async getOrderById(id: number): Promise<any> {

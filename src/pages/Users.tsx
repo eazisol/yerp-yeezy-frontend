@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Search, Filter, Plus, Eye, Edit, Trash2, Shield } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -67,6 +68,7 @@ export default function Users() {
     password: "",
     fullName: "",
     roleIds: [], // Backend expects array, but we'll send single role
+    isPOApprover: false,
   });
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
@@ -197,6 +199,7 @@ export default function Users() {
       password: "",
       fullName: "",
       roleIds: [],
+      isPOApprover: false,
     });
     setSelectedRoleId(null);
     setIsActiveStatus(true);
@@ -227,6 +230,7 @@ export default function Users() {
       password: "", // Don't pre-fill password
       fullName: user.fullName || "",
       roleIds: roleId !== null ? [roleId] : [],
+      isPOApprover: user.isPOApprover || false,
     });
     setIsEditMode(true);
     setShowUserForm(true);
@@ -249,6 +253,7 @@ export default function Users() {
         fullName: formData.fullName || undefined,
         isActive: isActiveStatus !== selectedUser.isActive ? isActiveStatus : undefined,
         roleIds: formData.roleIds,
+        isPOApprover: formData.isPOApprover !== selectedUser.isPOApprover ? formData.isPOApprover : undefined,
       };
       // Remove undefined fields
       Object.keys(updateData).forEach((key) => {
@@ -666,6 +671,21 @@ export default function Users() {
                   </Select>
                 </div>
               )}
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="isPOApprover"
+                  checked={formData.isPOApprover || false}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, isPOApprover: checked === true })
+                  }
+                />
+                <Label
+                  htmlFor="isPOApprover"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  Can Approve Purchase Orders
+                </Label>
+              </div>
             </div>
             <DialogFooter>
               <Button

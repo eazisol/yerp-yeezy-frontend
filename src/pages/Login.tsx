@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,15 +16,19 @@ export default function Login() {
   const [fullName, setFullName] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { user, login, register } = useAuth();
+
+  // Get the intended location from state (set by ProtectedRoute)
+  const from = (location.state as { from?: Location })?.from?.pathname || "/";
 
   useEffect(() => {
     // Check if user is already logged in
     if (user) {
-      navigate("/");
+      navigate(from, { replace: true });
     }
-  }, [user, navigate]);
+  }, [user, navigate, from]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +40,8 @@ export default function Login() {
         title: "Welcome back!",
         description: "You have successfully signed in.",
       });
-      navigate("/");
+      // Redirect to intended page or dashboard
+      navigate(from, { replace: true });
     } catch (error: any) {
       toast({
         title: "Error",

@@ -14,7 +14,8 @@ import {
   Menu,
   X,
   LogOut,
-  Lock
+  Lock,
+  BarChart3
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ const iconMap: Record<string, any> = {
   UserCog,
   Shield,
   Settings,
+  BarChart3,
 };
 
 export default function Layout() {
@@ -213,6 +215,23 @@ export default function Layout() {
               </div>
             ) : (
               <ul className="space-y-1">
+                {/* KPI Menu Item - Hardcoded for now */}
+                {/* <li>
+                  <Link
+                    to="/kpi"
+                    className={cn(
+                      "flex items-center space-x-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-smooth",
+                      location.pathname === "/kpi"
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
+                    )}
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <BarChart3 className="h-5 w-5" />
+                    <span>KPI</span>
+                  </Link>
+                </li> */}
+                
                 {menus
                   .filter((menu) => {
                     // Filter menus based on user permissions
