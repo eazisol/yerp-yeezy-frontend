@@ -31,7 +31,7 @@ import {
 } from "@/services/purchaseOrders";
 import { vendorService, Vendor } from "@/services/vendors";
 import { warehouseService, Warehouse } from "@/services/warehouses";
-import { productService, Product } from "@/services/products";
+import { productService, Product, ProductVariant } from "@/services/products";
 import { useToast } from "@/hooks/use-toast";
 
 export default function POFormPage() {
@@ -46,6 +46,10 @@ export default function POFormPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  // Store variants for each line item (index -> variants array)
+  const [lineItemVariants, setLineItemVariants] = useState<Record<number, ProductVariant[]>>({});
+  // Store loading state for variant fetching
+  const [loadingVariants, setLoadingVariants] = useState<Record<number, boolean>>({});
 
   const form = useForm<CreatePurchaseOrderRequest>({
     defaultValues: {
@@ -91,6 +95,14 @@ export default function POFormPage() {
         // If editing, fetch PO data
         if (isEdit && poId) {
           const po = await getPurchaseOrderById(poId);
+          const lineItemsData = po.lineItems.map((item) => ({
+            productId: item.productId,
+            productVariantId: item.productVariantId || undefined,
+            orderedQuantity: item.orderedQuantity,
+            unitPrice: item.unitPrice,
+            notes: item.notes || "",
+          }));
+          
           form.reset({
             vendorId: po.vendorId,
             warehouseId: po.warehouseId || undefined,
@@ -98,14 +110,24 @@ export default function POFormPage() {
             expectedDeliveryDate: po.expectedDeliveryDate
               ? new Date(po.expectedDeliveryDate).toISOString().split("T")[0]
               : "",
-            lineItems: po.lineItems.map((item) => ({
-              productId: item.productId,
-              productVariantId: item.productVariantId || undefined,
-              orderedQuantity: item.orderedQuantity,
-              unitPrice: item.unitPrice,
-              notes: item.notes || "",
-            })),
+            lineItems: lineItemsData,
           });
+
+          // Fetch variants for each line item in edit mode
+          const variantsMap: Record<number, ProductVariant[]> = {};
+          for (let i = 0; i < lineItemsData.length; i++) {
+            const item = lineItemsData[i];
+            if (item.productId > 0) {
+              try {
+                const productDetail = await productService.getProductById(item.productId);
+                variantsMap[i] = productDetail.variants || [];
+              } catch (error) {
+                console.error(`Failed to load variants for product ${item.productId}:`, error);
+                variantsMap[i] = [];
+              }
+            }
+          }
+          setLineItemVariants(variantsMap);
         }
       } catch (error) {
         toast({
@@ -143,6 +165,22 @@ export default function POFormPage() {
           variant: "destructive",
         });
         return;
+      }
+
+      // Validate variant selection for products with variants
+      for (let i = 0; i < data.lineItems.length; i++) {
+        const item = data.lineItems[i];
+        if (item.productId > 0) {
+          const variants = lineItemVariants[i] || [];
+          if (variants.length > 0 && !item.productVariantId) {
+            toast({
+              title: "Error",
+              description: `Please select a variant for product in line item ${i + 1}`,
+              variant: "destructive",
+            });
+            return;
+          }
+        }
       }
 
       // Filter out invalid line items
@@ -192,6 +230,7 @@ export default function POFormPage() {
   };
 
   const addLineItem = () => {
+    const newIndex = fields.length;
     append({
       productId: 0,
       productVariantId: undefined,
@@ -199,6 +238,118 @@ export default function POFormPage() {
       unitPrice: 0,
       notes: "",
     });
+    // Initialize variants array for new line item
+    setLineItemVariants((prev) => ({ ...prev, [newIndex]: [] }));
+  };
+
+  // Fetch variants when product is selected
+  const handleProductChange = async (productId: number, lineItemIndex: number) => {
+    if (!productId || productId === 0) {
+      // Clear variants if no product selected
+      setLineItemVariants((prev) => {
+        const updated = { ...prev };
+        updated[lineItemIndex] = [];
+        return updated;
+      });
+      // Clear variant selection
+      form.setValue(`lineItems.${lineItemIndex}.productVariantId`, undefined);
+      // Reset price to product price
+      const product = products.find((p) => p.productId === productId);
+      if (product) {
+        form.setValue(`lineItems.${lineItemIndex}.unitPrice`, product.price || 0);
+      }
+      return;
+    }
+
+    try {
+      // Set loading state
+      setLoadingVariants((prev) => ({ ...prev, [lineItemIndex]: true }));
+
+      // Fetch product details with variants
+      const productDetail = await productService.getProductById(productId);
+
+      // Store variants for this line item
+      setLineItemVariants((prev) => ({
+        ...prev,
+        [lineItemIndex]: productDetail.variants || [],
+      }));
+
+      // Clear variant selection when product changes
+      form.setValue(`lineItems.${lineItemIndex}.productVariantId`, undefined);
+
+      // Set default price from product (will be overridden if variant selected)
+      form.setValue(`lineItems.${lineItemIndex}.unitPrice`, productDetail.price || 0);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to load product variants",
+        variant: "destructive",
+      });
+      setLineItemVariants((prev) => {
+        const updated = { ...prev };
+        updated[lineItemIndex] = [];
+        return updated;
+      });
+    } finally {
+      setLoadingVariants((prev) => ({ ...prev, [lineItemIndex]: false }));
+    }
+  };
+
+  // Handle variant selection
+  const handleVariantChange = (variantId: number | undefined, lineItemIndex: number) => {
+    if (!variantId) {
+      // If no variant selected, use product price
+      const productId = form.watch(`lineItems.${lineItemIndex}.productId`);
+      const product = products.find((p) => p.productId === productId);
+      if (product) {
+        form.setValue(`lineItems.${lineItemIndex}.unitPrice`, product.price || 0);
+      }
+      return;
+    }
+
+    // Find selected variant
+    const variants = lineItemVariants[lineItemIndex] || [];
+    const selectedVariant = variants.find((v) => v.variantId === variantId);
+
+    if (selectedVariant) {
+      // Use variant price if available, otherwise use product price
+      const productId = form.watch(`lineItems.${lineItemIndex}.productId`);
+      const product = products.find((p) => p.productId === productId);
+      const variantPrice = selectedVariant.price;
+      const productPrice = product?.price || 0;
+
+      // Prefer variant price, fallback to product price
+      form.setValue(
+        `lineItems.${lineItemIndex}.unitPrice`,
+        variantPrice !== null && variantPrice !== undefined ? variantPrice : productPrice
+      );
+    }
+  };
+
+  // Get variant display name
+  const getVariantDisplayName = (variant: ProductVariant): string => {
+    let displayName = variant.name || variant.sku || `Variant ${variant.variantId}`;
+    
+    // Try to parse attributes JSON to show size/color etc.
+    if (variant.attributes) {
+      try {
+        const attrs = JSON.parse(variant.attributes);
+        const attrParts: string[] = [];
+        if (attrs.size) attrParts.push(`Size: ${attrs.size}`);
+        if (attrs.color) attrParts.push(`Color: ${attrs.color}`);
+        if (attrParts.length > 0) {
+          displayName += ` (${attrParts.join(", ")})`;
+        }
+      } catch {
+        // If JSON parsing fails, just use the name
+      }
+    }
+    
+    if (variant.sku && variant.sku !== displayName) {
+      displayName += ` - ${variant.sku}`;
+    }
+    
+    return displayName;
   };
 
   const getProductName = (productId: number) => {
@@ -357,140 +508,213 @@ export default function POFormPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {fields.map((field, index) => (
-                <Card key={field.id} className="p-4">
-                  <div className="grid grid-cols-12 gap-4 items-start">
-                    <div className="col-span-12 md:col-span-4">
-                      <FormField
-                        control={form.control}
-                        name={`lineItems.${index}.productId`}
-                        rules={{
-                          required: "Product is required",
-                          min: { value: 1, message: "Please select a product" },
-                        }}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Product *</FormLabel>
-                            <Select
-                              value={field.value && field.value > 0 ? field.value.toString() : undefined}
-                              onValueChange={(value) => {
-                                field.onChange(parseInt(value));
-                                // Optionally set default price from product
-                                const product = products.find((p) => p.productId === parseInt(value));
-                                if (product) {
-                                  form.setValue(`lineItems.${index}.unitPrice`, product.price || 0);
-                                }
-                              }}
-                            >
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select product" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {products.map((product) => (
-                                  <SelectItem
-                                    key={product.productId}
-                                    value={product.productId.toString()}
-                                  >
-                                    {product.name} ({product.sku})
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
+              {fields.map((field, index) => {
+                const variants = lineItemVariants[index] || [];
+                const isLoadingVariants = loadingVariants[index] || false;
+                const selectedProductId = form.watch(`lineItems.${index}.productId`);
+                const selectedVariantId = form.watch(`lineItems.${index}.productVariantId`);
 
-                    <div className="col-span-6 md:col-span-2">
-                      <FormField
-                        control={form.control}
-                        name={`lineItems.${index}.orderedQuantity`}
-                        rules={{
-                          required: "Quantity is required",
-                          min: { value: 1, message: "Quantity must be at least 1" },
-                        }}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Quantity *</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min="1"
-                                {...field}
-                                onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="col-span-6 md:col-span-2">
-                      <FormField
-                        control={form.control}
-                        name={`lineItems.${index}.unitPrice`}
-                        rules={{
-                          required: "Unit price is required",
-                          min: { value: 0, message: "Price must be 0 or greater" },
-                        }}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Unit Price *</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                {...field}
-                                onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="col-span-8 md:col-span-2">
-                      <FormLabel>Line Total</FormLabel>
-                      <div className="mt-2 p-2 bg-secondary rounded-md font-medium">
-                        ${calculateLineTotal(index).toFixed(2)}
+                return (
+                  <Card key={field.id} className="p-4">
+                    <div className="grid grid-cols-12 gap-4 items-start">
+                      <div className={`col-span-12 ${selectedProductId > 0 && variants.length > 0 ? 'md:col-span-3' : 'md:col-span-4'}`}>
+                        <FormField
+                          control={form.control}
+                          name={`lineItems.${index}.productId`}
+                          rules={{
+                            required: "Product is required",
+                            min: { value: 1, message: "Please select a product" },
+                          }}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Product *</FormLabel>
+                              <Select
+                                value={field.value && field.value > 0 ? field.value.toString() : undefined}
+                                onValueChange={(value) => {
+                                  field.onChange(parseInt(value));
+                                  handleProductChange(parseInt(value), index);
+                                }}
+                              >
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select product" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {products.map((product) => (
+                                    <SelectItem
+                                      key={product.productId}
+                                      value={product.productId.toString()}
+                                    >
+                                      {product.name} ({product.sku})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
                       </div>
-                    </div>
 
-                    <div className="col-span-4 md:col-span-2 flex items-end">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => remove(index)}
-                        disabled={fields.length === 1}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="mt-4">
-                    <FormField
-                      control={form.control}
-                      name={`lineItems.${index}.notes`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormControl>
-                            <Input placeholder="Line item notes (optional)" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                      {/* Variant Selection */}
+                      {selectedProductId > 0 && (
+                        <div className="col-span-12 md:col-span-3">
+                          <FormField
+                            control={form.control}
+                            name={`lineItems.${index}.productVariantId`}
+                            rules={{
+                              required: variants.length > 0 ? "Variant is required for this product" : false,
+                              validate: (value) => {
+                                if (variants.length > 0 && !value) {
+                                  return "Please select a variant";
+                                }
+                                return true;
+                              }
+                            }}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>
+                                  Variant {variants.length > 0 ? "*" : ""}
+                                </FormLabel>
+                                {isLoadingVariants ? (
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Loading variants...
+                                  </div>
+                                ) : variants.length > 0 ? (
+                                  <Select
+                                    value={field.value?.toString() || ""}
+                                    onValueChange={(value) => {
+                                      field.onChange(parseInt(value));
+                                      handleVariantChange(parseInt(value), index);
+                                    }}
+                                  >
+                                    <FormControl>
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select variant *" />
+                                      </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                      {variants.map((variant) => (
+                                        <SelectItem
+                                          key={variant.variantId}
+                                          value={variant.variantId.toString()}
+                                        >
+                                          {getVariantDisplayName(variant)}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  <div className="text-sm text-muted-foreground p-2 bg-secondary rounded-md">
+                                    No variants available for this product
+                                  </div>
+                                )}
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
                       )}
-                    />
-                  </div>
-                </Card>
-              ))}
+
+                      <div className="col-span-6 md:col-span-2">
+                        <FormField
+                          control={form.control}
+                          name={`lineItems.${index}.orderedQuantity`}
+                          rules={{
+                            required: "Quantity is required",
+                            min: { value: 1, message: "Quantity must be at least 1" },
+                          }}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Quantity *</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="col-span-6 md:col-span-2">
+                        <FormField
+                          control={form.control}
+                          name={`lineItems.${index}.unitPrice`}
+                          rules={{
+                            required: "Unit price is required",
+                            min: { value: 0, message: "Price must be 0 or greater" },
+                          }}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Unit Price *</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="col-span-6 md:col-span-1">
+                        <FormLabel>Total</FormLabel>
+                        <div className="mt-2 p-2 bg-secondary rounded-md font-medium text-sm">
+                          ${calculateLineTotal(index).toFixed(2)}
+                        </div>
+                      </div>
+
+                      <div className="col-span-6 md:col-span-1 flex items-end">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            remove(index);
+                            // Clean up variants state for removed item
+                            // Note: Variants will be refetched when products are selected in remaining items
+                            setLineItemVariants((prev) => {
+                              const updated = { ...prev };
+                              delete updated[index];
+                              return updated;
+                            });
+                          }}
+                          disabled={fields.length === 1}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                      </div>
+
+                    <div className="mt-4">
+                      <FormField
+                        control={form.control}
+                        name={`lineItems.${index}.notes`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <Input placeholder="Line item notes (optional)" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </Card>
+                );
+              })}
 
               {fields.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">

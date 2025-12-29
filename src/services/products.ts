@@ -128,8 +128,8 @@ class ProductService {
     return response.blob();
   }
 
-  async getProductById(id: number): Promise<any> {
-    return apiClient.get(`/api/Products/${id}`);
+  async getProductById(id: number): Promise<ProductDetail> {
+    return apiClient.get<ProductDetail>(`/api/Products/${id}`);
   }
 
   async createProduct(productData: CreateProductRequest): Promise<Product> {
@@ -183,6 +183,81 @@ export interface ProductImportResult {
   errors: number;
   errorMessages: string[];
   message: string;
+}
+
+// Product Variant interface
+export interface ProductVariant {
+  variantId: number;
+  name: string | null;
+  sku: string | null;
+  price: number | null;
+  comparePrice: number | null;
+  attributes: string | null; // JSON string with variant attributes
+  origin: string | null;
+  chartOfAccount: string | null;
+  upc: string | null;
+  cog: string | null;
+  variantSlug: string | null;
+  availableStock: number;
+  vendors: VariantVendor[];
+}
+
+// Variant Vendor interface
+export interface VariantVendor {
+  vendorId: number;
+  vendorName: string;
+  supplierType: string;
+  cost: number | null;
+}
+
+// Product Detail interface (includes variants)
+export interface ProductDetail {
+  productId: number;
+  swellProductId: string;
+  sku: string;
+  name: string;
+  description: string | null;
+  price: number;
+  comparePrice: number | null;
+  currency: string | null;
+  status: string;
+  type: string;
+  isActive: boolean;
+  origin: string | null;
+  category: string | null;
+  color: string | null;
+  gender: string | null;
+  option: string | null;
+  slot: string | null;
+  shippingWeight: number | null;
+  metaDescription: string | null;
+  tags: string | null;
+  images: string | null;
+  createdDate: string;
+  editDate: string | null;
+  inventory: Inventory | null;
+  warehouseInventories: WarehouseInventory[];
+  variants: ProductVariant[];
+}
+
+// Inventory interface
+export interface Inventory {
+  totalStock: number;
+  availableStock: number;
+  reservedStock: number;
+  inTransit: number;
+  reorderPoint: number;
+  lastStockUpdate: string | null;
+}
+
+// Warehouse Inventory interface
+export interface WarehouseInventory {
+  warehouseInventoryId: number;
+  warehouseCode: string;
+  availableStock: number;
+  reservedStock: number;
+  inTransit: number;
+  lastUpdated: string | null;
 }
 
 export const productService = new ProductService();

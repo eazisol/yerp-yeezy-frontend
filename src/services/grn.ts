@@ -7,7 +7,10 @@ export interface GRNLineItem {
   productId: number;
   productName?: string;
   productVariantId?: number;
-  sku?: string;
+  productVariantName?: string; // Variant name
+  productVariantSku?: string; // Variant SKU
+  productVariantAttributes?: string; // Variant attributes (JSON with images)
+  sku?: string; // SKU (prefer variant SKU, fallback to product SKU)
   receivedQuantity: number;
   unitPrice: number;
   lineTotal: number;

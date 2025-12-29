@@ -743,7 +743,15 @@ export default function GRNFormPage() {
                         <div className="col-span-12 md:col-span-4">
                           <div>
                             <p className="font-medium">{poItem.productName || "N/A"}</p>
-                            <p className="text-sm text-muted-foreground">{poItem.sku || "N/A"}</p>
+                            {poItem.productVariantName && (
+                              <p className="text-sm text-primary font-medium mt-1">
+                                Variant: {poItem.productVariantName}
+                                {poItem.productVariantSku && ` (${poItem.productVariantSku})`}
+                              </p>
+                            )}
+                            <p className="text-sm text-muted-foreground">
+                              SKU: {poItem.productVariantSku || poItem.sku || "N/A"}
+                            </p>
                           </div>
                         </div>
 

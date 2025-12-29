@@ -23,6 +23,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function PODetail() {
   const { id } = useParams<{ id: string }>();
@@ -33,6 +39,7 @@ export default function PODetail() {
   const [approvals, setApprovals] = useState<POApproval[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [imagePreview, setImagePreview] = useState<{ url: string; variantName: string; allImages: string[] } | null>(null);
 
   useEffect(() => {
     const fetchPO = async () => {
@@ -175,6 +182,52 @@ export default function PODetail() {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
+  };
+
+  // Parse variant attributes JSON
+  const parseAttributes = (attributesJson: string | null | undefined) => {
+    if (!attributesJson) return {};
+    try {
+      return JSON.parse(attributesJson);
+    } catch {
+      return {};
+    }
+  };
+
+  // Get images from attributes
+  const getImagesFromAttributes = (attributes: any): string[] => {
+    const images: string[] = [];
+    
+    // Check for 'images' or 'image' field
+    if (attributes.images) {
+      if (Array.isArray(attributes.images)) {
+        images.push(...attributes.images);
+      } else if (typeof attributes.images === 'string') {
+        try {
+          const parsed = JSON.parse(attributes.images);
+          if (Array.isArray(parsed)) {
+            images.push(...parsed);
+          } else {
+            images.push(attributes.images);
+          }
+        } catch {
+          images.push(attributes.images);
+        }
+      }
+    }
+    
+    if (attributes.image && !images.includes(attributes.image)) {
+      images.push(attributes.image);
+    }
+    
+    return images.filter(img => img && typeof img === 'string');
+  };
+
+  // Get product image (fallback)
+  const getProductImage = (productId: number): string | null => {
+    // This would need product data, for now return null
+    // Can be enhanced to fetch product images if needed
+    return null;
   };
 
   if (loading) {
@@ -408,15 +461,64 @@ export default function PODetail() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {po.lineItems.map((item) => (
-              <div
-                key={item.lineItemId}
-                className="flex justify-between items-center p-4 bg-secondary/50 rounded-lg"
-              >
-                <div className="flex-1">
-                  <p className="font-medium text-foreground">{item.productName || "N/A"}</p>
-                  <p className="text-sm text-muted-foreground">{item.sku || "N/A"}</p>
-                </div>
+            {po.lineItems.map((item) => {
+              // Get variant images from attributes
+              const variantAttributes = parseAttributes(item.productVariantAttributes);
+              const variantImages = getImagesFromAttributes(variantAttributes);
+              const firstVariantImage = variantImages.length > 0 ? variantImages[0] : null;
+              
+              return (
+                <div
+                  key={item.lineItemId}
+                  className="flex justify-between items-center p-4 bg-secondary/50 rounded-lg"
+                >
+                  <div className="flex-1 flex items-start gap-3">
+                    {/* Variant Image Thumbnail */}
+                    {firstVariantImage ? (
+                      <div className="flex-shrink-0">
+                        <button
+                          onClick={() => setImagePreview({ 
+                            url: firstVariantImage, 
+                            variantName: item.productVariantName || item.productName || "Item",
+                            allImages: variantImages
+                          })}
+                          className="flex-shrink-0 hover:opacity-80 transition-opacity"
+                          title="Click to preview images"
+                        >
+                          <img
+                            src={firstVariantImage}
+                            alt={item.productVariantName || item.productName || "Item"}
+                            className="w-16 h-16 object-cover rounded border"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        </button>
+                        {variantImages.length > 1 && (
+                          <Badge variant="secondary" className="text-xs mt-1 block text-center">
+                            +{variantImages.length - 1}
+                          </Badge>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex-shrink-0 w-16 h-16 bg-muted rounded border flex items-center justify-center">
+                        <span className="text-xs text-muted-foreground text-center">No image</span>
+                      </div>
+                    )}
+                    
+                    <div className="flex-1">
+                      <p className="font-medium text-foreground">{item.productName || "N/A"}</p>
+                      {item.productVariantName && (
+                        <p className="text-sm text-primary font-medium mt-1">
+                          Variant: {item.productVariantName}
+                          {item.productVariantSku && ` (${item.productVariantSku})`}
+                        </p>
+                      )}
+                      <p className="text-sm text-muted-foreground">
+                        SKU: {item.productVariantSku || item.sku || "N/A"}
+                      </p>
+                    </div>
+                  </div>
                 <div className="flex items-center gap-6">
                   <div className="text-center">
                     <p className="text-sm text-muted-foreground">Ordered</p>
@@ -445,10 +547,58 @@ export default function PODetail() {
                   )}
                 </div>
               </div>
-            ))}
+            );
+            })}
           </div>
         </CardContent>
       </Card>
+
+      {/* Image Preview Dialog */}
+      <Dialog open={!!imagePreview} onOpenChange={(open) => !open && setImagePreview(null)}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>{imagePreview?.variantName || "Image Preview"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {imagePreview && (
+              <>
+                <div className="flex justify-center">
+                  <img
+                    src={imagePreview.url}
+                    alt={imagePreview.variantName}
+                    className="max-w-full max-h-96 object-contain rounded-lg"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </div>
+                {imagePreview.allImages.length > 1 && (
+                  <div className="grid grid-cols-4 gap-2 max-h-32 overflow-y-auto">
+                    {imagePreview.allImages.map((img, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setImagePreview({ ...imagePreview, url: img })}
+                        className={`border-2 rounded ${
+                          img === imagePreview.url ? 'border-primary' : 'border-transparent'
+                        } hover:border-primary/50 transition-colors`}
+                      >
+                        <img
+                          src={img}
+                          alt={`Image ${idx + 1}`}
+                          className="w-full h-20 object-cover rounded"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Approval Status */}
       {approvals.length > 0 && (
