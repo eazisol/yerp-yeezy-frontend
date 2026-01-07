@@ -344,7 +344,7 @@ export default function Products() {
                 onChange={handleFileChange}
                 className="hidden"
               />
-              <Button
+              {/* <Button
                 variant="outline"
                 onClick={handleCheckSwellCount}
                 disabled={countMutation.isPending}
@@ -355,7 +355,7 @@ export default function Products() {
                   : swellProductCount !== null
                   ? `${swellProductCount} Products in Swell`
                   : "Check Swell Products"}
-              </Button>
+              </Button> */}
               <Button
                 variant="outline"
                 onClick={handleExportToCsv}

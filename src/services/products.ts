@@ -80,6 +80,7 @@ class ProductService {
     search?: string,
     isActive?: string,
     origin?: string,
+    vendorId?: number,
     startDate?: string,
     endDate?: string
   ): Promise<ProductsResponse> {
@@ -90,6 +91,7 @@ class ProductService {
     if (search) params.append("search", search);
     if (isActive !== undefined) params.append("isActive", isActive);
     if (origin) params.append("origin", origin);
+    if (vendorId !== undefined && vendorId > 0) params.append("vendorId", vendorId.toString());
     if (startDate) params.append("startDate", startDate);
     if (endDate) params.append("endDate", endDate);
 

@@ -592,7 +592,7 @@ export default function GRNFormPage() {
                             key={warehouse.warehouseId}
                             value={warehouse.warehouseId.toString()}
                           >
-                            {warehouse.name}
+                            {warehouse.country ? `${warehouse.country} - ${warehouse.name}` : warehouse.name}
                           </SelectItem>
                         ))}
                       </SelectContent>

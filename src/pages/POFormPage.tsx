@@ -33,6 +33,7 @@ import { vendorService, Vendor } from "@/services/vendors";
 import { warehouseService, Warehouse } from "@/services/warehouses";
 import { productService, Product, ProductVariant } from "@/services/products";
 import { useToast } from "@/hooks/use-toast";
+import { ProductCombobox } from "@/components/ProductCombobox";
 
 export default function POFormPage() {
   const { id } = useParams<{ id: string }>();
@@ -43,13 +44,14 @@ export default function POFormPage() {
 
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   // Store variants for each line item (index -> variants array)
   const [lineItemVariants, setLineItemVariants] = useState<Record<number, ProductVariant[]>>({});
   // Store loading state for variant fetching
   const [loadingVariants, setLoadingVariants] = useState<Record<number, boolean>>({});
+  // Store product details for each line item (for price lookup)
+  const [lineItemProducts, setLineItemProducts] = useState<Record<number, Product>>({});
 
   const form = useForm<CreatePurchaseOrderRequest>({
     defaultValues: {
@@ -88,10 +90,6 @@ export default function POFormPage() {
         const warehousesRes = await warehouseService.getWarehouses(1, 100);
         setWarehouses(warehousesRes.data.filter((w) => w.isActive));
 
-        // Fetch products
-        const productsRes = await productService.getProducts(1, 1000);
-        setProducts(productsRes.data);
-
         // If editing, fetch PO data
         if (isEdit && poId) {
           const po = await getPurchaseOrderById(poId);
@@ -113,14 +111,38 @@ export default function POFormPage() {
             lineItems: lineItemsData,
           });
 
-          // Fetch variants for each line item in edit mode
+          // Fetch variants and product details for each line item in edit mode
           const variantsMap: Record<number, ProductVariant[]> = {};
+          const productsMap: Record<number, Product> = {};
           for (let i = 0; i < lineItemsData.length; i++) {
             const item = lineItemsData[i];
             if (item.productId > 0) {
               try {
                 const productDetail = await productService.getProductById(item.productId);
                 variantsMap[i] = productDetail.variants || [];
+                // Store product for price lookup
+                productsMap[i] = {
+                  productId: productDetail.productId,
+                  swellProductId: productDetail.swellProductId,
+                  sku: productDetail.sku,
+                  name: productDetail.name,
+                  description: productDetail.description,
+                  price: productDetail.price,
+                  comparePrice: productDetail.comparePrice,
+                  currency: productDetail.currency,
+                  status: productDetail.status,
+                  type: productDetail.type,
+                  isActive: productDetail.isActive,
+                  origin: productDetail.origin,
+                  category: productDetail.category,
+                  createdDate: productDetail.createdDate,
+                  editDate: productDetail.editDate,
+                  totalStock: productDetail.inventory?.totalStock || 0,
+                  availableStock: productDetail.inventory?.availableStock || 0,
+                  reservedStock: productDetail.inventory?.reservedStock || 0,
+                  cnStock: productDetail.warehouseInventories?.find(w => w.warehouseCode === "CN")?.availableStock || 0,
+                  usStock: productDetail.warehouseInventories?.find(w => w.warehouseCode === "US")?.availableStock || 0,
+                };
               } catch (error) {
                 console.error(`Failed to load variants for product ${item.productId}:`, error);
                 variantsMap[i] = [];
@@ -128,6 +150,7 @@ export default function POFormPage() {
             }
           }
           setLineItemVariants(variantsMap);
+          setLineItemProducts(productsMap);
         }
       } catch (error) {
         toast({
@@ -251,13 +274,15 @@ export default function POFormPage() {
         updated[lineItemIndex] = [];
         return updated;
       });
+      // Clear product from cache
+      setLineItemProducts((prev) => {
+        const updated = { ...prev };
+        delete updated[lineItemIndex];
+        return updated;
+      });
       // Clear variant selection
       form.setValue(`lineItems.${lineItemIndex}.productVariantId`, undefined);
-      // Reset price to product price
-      const product = products.find((p) => p.productId === productId);
-      if (product) {
-        form.setValue(`lineItems.${lineItemIndex}.unitPrice`, product.price || 0);
-      }
+      form.setValue(`lineItems.${lineItemIndex}.unitPrice`, 0);
       return;
     }
 
@@ -272,6 +297,33 @@ export default function POFormPage() {
       setLineItemVariants((prev) => ({
         ...prev,
         [lineItemIndex]: productDetail.variants || [],
+      }));
+
+      // Store product for price lookup
+      setLineItemProducts((prev) => ({
+        ...prev,
+        [lineItemIndex]: {
+          productId: productDetail.productId,
+          swellProductId: productDetail.swellProductId,
+          sku: productDetail.sku,
+          name: productDetail.name,
+          description: productDetail.description,
+          price: productDetail.price,
+          comparePrice: productDetail.comparePrice,
+          currency: productDetail.currency,
+          status: productDetail.status,
+          type: productDetail.type,
+          isActive: productDetail.isActive,
+          origin: productDetail.origin,
+          category: productDetail.category,
+          createdDate: productDetail.createdDate,
+          editDate: productDetail.editDate,
+          totalStock: productDetail.inventory?.totalStock || 0,
+          availableStock: productDetail.inventory?.availableStock || 0,
+          reservedStock: productDetail.inventory?.reservedStock || 0,
+          cnStock: productDetail.warehouseInventories?.find(w => w.warehouseCode === "CN")?.availableStock || 0,
+          usStock: productDetail.warehouseInventories?.find(w => w.warehouseCode === "US")?.availableStock || 0,
+        },
       }));
 
       // Clear variant selection when product changes
@@ -290,6 +342,11 @@ export default function POFormPage() {
         updated[lineItemIndex] = [];
         return updated;
       });
+      setLineItemProducts((prev) => {
+        const updated = { ...prev };
+        delete updated[lineItemIndex];
+        return updated;
+      });
     } finally {
       setLoadingVariants((prev) => ({ ...prev, [lineItemIndex]: false }));
     }
@@ -299,8 +356,7 @@ export default function POFormPage() {
   const handleVariantChange = (variantId: number | undefined, lineItemIndex: number) => {
     if (!variantId) {
       // If no variant selected, use product price
-      const productId = form.watch(`lineItems.${lineItemIndex}.productId`);
-      const product = products.find((p) => p.productId === productId);
+      const product = lineItemProducts[lineItemIndex];
       if (product) {
         form.setValue(`lineItems.${lineItemIndex}.unitPrice`, product.price || 0);
       }
@@ -313,8 +369,7 @@ export default function POFormPage() {
 
     if (selectedVariant) {
       // Use variant price if available, otherwise use product price
-      const productId = form.watch(`lineItems.${lineItemIndex}.productId`);
-      const product = products.find((p) => p.productId === productId);
+      const product = lineItemProducts[lineItemIndex];
       const variantPrice = selectedVariant.price;
       const productPrice = product?.price || 0;
 
@@ -326,35 +381,34 @@ export default function POFormPage() {
     }
   };
 
-  // Get variant display name
+  // Get variant display name - only show Color and Size
   const getVariantDisplayName = (variant: ProductVariant): string => {
-    let displayName = variant.name || variant.sku || `Variant ${variant.variantId}`;
+    const attrParts: string[] = [];
     
-    // Try to parse attributes JSON to show size/color etc.
+    // Try to parse attributes JSON to show only size and color
     if (variant.attributes) {
       try {
         const attrs = JSON.parse(variant.attributes);
-        const attrParts: string[] = [];
-        if (attrs.size) attrParts.push(`Size: ${attrs.size}`);
-        if (attrs.color) attrParts.push(`Color: ${attrs.color}`);
-        if (attrParts.length > 0) {
-          displayName += ` (${attrParts.join(", ")})`;
+        // Only add Color if it exists
+        if (attrs.color) {
+          attrParts.push(`Color: ${attrs.color}`);
+        }
+        // Only add Size if it exists
+        if (attrs.size) {
+          attrParts.push(`Size: ${attrs.size}`);
         }
       } catch {
-        // If JSON parsing fails, just use the name
+        // If JSON parsing fails, continue with fallback
       }
     }
     
-    if (variant.sku && variant.sku !== displayName) {
-      displayName += ` - ${variant.sku}`;
+    // If we have color or size, use them; otherwise fallback to name or SKU
+    if (attrParts.length > 0) {
+      return attrParts.join(", ");
     }
     
-    return displayName;
-  };
-
-  const getProductName = (productId: number) => {
-    const product = products.find((p) => p.productId === productId);
-    return product ? `${product.name} (${product.sku})` : "Select Product";
+    // Fallback to variant name, SKU, or variant ID
+    return variant.name || variant.sku || `Variant ${variant.variantId}`;
   };
 
   const calculateLineTotal = (index: number) => {
@@ -453,7 +507,7 @@ export default function POFormPage() {
                         <SelectItem value="none">None (Set at dispatch)</SelectItem>
                         {warehouses.map((warehouse) => (
                           <SelectItem key={warehouse.warehouseId} value={warehouse.warehouseId.toString()}>
-                            {warehouse.name}
+                            {warehouse.country ? `${warehouse.country} - ${warehouse.name}` : warehouse.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -528,29 +582,17 @@ export default function POFormPage() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Product *</FormLabel>
-                              <Select
-                                value={field.value && field.value > 0 ? field.value.toString() : undefined}
-                                onValueChange={(value) => {
-                                  field.onChange(parseInt(value));
-                                  handleProductChange(parseInt(value), index);
-                                }}
-                              >
-                                <FormControl>
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select product" />
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {products.map((product) => (
-                                    <SelectItem
-                                      key={product.productId}
-                                      value={product.productId.toString()}
-                                    >
-                                      {product.name} ({product.sku})
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                              <FormControl>
+                                <ProductCombobox
+                                  value={field.value && field.value > 0 ? field.value : undefined}
+                                  onSelect={(productId) => {
+                                    field.onChange(productId);
+                                    handleProductChange(productId, index);
+                                  }}
+                                  placeholder="Search products..."
+                                  vendorId={form.watch("vendorId") && form.watch("vendorId") > 0 ? form.watch("vendorId") : undefined}
+                                />
+                              </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -683,9 +725,13 @@ export default function POFormPage() {
                           size="sm"
                           onClick={() => {
                             remove(index);
-                            // Clean up variants state for removed item
-                            // Note: Variants will be refetched when products are selected in remaining items
+                            // Clean up variants and product state for removed item
                             setLineItemVariants((prev) => {
+                              const updated = { ...prev };
+                              delete updated[index];
+                              return updated;
+                            });
+                            setLineItemProducts((prev) => {
                               const updated = { ...prev };
                               delete updated[index];
                               return updated;
