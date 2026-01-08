@@ -23,10 +23,27 @@ export default function Login() {
   // Get the intended location from state (set by ProtectedRoute)
   const from = (location.state as { from?: Location })?.from?.pathname || "/";
 
+  // Helper function to get redirect path based on user role
+  const getRedirectPath = (currentUser: any) => {
+    if (!currentUser) return from === "/login" ? "/" : from;
+    
+    // Check if user is a vendor (has VENDOR role or vendorId)
+    const isVendor = currentUser?.roles?.includes("VENDOR") || currentUser?.vendorId != null;
+    
+    if (isVendor) {
+      // Vendor users should go directly to Purchase Orders
+      return "/purchase-orders";
+    }
+    
+    // For other users, use intended path or dashboard
+    return from === "/login" ? "/" : from;
+  };
+
   useEffect(() => {
     // Check if user is already logged in
     if (user) {
-      navigate(from, { replace: true });
+      const redirectPath = getRedirectPath(user);
+      navigate(redirectPath, { replace: true });
     }
   }, [user, navigate, from]);
 
@@ -35,13 +52,17 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      await login(email, password);
+      // Login and get the response
+      const authResponse = await login(email, password);
       toast({
         title: "Welcome back!",
         description: "You have successfully signed in.",
       });
-      // Redirect to intended page or dashboard
-      navigate(from, { replace: true });
+      
+      // Get redirect path based on user role (vendor goes to PO, others to dashboard)
+      const loggedInUser = authResponse?.user || user;
+      const redirectPath = getRedirectPath(loggedInUser);
+      navigate(redirectPath, { replace: true });
     } catch (error: any) {
       toast({
         title: "Error",

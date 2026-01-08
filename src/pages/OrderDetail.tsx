@@ -7,6 +7,10 @@ import { ArrowLeft, RefreshCw, Loader2 } from "lucide-react";
 import { orderService } from "@/services/orders";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog";
 
 interface OrderItem {
   orderItemId: number;
@@ -15,6 +19,7 @@ interface OrderItem {
   productName?: string | null;
   productSku?: string | null;
   variantName?: string | null; // Variant name
+  productVariantAttributes?: string | null; // Product Variant attributes (JSON with images)
   quantity: number;
   quantityFulfilled: number;
   quantityCanceled: number;
@@ -64,6 +69,11 @@ export default function OrderDetail() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [imagePreview, setImagePreview] = useState<{
+    url: string;
+    variantName?: string;
+    allImages?: string[];
+  } | null>(null);
 
   // Real-time data fetching with auto-refresh every 5 seconds
   const {
@@ -102,6 +112,45 @@ export default function OrderDetail() {
     } finally {
       setIsRefreshing(false);
     }
+  };
+
+  // Parse variant attributes JSON
+  const parseAttributes = (attributesJson: string | null | undefined) => {
+    if (!attributesJson) return {};
+    try {
+      return JSON.parse(attributesJson);
+    } catch {
+      return {};
+    }
+  };
+
+  // Get images from attributes
+  const getImagesFromAttributes = (attributes: any): string[] => {
+    const images: string[] = [];
+    
+    // Check for 'images' or 'image' field
+    if (attributes.images) {
+      if (Array.isArray(attributes.images)) {
+        images.push(...attributes.images);
+      } else if (typeof attributes.images === 'string') {
+        try {
+          const parsed = JSON.parse(attributes.images);
+          if (Array.isArray(parsed)) {
+            images.push(...parsed);
+          } else {
+            images.push(attributes.images);
+          }
+        } catch {
+          images.push(attributes.images);
+        }
+      }
+    }
+    
+    if (attributes.image && !images.includes(attributes.image)) {
+      images.push(attributes.image);
+    }
+    
+    return images.filter(img => img && typeof img === 'string');
   };
 
   // Format currency
@@ -400,20 +449,61 @@ export default function OrderDetail() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {order.orderItems.map((item) => (
-              <div
-                key={item.orderItemId}
-                className="flex justify-between items-start p-4 bg-secondary/50 rounded-lg"
-              >
-                <div className="flex-1">
-                  <p className="font-medium text-foreground">{item.productName || "N/A"}</p>
-                  <div className="text-sm text-muted-foreground space-y-0.5 mt-1">
-                    <p>SKU: {item.productSku || "N/A"}</p>
-                    {item.variantName && (
-                      <p className="text-xs">Variant: {item.variantName}</p>
+            {order.orderItems.map((item) => {
+              // Get variant images from attributes
+              const variantAttributes = parseAttributes(item.productVariantAttributes);
+              const variantImages = getImagesFromAttributes(variantAttributes);
+              const firstVariantImage = variantImages.length > 0 ? variantImages[0] : null;
+              
+              return (
+                <div
+                  key={item.orderItemId}
+                  className="flex justify-between items-start p-4 bg-secondary/50 rounded-lg"
+                >
+                  <div className="flex-1 flex items-start gap-3">
+                    {/* Variant Image Thumbnail */}
+                    {firstVariantImage ? (
+                      <div className="flex-shrink-0">
+                        <button
+                          onClick={() => setImagePreview({ 
+                            url: firstVariantImage, 
+                            variantName: item.variantName || item.productName || "Item",
+                            allImages: variantImages
+                          })}
+                          className="flex-shrink-0 hover:opacity-80 transition-opacity"
+                          title="Click to preview images"
+                        >
+                          <img
+                            src={firstVariantImage}
+                            alt={item.variantName || item.productName || "Item"}
+                            className="w-16 h-16 object-cover rounded border"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        </button>
+                        {variantImages.length > 1 && (
+                          <Badge variant="secondary" className="text-xs mt-1 block text-center">
+                            +{variantImages.length - 1}
+                          </Badge>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex-shrink-0 w-16 h-16 bg-muted rounded border flex items-center justify-center">
+                        <span className="text-xs text-muted-foreground text-center">No image</span>
+                      </div>
                     )}
+                    
+                    <div className="flex-1">
+                      <p className="font-medium text-foreground">{item.productName || "N/A"}</p>
+                      <div className="text-sm text-muted-foreground space-y-0.5 mt-1">
+                        <p>SKU: {item.productSku || "N/A"}</p>
+                        {item.variantName && (
+                          <p className="text-xs">Variant: {item.variantName}</p>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
                 <div className="text-right space-y-2">
                   <div>
                     <p className="font-medium text-foreground">
@@ -450,7 +540,8 @@ export default function OrderDetail() {
                   </div>
                 </div>
               </div>
-            ))}
+            );
+            })}
             <div className="flex justify-between items-center pt-3 border-t">
               <span className="text-lg font-semibold text-foreground">Total</span>
               <span className="text-lg font-semibold text-foreground">
@@ -460,6 +551,53 @@ export default function OrderDetail() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Image Preview Dialog */}
+      <Dialog open={!!imagePreview} onOpenChange={() => setImagePreview(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+          {imagePreview && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold mb-2">
+                  {imagePreview.variantName || "Product Image"}
+                </h3>
+                <div className="flex justify-center">
+                  <img
+                    src={imagePreview.url}
+                    alt={imagePreview.variantName || "Product"}
+                    className="max-w-full max-h-[70vh] object-contain rounded"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = '/placeholder-image.png';
+                    }}
+                  />
+                </div>
+              </div>
+              {imagePreview.allImages && imagePreview.allImages.length > 1 && (
+                <div className="grid grid-cols-4 gap-2 mt-4">
+                  {imagePreview.allImages.map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setImagePreview({ ...imagePreview, url: img })}
+                      className={`border-2 rounded overflow-hidden ${
+                        imagePreview.url === img ? 'border-primary' : 'border-transparent'
+                      }`}
+                    >
+                      <img
+                        src={img}
+                        alt={`Image ${idx + 1}`}
+                        className="w-full h-20 object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -9,6 +9,7 @@ export interface User {
   fullName: string | null;
   roles: string[];
   permissions?: Permission[]; // Make it optional
+  vendorId?: number | null; // Vendor ID (for vendor portal users)
 }
 
 export interface AuthResponse {

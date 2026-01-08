@@ -50,6 +50,8 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { vendorService, Vendor, CreateVendorRequest, UpdateVendorRequest } from "@/services/vendors";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
+import { extractErrorMessage } from "@/utils/errorUtils";
 
 export default function Vendors() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -72,6 +74,8 @@ export default function Vendors() {
     contactPerson: "",
     attention: "",
     status: "Active",
+    isLoginAllowed: false,
+    password: "",
   });
   const [isEditMode, setIsEditMode] = useState(false);
 
@@ -98,9 +102,10 @@ export default function Vendors() {
       resetForm();
     },
     onError: (error: any) => {
+      const errorMessage = extractErrorMessage(error, "Failed to create vendor");
       toast({
         title: "Error",
-        description: error?.response?.data?.message || "Failed to create vendor",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -120,9 +125,10 @@ export default function Vendors() {
       resetForm();
     },
     onError: (error: any) => {
+      const errorMessage = extractErrorMessage(error, "Failed to update vendor");
       toast({
         title: "Error",
-        description: error?.response?.data?.message || "Failed to update vendor",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -162,6 +168,8 @@ export default function Vendors() {
       contactPerson: "",
       attention: "",
       status: "Active",
+      isLoginAllowed: false,
+      password: "",
     });
     setIsEditMode(false);
     setSelectedVendor(null);
@@ -188,6 +196,8 @@ export default function Vendors() {
       contactPerson: vendor.contactPerson || "",
       attention: vendor.attention || "",
       status: status,
+      isLoginAllowed: vendor.isLoginAllowed || false,
+      password: "", // Don't pre-fill password for security
     });
     setIsEditMode(true);
     setSelectedVendor(vendor);
@@ -207,10 +217,24 @@ export default function Vendors() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate password when IsLoginAllowed is true (for create mode)
+    if (!isEditMode && formData.isLoginAllowed && !formData.password?.trim()) {
+      toast({
+        title: "Validation Error",
+        description: "Password is required when login access is enabled",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     if (isEditMode && selectedVendor) {
       // Status will automatically sync IsActive in backend
+      // Only include password if it's provided (for update)
       const updateData: UpdateVendorRequest = {
         ...formData,
+        // Remove password from update if empty (backend will keep current password)
+        password: formData.password?.trim() || undefined,
       };
       updateVendorMutation.mutate({ id: selectedVendor.vendorId, data: updateData });
     } else {
@@ -445,6 +469,43 @@ export default function Vendors() {
                   </Select>
                 </div>
               </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="isLoginAllowed"
+                  checked={formData.isLoginAllowed || false}
+                  onCheckedChange={(checked) =>
+                    setFormData({ ...formData, isLoginAllowed: checked === true })
+                  }
+                />
+                <Label htmlFor="isLoginAllowed" className="cursor-pointer">
+                  Allow Login Access
+                </Label>
+                <span className="text-sm text-muted-foreground">
+                  (Creates user account for vendor portal access)
+                </span>
+              </div>
+
+              {formData.isLoginAllowed && (
+                <div className="space-y-2">
+                  <Label htmlFor="password">
+                    Password {isEditMode ? "(Leave empty to keep current password)" : "*"}
+                  </Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={formData.password || ""}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder={isEditMode ? "Enter new password or leave empty" : "Enter password for vendor login"}
+                    required={!isEditMode}
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    {isEditMode
+                      ? "Leave empty to keep the current password unchanged"
+                      : "Password will be used for vendor portal login"}
+                  </p>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="address">Address</Label>

@@ -15,6 +15,7 @@ export interface Vendor {
   attention?: string | null;
   status: string;
   isActive: boolean;
+  isLoginAllowed: boolean;
   createdDate: string;
   editDate?: string | null;
 }
@@ -43,6 +44,8 @@ export interface CreateVendorRequest {
   contactPerson?: string;
   attention?: string;
   status?: string;
+  isLoginAllowed?: boolean;
+  password?: string; // Password for vendor login (required if isLoginAllowed is true)
 }
 
 // Update vendor request
@@ -59,6 +62,8 @@ export interface UpdateVendorRequest {
   attention?: string;
   status?: string;
   isActive?: boolean;
+  isLoginAllowed?: boolean;
+  password?: string; // Password for vendor login (required if isLoginAllowed is true)
 }
 
 class VendorService {
@@ -97,6 +102,11 @@ class VendorService {
   // Delete vendor (soft delete)
   async deleteVendor(id: number): Promise<void> {
     return apiClient.delete(`/api/Vendors/${id}`);
+  }
+
+  // Get vendors with IsLoginAllowed = true (for user dropdown)
+  async getVendorsForLogin(): Promise<Vendor[]> {
+    return apiClient.get<Vendor[]>("/api/Vendors/for-login");
   }
 }
 

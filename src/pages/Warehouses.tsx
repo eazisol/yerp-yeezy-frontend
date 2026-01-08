@@ -50,6 +50,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { warehouseService, Warehouse, CreateWarehouseRequest, UpdateWarehouseRequest } from "@/services/warehouses";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { extractErrorMessage } from "@/utils/errorUtils";
 
 export default function Warehouses() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -100,9 +101,10 @@ export default function Warehouses() {
       resetForm();
     },
     onError: (error: any) => {
+      const errorMessage = extractErrorMessage(error, "Failed to create warehouse");
       toast({
         title: "Error",
-        description: error?.response?.data?.message || "Failed to create warehouse",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -122,9 +124,10 @@ export default function Warehouses() {
       resetForm();
     },
     onError: (error: any) => {
+      const errorMessage = extractErrorMessage(error, "Failed to update warehouse");
       toast({
         title: "Error",
-        description: error?.response?.data?.message || "Failed to update warehouse",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -143,9 +146,10 @@ export default function Warehouses() {
       setDeleteWarehouseId(null);
     },
     onError: (error: any) => {
+      const errorMessage = extractErrorMessage(error, "Failed to delete warehouse");
       toast({
         title: "Error",
-        description: error?.response?.data?.message || "Failed to delete warehouse",
+        description: errorMessage,
         variant: "destructive",
       });
     },

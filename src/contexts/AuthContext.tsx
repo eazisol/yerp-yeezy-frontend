@@ -1,12 +1,12 @@
 // Authentication context for managing auth state
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { authService, User } from "@/services/auth";
+import { authService, User, AuthResponse } from "@/services/auth";
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<AuthResponse>;
   register: (email: string, password: string, fullName?: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -43,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string) => {
     const response = await authService.login({ email, password });
     setUser(response.user);
+    return response; // Return response so Login component can use it
   };
 
   const register = async (email: string, password: string, fullName?: string) => {

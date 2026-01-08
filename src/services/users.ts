@@ -8,6 +8,7 @@ export interface User {
   roles: string[];
   isActive: boolean;
   isPOApprover: boolean;
+  vendorId?: number | null; // Vendor ID (for vendor portal users)
   createdDate: string;
   editDate: string | null;
 }
@@ -30,6 +31,7 @@ export interface CreateUserRequest {
   fullName?: string;
   roleIds?: number[];
   isPOApprover?: boolean;
+  vendorId?: number | null; // Vendor ID (for vendor portal users)
 }
 
 // Update user request
@@ -40,6 +42,7 @@ export interface UpdateUserRequest {
   isActive?: boolean;
   roleIds?: number[];
   isPOApprover?: boolean;
+  vendorId?: number | null; // Vendor ID (for vendor portal users)
 }
 
 class UserService {

@@ -89,8 +89,10 @@ export default function Users() {
     queryKey: ["roles"],
     queryFn: () => roleService.getRoles(),
   });
-  // Ensure roles is always an array
-  const roles = Array.isArray(rolesData) ? rolesData : [];
+  // Ensure roles is always an array (excluding VENDOR role)
+  const roles = Array.isArray(rolesData) 
+    ? rolesData.filter((role) => role.code !== "VENDOR")
+    : [];
 
   const users = usersData?.data || [];
   const totalCount = usersData?.totalCount || 0;
@@ -641,11 +643,13 @@ export default function Users() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">No role</SelectItem>
-                      {roles.map((role) => (
-                        <SelectItem key={role.id} value={role.id.toString()}>
-                          {role.name}
-                        </SelectItem>
-                      ))}
+                      {roles
+                        .filter((role) => role.code !== "VENDOR") // Hide VENDOR role
+                        .map((role) => (
+                          <SelectItem key={role.id} value={role.id.toString()}>
+                            {role.name}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 ) : (

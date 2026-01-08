@@ -43,7 +43,16 @@ class ApiClient {
       const errorData = await response.json().catch(() => ({
         message: response.statusText || "An error occurred",
       }));
-      throw new Error(errorData.message || "An error occurred");
+      
+      // Create error object with full error data for better error handling
+      const error = new Error(errorData.message || "An error occurred");
+      // Attach full error data to error object for extraction
+      (error as any).response = {
+        data: errorData,
+        status: response.status,
+        statusText: response.statusText,
+      };
+      throw error;
     }
 
     // Handle empty responses
