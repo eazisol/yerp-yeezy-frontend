@@ -214,36 +214,34 @@ export default function Warehouses() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate email is required (for both create and update)
-    if (!formData.email || formData.email.trim() === "") {
-      toast({
-        title: "Validation Error",
-        description: "Email is required",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      toast({
-        title: "Validation Error",
-        description: "Please enter a valid email address",
-        variant: "destructive",
-      });
-      return;
+    // Validate email format only if provided (email is optional)
+    if (formData.email && formData.email.trim() !== "") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        toast({
+          title: "Validation Error",
+          description: "Please enter a valid email address",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     if (isEditMode && selectedWarehouse) {
       // Status will automatically sync IsActive in backend
       const updateData: UpdateWarehouseRequest = {
         ...formData,
-        email: formData.email, // Ensure email is included in update
+        // Include email only if provided (convert empty string to undefined)
+        email: formData.email && formData.email.trim() !== "" ? formData.email : undefined,
       };
       updateWarehouseMutation.mutate({ id: selectedWarehouse.warehouseId, data: updateData });
     } else {
-      createWarehouseMutation.mutate(formData);
+      // For create, convert empty string to undefined
+      const createData = {
+        ...formData,
+        email: formData.email && formData.email.trim() !== "" ? formData.email : undefined,
+      };
+      createWarehouseMutation.mutate(createData);
     }
   };
 
@@ -587,11 +585,10 @@ export default function Warehouses() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email <span className="text-destructive">*</span></Label>
+                <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
                   type="email"
-                  required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="e.g., warehouse@example.com"
