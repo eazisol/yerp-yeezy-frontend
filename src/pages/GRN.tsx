@@ -133,7 +133,6 @@ export default function GRN() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Goods Received Notes</h1>
-          <p className="text-muted-foreground mt-1">Track warehouse receipts and verify deliveries</p>
         </div>
         {canModify("GRN") && (
           <Button onClick={() => navigate("/grn/new")}>

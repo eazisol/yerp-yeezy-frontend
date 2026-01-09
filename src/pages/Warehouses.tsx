@@ -258,7 +258,6 @@ export default function Warehouses() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Warehouses</h1>
-          <p className="text-muted-foreground mt-1">Manage warehouse locations and information</p>
         </div>
         {canModify("WAREHOUSES") && (
           <Button onClick={handleAddWarehouse}>

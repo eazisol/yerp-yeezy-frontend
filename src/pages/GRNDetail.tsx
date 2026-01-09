@@ -124,16 +124,6 @@ export default function GRNDetail() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-foreground">{grn.grnNumber}</h1>
-            <p className="text-muted-foreground mt-1">
-              PO:{" "}
-              <Button
-                variant="link"
-                className="h-auto p-0 text-primary"
-                onClick={() => navigate(`/purchase-orders/${grn.purchaseOrderId}`)}
-              >
-                {grn.poNumber || `PO-${grn.purchaseOrderId}`}
-              </Button>
-            </p>
           </div>
         </div>
         <div className="flex items-center gap-3">

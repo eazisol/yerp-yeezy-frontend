@@ -252,9 +252,6 @@ export default function OrderDetail() {
             <h1 className="text-2xl font-bold text-foreground">
               Order {order.orderNumber || `#${order.orderId}`}
             </h1>
-            <p className="text-muted-foreground mt-1">
-              {order.customerName || order.customerEmail || "N/A"}
-            </p>
           </div>
         </div>
         <div className="flex items-center gap-3">

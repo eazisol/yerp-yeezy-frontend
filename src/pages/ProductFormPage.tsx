@@ -153,11 +153,6 @@ export default function ProductFormPage() {
           <h1 className="text-2xl font-bold text-foreground">
             {isEdit ? "Edit Product" : "Add New Product"}
           </h1>
-          <p className="text-muted-foreground mt-1">
-            {isEdit
-              ? "Update product information and inventory levels."
-              : "Fill in the details to create a new product."}
-          </p>
         </div>
       </div>
 

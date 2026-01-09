@@ -213,7 +213,6 @@ export default function POPreview() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-foreground">{po.poNumber}</h1>
-            <p className="text-muted-foreground mt-1">{po.vendorName || "N/A"}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">

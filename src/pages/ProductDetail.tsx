@@ -205,7 +205,6 @@ export default function ProductDetail() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-foreground">{productDetail.name}</h1>
-            <p className="text-muted-foreground mt-1">SKU: {productDetail.sku}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">

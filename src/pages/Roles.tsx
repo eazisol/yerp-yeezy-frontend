@@ -39,9 +39,6 @@ export default function Roles() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Roles Management</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage user roles and their permissions
-          </p>
         </div>
         {/* Add Role button - Hidden for now */}
         {/* <Button disabled>

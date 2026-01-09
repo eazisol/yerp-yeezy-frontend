@@ -289,7 +289,6 @@ export default function Users() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">User Management</h1>
-          <p className="text-muted-foreground mt-1">Manage users, roles, and permissions</p>
         </div>
         <div className="flex items-center gap-2">
           {canModify("USER_MANAGEMENT") && (

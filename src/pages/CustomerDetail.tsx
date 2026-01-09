@@ -100,7 +100,6 @@ export default function CustomerDetail() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-foreground">{getCustomerName()}</h1>
-            <p className="text-muted-foreground mt-1">{customer.email}</p>
           </div>
         </div>
         {customer.type && (

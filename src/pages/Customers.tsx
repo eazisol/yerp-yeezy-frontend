@@ -158,9 +158,6 @@ export default function Customers() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Customers</h1>
-          <p className="text-muted-foreground mt-1">
-            Auto-imported customers from Swell
-          </p>
         </div>
         <div className="flex gap-2">
           {canModify("CUSTOMERS") && (

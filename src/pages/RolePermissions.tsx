@@ -155,9 +155,6 @@ export default function RolePermissions() {
             <h1 className="text-2xl font-bold text-foreground">
               Manage Permissions
             </h1>
-            <p className="text-muted-foreground mt-1">
-              {role ? `Configure permissions for ${role.name}` : "Loading..."}
-            </p>
           </div>
         </div>
         <Button

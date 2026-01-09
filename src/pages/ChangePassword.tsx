@@ -99,7 +99,6 @@ export default function ChangePassword() {
                 </Button>
                 <div>
                     <h1 className="text-2xl font-bold text-foreground">Change Password</h1>
-                    <p className="text-muted-foreground mt-1">Update your account password</p>
                 </div>
             </div>
 

@@ -111,9 +111,6 @@ export default function Inventory() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Inventory</h1>
-          <p className="text-muted-foreground mt-1">
-            Stock levels, alerts, and reorder suggestions
-          </p>
         </div>
         {canRead("INVENTORY") && (
           <Button variant="outline">
