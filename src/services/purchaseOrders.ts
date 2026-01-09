@@ -36,11 +36,21 @@ export interface PurchaseOrder {
   isVendorAccepted: boolean;
   notes?: string;
   vendorNotes?: string;
+  deliveryTerm?: string;
+  remarks?: string;
+  specification?: string;
+  packing?: string;
+  others?: string;
+  miscAmount: number;
+  poDate?: string;
+  termId?: number;
+  termName?: string;
   totalValue: number;
   receivedValue: number;
   remainingBalance: number;
   paymentStatus?: string;
   expectedDeliveryDate?: string;
+  pdfPath?: string;
   createdDate: string;
   editDate?: string;
   createdBy?: number;
@@ -59,14 +69,48 @@ export interface PurchaseOrder {
     rejectedDate?: string;
     createdDate: string;
   }>;
+  payments?: POPayment[];
+  paymentsTotal: number;
+  paymentBalance: number;
+}
+
+export interface POPayment {
+  paymentId: number;
+  purchaseOrderId: number;
+  amount: number;
+  type: number; // 1 = Advance, 2 = Normal Payment
+  typeName: string; // "Advance" or "Normal Payment"
+  paymentDate: string;
+  notes?: string;
+  createdDate: string;
+  editDate?: string;
 }
 
 export interface CreatePurchaseOrderRequest {
+  poNumber?: string;
+  status?: string;
+  paymentStatus?: string;
   vendorId: number;
   warehouseId?: number;
   notes?: string;
+  deliveryTerm?: string;
+  remarks?: string;
+  specification?: string;
+  packing?: string;
+  others?: string;
+  miscAmount?: number;
+  poDate?: string;
+  termId?: number;
   expectedDeliveryDate?: string;
   lineItems: CreatePurchaseOrderLineItemRequest[];
+  payments?: CreatePOPaymentRequest[];
+}
+
+export interface CreatePOPaymentRequest {
+  amount: number;
+  type: number; // 1 = Advance, 2 = Normal Payment
+  paymentDate: string;
+  notes?: string;
 }
 
 export interface CreatePurchaseOrderLineItemRequest {
@@ -78,10 +122,22 @@ export interface CreatePurchaseOrderLineItemRequest {
 }
 
 export interface UpdatePurchaseOrderRequest {
+  poNumber?: string;
+  status?: string;
+  paymentStatus?: string;
   warehouseId?: number;
   notes?: string;
+  deliveryTerm?: string;
+  remarks?: string;
+  specification?: string;
+  packing?: string;
+  others?: string;
+  miscAmount?: number;
+  poDate?: string;
+  termId?: number;
   expectedDeliveryDate?: string;
   lineItems?: UpdatePurchaseOrderLineItemRequest[];
+  payments?: CreatePOPaymentRequest[];
 }
 
 export interface UpdatePurchaseOrderLineItemRequest {

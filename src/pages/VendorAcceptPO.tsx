@@ -177,28 +177,58 @@ export default function VendorAcceptPO() {
         {/* Header */}
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-3xl">{po.poNumber}</CardTitle>
-                <p className="text-muted-foreground mt-1">
+            <div className="flex items-start justify-between gap-6">
+              <div className="flex-1">
+                <div className="flex items-center gap-4 mb-2">
+                  <CardTitle className="text-3xl">{po.poNumber}</CardTitle>
+                  <Badge
+                    variant={
+                      success
+                        ? po.isVendorAccepted
+                          ? "default"
+                          : "destructive"
+                        : "outline"
+                    }
+                  >
+                    {success
+                      ? po.isVendorAccepted
+                        ? "Accepted"
+                        : "Rejected"
+                      : po.status}
+                  </Badge>
+                </div>
+                <p className="text-muted-foreground">
                   Vendor: {po.vendorName}
                 </p>
               </div>
-              <Badge
-                variant={
-                  success
-                    ? po.isVendorAccepted
-                      ? "default"
-                      : "destructive"
-                    : "outline"
-                }
-              >
-                {success
-                  ? po.isVendorAccepted
-                    ? "Accepted"
-                    : "Rejected"
-                  : po.status}
-              </Badge>
+              <div className="flex-1">
+                {/* <CardTitle className="text-lg mb-4">Order Details</CardTitle> */}
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Total Value</span>
+                    <span className="text-sm font-medium">
+                      ${po.totalValue.toLocaleString("en-US", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
+                  </div>
+                  {po.expectedDeliveryDate && (
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Expected Delivery</span>
+                      <span className="text-sm font-medium">
+                        {new Date(po.expectedDeliveryDate).toLocaleDateString()}
+                      </span>
+                    </div>
+                  )}
+                  {po.warehouseName && (
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Warehouse</span>
+                      <Badge variant="outline">{po.warehouseName}</Badge>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </CardHeader>
         </Card>
@@ -231,57 +261,6 @@ export default function VendorAcceptPO() {
           </Card>
         )}
 
-        {/* PO Details */}
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Order Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Value</span>
-                <span className="font-medium">
-                  ${po.totalValue.toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </span>
-              </div>
-              {po.expectedDeliveryDate && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Expected Delivery</span>
-                  <span className="font-medium">
-                    {new Date(po.expectedDeliveryDate).toLocaleDateString()}
-                  </span>
-                </div>
-              )}
-              {po.warehouseName && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Warehouse</span>
-                  <Badge variant="outline">{po.warehouseName}</Badge>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Status</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Status</span>
-                <Badge variant="outline">{po.status}</Badge>
-              </div>
-              {po.paymentStatus && (
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Payment Status</span>
-                  <Badge variant="outline">{po.paymentStatus}</Badge>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
 
         {/* Line Items */}
         <Card>
@@ -304,14 +283,14 @@ export default function VendorAcceptPO() {
                     <div className="flex-1 flex items-start gap-3">
                       {/* Variant Image Thumbnail */}
                       {firstVariantImage ? (
-                        <div className="flex-shrink-0">
+                        <div className="flex-shrink-0 relative">
                           <button
                             onClick={() => setImagePreview({ 
                               url: firstVariantImage, 
                               variantName: item.productVariantName || item.productName || "Item",
                               allImages: variantImages
                             })}
-                            className="flex-shrink-0 hover:opacity-80 transition-opacity"
+                            className="flex-shrink-0 hover:opacity-80 transition-opacity relative"
                             title="Click to preview images"
                           >
                             <img
@@ -322,12 +301,12 @@ export default function VendorAcceptPO() {
                                 (e.target as HTMLImageElement).style.display = 'none';
                               }}
                             />
+                            {variantImages.length > 1 && (
+                              <Badge variant="secondary" className="text-xs absolute -top-1 -right-1">
+                                +{variantImages.length - 1}
+                              </Badge>
+                            )}
                           </button>
-                          {variantImages.length > 1 && (
-                            <Badge variant="secondary" className="text-xs mt-1 block text-center">
-                              +{variantImages.length - 1}
-                            </Badge>
-                          )}
                         </div>
                       ) : (
                         <div className="flex-shrink-0 w-16 h-16 bg-muted rounded border flex items-center justify-center">
@@ -433,7 +412,9 @@ export default function VendorAcceptPO() {
               <CardTitle className="text-lg">Notes</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-muted-foreground">{po.notes}</p>
+              <div className="text-sm text-muted-foreground whitespace-pre-wrap break-words">
+                {po.notes}
+              </div>
             </CardContent>
           </Card>
         )}

@@ -59,7 +59,7 @@ export default function CustomerDetail() {
             Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Loading...</h1>
+            <h1 className="text-2xl font-bold text-foreground">Loading...</h1>
           </div>
         </div>
         <div className="flex items-center justify-center py-8">
@@ -78,7 +78,7 @@ export default function CustomerDetail() {
             Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Customer Not Found</h1>
+            <h1 className="text-2xl font-bold text-foreground">Customer Not Found</h1>
           </div>
         </div>
         <Card>
@@ -99,7 +99,7 @@ export default function CustomerDetail() {
             Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">{getCustomerName()}</h1>
+            <h1 className="text-2xl font-bold text-foreground">{getCustomerName()}</h1>
             <p className="text-muted-foreground mt-1">{customer.email}</p>
           </div>
         </div>

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, CheckCircle, XCircle, Loader2, DollarSign, Users } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Loader2, DollarSign, Users, Download } from "lucide-react";
 import {
   getPurchaseOrderById,
   PurchaseOrder,
@@ -12,6 +12,9 @@ import { approvePO, getPOApprovals, POApproval } from "@/services/poApprovals";
 import { useToast } from "@/hooks/use-toast";
 import POApprovalModal from "@/components/POApprovalModal";
 import { fileUploadService } from "@/services/fileUpload";
+import { generateAndSavePOPDF } from "@/utils/generatePOPDF";
+import { warehouseService, Warehouse } from "@/services/warehouses";
+import { vendorService, Vendor } from "@/services/vendors";
 import {
   Dialog,
   DialogContent,
@@ -29,6 +32,8 @@ export default function POPreview() {
   const [actionLoading, setActionLoading] = useState(false);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [imagePreview, setImagePreview] = useState<{ url: string; variantName: string; allImages: string[] } | null>(null);
+  const [warehouse, setWarehouse] = useState<Warehouse | null>(null);
+  const [vendor, setVendor] = useState<Vendor | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -53,6 +58,25 @@ export default function POPreview() {
         ]);
         setPO(poData);
         setApprovals(approvalsData);
+
+        // Fetch warehouse and vendor details for PDF
+        if (poData.warehouseId) {
+          try {
+            const warehouseData = await warehouseService.getWarehouseById(poData.warehouseId);
+            setWarehouse(warehouseData);
+          } catch (error) {
+            console.error("Error fetching warehouse:", error);
+          }
+        }
+
+        if (poData.vendorId) {
+          try {
+            const vendorData = await vendorService.getVendorById(poData.vendorId);
+            setVendor(vendorData);
+          } catch (error) {
+            console.error("Error fetching vendor:", error);
+          }
+        }
       } catch (error) {
         toast({
           title: "Error",
@@ -188,11 +212,56 @@ export default function POPreview() {
             Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">{po.poNumber}</h1>
+            <h1 className="text-2xl font-bold text-foreground">{po.poNumber}</h1>
             <p className="text-muted-foreground mt-1">{po.vendorName || "N/A"}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {/* Generate PDF Button - Always visible */}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              if (po) {
+                try {
+                  await generateAndSavePOPDF(
+                    po,
+                    warehouse ? {
+                      name: warehouse.name,
+                      address: warehouse.address || undefined,
+                      city: warehouse.city || undefined,
+                      state: warehouse.state || undefined,
+                      zipCode: warehouse.zipCode || undefined,
+                      country: warehouse.country || undefined,
+                      phone: warehouse.contactPhone1 || undefined,
+                      contactPerson: warehouse.contactPerson1 || undefined,
+                    } : undefined,
+                    vendor ? {
+                      name: vendor.name,
+                      address: vendor.address || undefined,
+                      city: vendor.city || undefined,
+                      state: vendor.state || undefined,
+                      zipCode: vendor.zipCode || undefined,
+                      country: vendor.country || undefined,
+                      phone: vendor.phone || undefined,
+                      contactPerson: vendor.contactPerson || vendor.attention || undefined,
+                    } : undefined,
+                    approvals // Pass approvals explicitly
+                  );
+                } catch (error) {
+                  console.error("Error generating PDF:", error);
+                  toast({
+                    title: "Error",
+                    description: "Failed to generate PDF. Please try again.",
+                    variant: "destructive",
+                  });
+                }
+              }
+            }}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Generate PDF
+          </Button>
           <Badge variant="default">{po.status}</Badge>
           {canApprove && (
             <Button
@@ -336,15 +405,15 @@ export default function POPreview() {
               <p className="text-2xl font-bold">{formatCurrency(po.totalValue)}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Received Value</p>
+              <p className="text-sm text-muted-foreground">Deposit</p>
               <p className="text-2xl font-bold text-green-600">
-                {formatCurrency(po.receivedValue)}
+                {formatCurrency(po.paymentsTotal ?? 0)}
               </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Remaining Balance</p>
               <p className="text-2xl font-bold text-yellow-600">
-                {formatCurrency(po.remainingBalance)}
+                {formatCurrency((po.totalValue ?? 0) - (po.paymentsTotal ?? 0))}
               </p>
             </div>
           </div>

@@ -123,7 +123,7 @@ export default function GRNDetail() {
             Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">{grn.grnNumber}</h1>
+            <h1 className="text-2xl font-bold text-foreground">{grn.grnNumber}</h1>
             <p className="text-muted-foreground mt-1">
               PO:{" "}
               <Button

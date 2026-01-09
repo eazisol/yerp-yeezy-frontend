@@ -3,8 +3,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, CheckCircle, XCircle, Loader2, Send, DollarSign, Pencil, FileCheck, Users } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Loader2, Send, DollarSign, Pencil, FileCheck, Users, Download } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   getPurchaseOrderById,
   submitForApproval,
@@ -13,9 +14,13 @@ import {
   updatePaymentStatus,
   PurchaseOrder,
 } from "@/services/purchaseOrders";
-import { getPOApprovals, POApproval } from "@/services/poApprovals";
+import { getPOApprovals, approvePO, POApproval } from "@/services/poApprovals";
+import POApprovalModal from "@/components/POApprovalModal";
 import { fileUploadService } from "@/services/fileUpload";
 import { useToast } from "@/hooks/use-toast";
+import { generateAndSavePOPDF } from "@/utils/generatePOPDF";
+import { warehouseService, Warehouse } from "@/services/warehouses";
+import { vendorService, Vendor } from "@/services/vendors";
 import {
   Select,
   SelectContent,
@@ -34,20 +39,28 @@ export default function PODetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { canModify } = usePermissions();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [po, setPO] = useState<PurchaseOrder | null>(null);
   const [approvals, setApprovals] = useState<POApproval[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [imagePreview, setImagePreview] = useState<{ url: string; variantName: string; allImages: string[] } | null>(null);
+  const [warehouse, setWarehouse] = useState<Warehouse | null>(null);
+  const [vendor, setVendor] = useState<Vendor | null>(null);
 
   useEffect(() => {
     const fetchPO = async () => {
-      if (!id) return;
+      if (!id) {
+        console.error("PODetail: No ID provided");
+        return;
+      }
 
       // Validate ID is a number
       const poId = parseInt(id);
       if (isNaN(poId)) {
+        console.error("PODetail: Invalid ID", id);
         toast({
           title: "Error",
           description: "Invalid purchase order ID",
@@ -59,19 +72,66 @@ export default function PODetail() {
 
       try {
         setLoading(true);
+        console.log("PODetail: Fetching PO with ID:", poId);
+        
         const [poData, approvalsData] = await Promise.all([
           getPurchaseOrderById(poId),
-          getPOApprovals(poId).catch(() => []), // If no approvals, return empty array
+          getPOApprovals(poId).catch((err) => {
+            console.warn("PODetail: Error fetching approvals:", err);
+            return [];
+          }),
         ]);
+        
+        console.log("PODetail: PO data received:", poData);
+        console.log("PODetail: Approvals data received:", approvalsData);
+        
+        if (!poData) {
+          console.error("PODetail: No PO data returned from API");
+          toast({
+            title: "Error",
+            description: "Purchase order not found",
+            variant: "destructive",
+          });
+          navigate("/purchase-orders");
+          return;
+        }
+        
         setPO(poData);
         setApprovals(approvalsData);
+        
+        // Also set approvals in PO object for PDF generation
+        if (poData) {
+          poData.approvals = approvalsData;
+        }
+
+        // Fetch warehouse and vendor details for PDF
+        if (poData.warehouseId) {
+          try {
+            const warehouseData = await warehouseService.getWarehouseById(poData.warehouseId);
+            setWarehouse(warehouseData);
+          } catch (error) {
+            console.error("PODetail: Error fetching warehouse:", error);
+          }
+        }
+
+        if (poData.vendorId) {
+          try {
+            const vendorData = await vendorService.getVendorById(poData.vendorId);
+            setVendor(vendorData);
+          } catch (error) {
+            console.error("PODetail: Error fetching vendor:", error);
+          }
+        }
       } catch (error) {
+        console.error("PODetail: Error fetching PO:", error);
+        const errorMessage = error instanceof Error ? error.message : "Failed to load purchase order";
         toast({
           title: "Error",
-          description: error instanceof Error ? error.message : "Failed to load purchase order",
+          description: errorMessage,
           variant: "destructive",
         });
-        navigate("/purchase-orders");
+        // Don't navigate away immediately - let user see the error
+        setLoading(false);
       } finally {
         setLoading(false);
       }
@@ -80,23 +140,36 @@ export default function PODetail() {
     fetchPO();
   }, [id, navigate, toast]);
 
-  const handleApprove = async (isApproved: boolean) => {
-    if (!id || !po) return;
+  const handleApprove = async (isApproved: boolean, comment?: string, signatureUrl?: string) => {
+    if (!id) return;
     try {
       setActionLoading(true);
-      const updated = await approvePurchaseOrder(parseInt(id), {
+      await approvePO(parseInt(id), {
         isApproved,
-        notes: "",
+        comment,
+        signatureUrl,
       });
-      setPO(updated);
+      
       toast({
         title: "Success",
         description: isApproved ? "PO approved successfully" : "PO rejected",
       });
+
+      // Refresh data
+      const [poData, approvalsData] = await Promise.all([
+        getPurchaseOrderById(parseInt(id)),
+        getPOApprovals(parseInt(id)),
+      ]);
+      setPO(poData);
+      setApprovals(approvalsData);
+      if (poData) {
+        poData.approvals = approvalsData;
+      }
+      setShowApprovalModal(false);
     } catch (error) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update PO",
+        description: error instanceof Error ? error.message : "Failed to update approval",
         variant: "destructive",
       });
     } finally {
@@ -184,6 +257,12 @@ export default function PODetail() {
     return new Date(dateString).toLocaleDateString();
   };
 
+  const formatStatus = (status: string | null | undefined): string => {
+    if (!status) return "";
+    // Add space before capital letters (except first one)
+    return status.replace(/([A-Z])/g, " $1").trim();
+  };
+
   // Parse variant attributes JSON
   const parseAttributes = (attributesJson: string | null | undefined) => {
     if (!attributesJson) return {};
@@ -249,23 +328,72 @@ export default function PODetail() {
   const canSubmitForApproval = po.status === "Draft" && canModify("PURCHASE_ORDERS");
   const canApprove = po.approvalStatus === "Pending" && canModify("PURCHASE_ORDERS");
   const canSendToVendor = po.status === "Approved" && !po.isSentToVendor && canModify("PURCHASE_ORDERS");
-  const canEdit = (po.status === "Draft" || po.status === "PendingApproval") && canModify("PURCHASE_ORDERS");
+  const canEdit = canModify("PURCHASE_ORDERS"); // Always allow edit if user has modify permissions
+  
+  // Check if current user has pending approval (only show button to assigned approver)
+  const userApproval = approvals.find((a) => a.status === "Pending" && a.userId === user?.id);
+  const canReviewAndApprove = !!userApproval && po.status === "PendingApproval";
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/purchase-orders")}>
+          {/* <Button variant="ghost" size="sm" onClick={() => navigate("/purchase-orders")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
-          </Button>
+          </Button> */}
           <div>
-            <h1 className="text-3xl font-bold text-foreground">{po.poNumber}</h1>
-            <p className="text-muted-foreground mt-1">{po.vendorName || "N/A"}</p>
+            <h1 className="text-2xl font-bold text-foreground">{po.poNumber}</h1>
+            {/* <p className="text-muted-foreground mt-1">{po.vendorName || "N/A"}</p> */}
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Badge variant="default">{po.status}</Badge>
+          {/* Generate PDF Button - Always visible */}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              if (po) {
+                try {
+                  await generateAndSavePOPDF(
+                    po,
+                    warehouse ? {
+                      name: warehouse.name,
+                      address: warehouse.address || undefined,
+                      city: warehouse.city || undefined,
+                      state: warehouse.state || undefined,
+                      zipCode: warehouse.zipCode || undefined,
+                      country: warehouse.country || undefined,
+                      phone: warehouse.contactPhone1 || undefined,
+                      contactPerson: warehouse.contactPerson1 || undefined,
+                    } : undefined,
+                    vendor ? {
+                      name: vendor.name,
+                      address: vendor.address || undefined,
+                      city: vendor.city || undefined,
+                      state: vendor.state || undefined,
+                      zipCode: vendor.zipCode || undefined,
+                      country: vendor.country || undefined,
+                      phone: vendor.phone || undefined,
+                      contactPerson: vendor.contactPerson || vendor.attention || undefined,
+                    } : undefined,
+                    approvals // Pass approvals explicitly
+                  );
+                } catch (error) {
+                  console.error("Error generating PDF:", error);
+                  toast({
+                    title: "Error",
+                    description: "Failed to generate PDF. Please try again.",
+                    variant: "destructive",
+                  });
+                }
+              }
+            }}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Generate PDF
+          </Button>
+          <Badge variant="default">{formatStatus(po.status)}</Badge>
           {canEdit && (
             <Button
               size="sm"
@@ -295,27 +423,16 @@ export default function PODetail() {
               )}
             </Button>
           )}
-          {/* {canApprove && (
-            <>
-              <Button
-                size="sm"
-                onClick={() => handleApprove(true)}
-                disabled={actionLoading}
-              >
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Approve
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                onClick={() => handleApprove(false)}
-                disabled={actionLoading}
-              >
-                <XCircle className="h-4 w-4 mr-2" />
-                Reject
-              </Button>
-            </>
-          )} */}
+          {canReviewAndApprove && (
+            <Button
+              size="sm"
+              onClick={() => setShowApprovalModal(true)}
+              disabled={actionLoading}
+            >
+              <CheckCircle className="h-4 w-4 mr-2" />
+              Review & Approve
+            </Button>
+          )}
           {canSendToVendor && (
             <Button size="sm" onClick={handleSendToVendor} disabled={actionLoading}>
               <Send className="h-4 w-4 mr-2" />
@@ -332,20 +449,20 @@ export default function PODetail() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Created</span>
-              <span className="font-medium text-foreground">{formatDate(po.createdDate)}</span>
+              <span className="text-sm text-muted-foreground">Created</span>
+              <span className="text-sm font-medium text-foreground">{formatDate(po.createdDate)}</span>
             </div>
             {po.expectedDeliveryDate && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Expected</span>
-                <span className="font-medium text-foreground">
+                <span className="text-sm text-muted-foreground">Expected</span>
+                <span className="text-sm font-medium text-foreground">
                   {formatDate(po.expectedDeliveryDate)}
                 </span>
               </div>
             )}
             {po.warehouseName && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Warehouse</span>
+                <span className="text-sm text-muted-foreground">Warehouse</span>
                 <Badge variant="outline">{po.warehouseName}</Badge>
               </div>
             )}
@@ -358,16 +475,16 @@ export default function PODetail() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Name</span>
-              <span className="font-medium text-foreground">{po.vendorName || "N/A"}</span>
+              <span className="text-sm text-muted-foreground">Name</span>
+              <span className="text-sm font-medium text-foreground">{po.vendorName || "N/A"}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Total Value</span>
-              <span className="font-medium text-foreground">{formatCurrency(po.totalValue)}</span>
+              <span className="text-sm text-muted-foreground">Total Value</span>
+              <span className="text-sm font-medium text-foreground">{formatCurrency(po.totalValue)}</span>
             </div>
             {po.isVendorAccepted !== undefined && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Vendor Accepted</span>
+                <span className="text-sm text-muted-foreground">Vendor Accepted</span>
                 <Badge variant={po.isVendorAccepted ? "default" : "destructive"}>
                   {po.isVendorAccepted ? "Yes" : "No"}
                 </Badge>
@@ -378,29 +495,42 @@ export default function PODetail() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Status & Payment</CardTitle>
+            <CardTitle className="text-lg">Status</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Total Items</span>
-              <span className="font-medium text-foreground">
+              <span className="text-sm text-muted-foreground">Total Items</span>
+              <span className="text-sm font-medium text-foreground">
                 {po.lineItems.reduce((acc, item) => acc + item.orderedQuantity, 0)}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Received</span>
-              <span className="font-medium text-green-600">
+              <span className="text-sm text-muted-foreground">Received</span>
+              <span className="text-sm font-medium text-green-600">
                 {po.lineItems.reduce((acc, item) => acc + item.receivedQuantity, 0)}
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Pending</span>
-              <span className="font-medium text-yellow-600">
+              <span className="text-sm text-muted-foreground">Pending</span>
+              <span className="text-sm font-medium text-yellow-600">
                 {po.lineItems.reduce((acc, item) => acc + item.pendingQuantity, 0)}
               </span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-muted-foreground">Payment Status</span>
+            
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Financial Summary */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Financial Summary
+            </CardTitle>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">Payment Status</span>
               {canModify("PURCHASE_ORDERS") ? (
                 <Select
                   value={po.paymentStatus || "Pending"}
@@ -417,37 +547,33 @@ export default function PODetail() {
                   </SelectContent>
                 </Select>
               ) : (
-                <Badge variant="outline">{po.paymentStatus || "Pending"}</Badge>
+                <Badge variant="outline">{formatStatus(po.paymentStatus || "Pending")}</Badge>
               )}
             </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Financial Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
-            Financial Summary
-          </CardTitle>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-4 gap-4">
             <div>
               <p className="text-sm text-muted-foreground">Total Value</p>
-              <p className="text-2xl font-bold">{formatCurrency(po.totalValue)}</p>
+              <p className="text-2xl font-bold">{formatCurrency(po.totalValue ?? 0)}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Received Value</p>
               <p className="text-2xl font-bold text-green-600">
-                {formatCurrency(po.receivedValue)}
+                {formatCurrency(po.receivedValue ?? 0)}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Deposit</p>
+              <p className="text-2xl font-bold text-blue-600">
+                {formatCurrency(po.paymentsTotal ?? 0)}
               </p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Remaining Balance</p>
               <p className="text-2xl font-bold text-yellow-600">
-                {formatCurrency(po.remainingBalance)}
+                {formatCurrency(po.remainingBalance ?? 0)}
               </p>
             </div>
           </div>
@@ -475,7 +601,7 @@ export default function PODetail() {
                   <div className="flex-1 flex items-start gap-3">
                     {/* Variant Image Thumbnail */}
                     {firstVariantImage ? (
-                      <div className="flex-shrink-0">
+                      <div className="flex-shrink-0 relative">
                         <button
                           onClick={() => setImagePreview({ 
                             url: firstVariantImage, 
@@ -495,7 +621,7 @@ export default function PODetail() {
                           />
                         </button>
                         {variantImages.length > 1 && (
-                          <Badge variant="secondary" className="text-xs mt-1 block text-center">
+                          <Badge variant="secondary" className="text-xs absolute -top-1 -right-1">
                             +{variantImages.length - 1}
                           </Badge>
                         )}
@@ -540,11 +666,6 @@ export default function PODetail() {
                     <p className="text-sm text-muted-foreground">Total</p>
                     <p className="font-medium">{formatCurrency(item.lineTotal)}</p>
                   </div>
-                  {item.pendingQuantity === 0 ? (
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                  ) : (
-                    <XCircle className="h-5 w-5 text-yellow-600" />
-                  )}
                 </div>
               </div>
             );
@@ -610,26 +731,26 @@ export default function PODetail() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="grid grid-cols-3 gap-4">
               {approvals.map((approval) => (
                 <div
                   key={approval.poApprovalId}
-                  className="flex items-center justify-between p-3 bg-secondary/50 rounded-lg"
+                  className="p-2 bg-secondary/50 rounded-lg"
                 >
-                  <div className="flex-1">
-                    <p className="font-medium">{approval.userName || approval.userEmail || "Unknown"}</p>
-                    {approval.comment && (
-                      <p className="text-sm text-muted-foreground mt-1">{approval.comment}</p>
-                    )}
-                    {approval.signatureUrl && (
+                  <p className="text-sm font-medium mb-1">{approval.userName || approval.userEmail || "Unknown"}</p>
+                  {approval.comment && (
+                    <p className="text-xs text-muted-foreground mb-1 line-clamp-2">{approval.comment}</p>
+                  )}
+                  {approval.signatureUrl && (
+                    <div className="mb-1 inline-block">
                       <img
                         src={fileUploadService.getSignatureUrl(approval.signatureUrl)}
                         alt="Signature"
-                        className="mt-2 max-w-xs h-auto border rounded"
+                        className="max-w-20 max-h-20 w-auto h-auto object-contain border rounded bg-white"
                       />
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
                     <Badge
                       variant={
                         approval.status === "Approved"
@@ -638,16 +759,17 @@ export default function PODetail() {
                           ? "destructive"
                           : "outline"
                       }
+                      className="text-xs"
                     >
-                      {approval.status}
+                      {formatStatus(approval.status)}
                     </Badge>
                     {approval.approvedDate && (
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-xs text-muted-foreground">
                         {formatDate(approval.approvedDate)}
                       </span>
                     )}
                     {approval.rejectedDate && (
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-xs text-muted-foreground">
                         {formatDate(approval.rejectedDate)}
                       </span>
                     )}
@@ -681,6 +803,14 @@ export default function PODetail() {
           </CardContent>
         </Card>
       )}
+
+      {/* Approval Modal */}
+      <POApprovalModal
+        open={showApprovalModal}
+        onOpenChange={setShowApprovalModal}
+        onApprove={handleApprove}
+        isApproving={actionLoading}
+      />
     </div>
   );
 }

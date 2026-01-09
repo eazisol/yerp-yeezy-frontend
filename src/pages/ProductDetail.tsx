@@ -26,6 +26,59 @@ import { productService } from "@/services/products";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
+// Component for variant image thumbnail with fallback to next image
+function VariantImageThumbnail({ 
+  images, 
+  variantName, 
+  onImageClick 
+}: { 
+  images: string[]; 
+  variantName: string; 
+  onImageClick: (url: string) => void;
+}) {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [imageError, setImageError] = useState(false);
+
+  if (images.length === 0 || imageError) {
+    return <span className="text-muted-foreground text-sm">No image</span>;
+  }
+
+  const currentImage = images[currentImageIndex];
+
+  const handleImageError = () => {
+    // Try next image if available
+    if (currentImageIndex < images.length - 1) {
+      setCurrentImageIndex(currentImageIndex + 1);
+    } else {
+      // All images failed
+      setImageError(true);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        onClick={() => onImageClick(currentImage)}
+        className="flex-shrink-0 hover:opacity-80 transition-opacity"
+        title="Click to preview images"
+      >
+        <img
+          src={currentImage}
+          alt={variantName || "Variant"}
+          className="w-10 h-10 object-cover rounded border"
+          onError={handleImageError}
+          onLoad={() => setImageError(false)}
+        />
+      </button>
+      {images.length > 1 && (
+        <Badge variant="secondary" className="text-xs">
+          +{images.length - 1}
+        </Badge>
+      )}
+    </div>
+  );
+}
+
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -151,7 +204,7 @@ export default function ProductDetail() {
             Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">{productDetail.name}</h1>
+            <h1 className="text-2xl font-bold text-foreground">{productDetail.name}</h1>
             <p className="text-muted-foreground mt-1">SKU: {productDetail.sku}</p>
           </div>
         </div>
@@ -373,36 +426,15 @@ export default function ProductDetail() {
                   {productDetail.variants.map((variant: any) => {
                     const attributes = parseAttributes(variant.attributes);
                     const images = getImagesFromAttributes(attributes);
-                    const firstImage = images.length > 0 ? images[0] : null;
                     
                     return (
                       <TableRow key={variant.variantId}>
                         <TableCell className="whitespace-nowrap pr-8">
-                          {firstImage ? (
-                            <div className="flex items-center gap-1">
-                              <button
-                                onClick={() => setImagePreview({ url: firstImage, variantName: variant.name || "Variant" })}
-                                className="flex-shrink-0 hover:opacity-80 transition-opacity"
-                                title="Click to preview images"
-                              >
-                                <img
-                                  src={firstImage}
-                                  alt={variant.name || "Variant"}
-                                  className="w-10 h-10 object-cover rounded border"
-                                  onError={(e) => {
-                                    (e.target as HTMLImageElement).style.display = 'none';
-                                  }}
-                                />
-                              </button>
-                              {images.length > 1 && (
-                                <Badge variant="secondary" className="text-xs">
-                                  +{images.length - 1}
-                                </Badge>
-                              )}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">No image</span>
-                          )}
+                          <VariantImageThumbnail
+                            images={images}
+                            variantName={variant.name || "Variant"}
+                            onImageClick={(url) => setImagePreview({ url, variantName: variant.name || "Variant" })}
+                          />
                         </TableCell>
                         <TableCell className="font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px] pl-4">
                           {variant.name || "N/A"}

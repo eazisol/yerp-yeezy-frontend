@@ -16,6 +16,21 @@ export default {
       fontFamily: {
         sans: ['IBM Plex Mono', 'monospace'],
       },
+      fontSize: {
+        'xs': '0.75rem',    // 12px (same, no previous)
+        'sm': '0.75rem',    // 12px (was 0.875rem)
+        'base': '0.875rem', // 14px (was 1rem)
+        'lg': '1rem',       // 16px (was 1.125rem)
+        'xl': '1.125rem',   // 18px (was 1.25rem)
+        '2xl': '1.25rem',   // 20px (was 1.5rem)
+        '3xl': '1.5rem',    // 24px (was 1.875rem)
+        '4xl': '1.875rem', // 30px (was 2.25rem)
+        '5xl': '2.25rem',   // 36px (was 3rem)
+        '6xl': '3rem',      // 48px (was 3.75rem)
+        '7xl': '3.75rem',   // 60px (was 4.5rem)
+        '8xl': '4.5rem',    // 72px (was 6rem)
+        '9xl': '6rem',      // 96px (was 8rem)
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
