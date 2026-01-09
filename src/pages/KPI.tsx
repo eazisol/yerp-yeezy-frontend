@@ -269,7 +269,6 @@ export default function KPI() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">KPI Dashboard</h1>
-          <p className="text-muted-foreground">Key Performance Indicators & Metrics</p>
         </div>
         <div className="flex gap-2">
           <select

@@ -146,7 +146,6 @@ export default function PurchaseOrders() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Purchase Orders</h1>
-          <p className="text-muted-foreground mt-1">Create and manage purchase orders</p>
         </div>
         {canModify("PURCHASE_ORDERS") && (
           <Button onClick={() => navigate("/purchase-orders/new")}>
