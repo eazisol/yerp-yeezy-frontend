@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import { PurchaseOrder } from "@/services/purchaseOrders";
 import { fileUploadService } from "@/services/fileUpload";
+import { loadIBMPlexMonoFont, getFontFamily } from "./fontLoader";
 
 // Helper function to format date
 const formatDate = (dateString?: string): string => {
@@ -191,13 +192,17 @@ export const generatePOPDF = async (
   const contentWidth = pageWidth - 2 * margin;
   let yPos = margin;
 
+  // Load IBM Plex Mono font (matches application font)
+  await loadIBMPlexMonoFont(doc);
+  const fontFamily = getFontFamily(); // Returns 'IBMPlexMono' or 'courier' as fallback
+
   // Set font
-  doc.setFont("helvetica");
+  doc.setFont(fontFamily);
 
   // Header Section
   // Title: PURCHASE ORDER (small, left) and YEEZY (right, parallel)
   doc.setFontSize(14); // Smaller font size
-  doc.setFont("helvetica", "bold");
+  doc.setFont(fontFamily, "bold");
   doc.text("PURCHASE ORDER", margin, yPos + 10);
 
   // YEEZY on right side, parallel to PURCHASE ORDER
@@ -215,11 +220,11 @@ export const generatePOPDF = async (
 
   // Column 1: SHIP TO (Warehouse)
   doc.setFontSize(10); // Reduced from 12
-  doc.setFont("helvetica", "bold");
+  doc.setFont(fontFamily, "bold");
   doc.text("SHIP TO:", col1X, yPos);
 
   doc.setFontSize(9); // Reduced from 10
-  doc.setFont("helvetica", "normal");
+  doc.setFont(fontFamily, "normal");
   const startY = yPos + 5; // Reduced spacing from 6
   let shipToY = startY;
 
@@ -260,11 +265,11 @@ export const generatePOPDF = async (
 
   // Column 2: VENDOR
   doc.setFontSize(10); // Reduced from 12
-  doc.setFont("helvetica", "bold");
+  doc.setFont(fontFamily, "bold");
   doc.text("VENDOR:", col2X, yPos);
 
   doc.setFontSize(9); // Reduced from 10
-  doc.setFont("helvetica", "normal");
+  doc.setFont(fontFamily, "normal");
   let vendorY = startY;
 
   if (vendorAddress) {
@@ -304,15 +309,15 @@ export const generatePOPDF = async (
 
   // Column 3: PO DETAILS (DATE, PO NUMBER, PO TOTAL)
   doc.setFontSize(10); // Reduced from 12
-  doc.setFont("helvetica", "bold");
+  doc.setFont(fontFamily, "bold");
   doc.text("PO DETAILS:", col3X, yPos);
 
   doc.setFontSize(9); // Reduced from 10
-  doc.setFont("helvetica", "normal");
+  doc.setFont(fontFamily, "normal");
   let poDetailsY = startY;
   
   // Calculate maximum label width for alignment with reduced spacing
-  doc.setFont("helvetica", "bold");
+  doc.setFont(fontFamily, "bold");
   const labelSpacing = 3; // Reduced spacing between label and value
   const maxLabelWidth = Math.max(
     doc.getTextWidth("DATE:"),
@@ -322,24 +327,24 @@ export const generatePOPDF = async (
   const valueX = col3X + maxLabelWidth + labelSpacing; // Aligned value position
 
   // DATE
-  doc.setFont("helvetica", "bold");
+  doc.setFont(fontFamily, "bold");
   doc.text("DATE:", col3X, poDetailsY);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(fontFamily, "normal");
   const dateText = formatDate(po.poDate) || formatDate(po.createdDate);
   doc.text(dateText, valueX, poDetailsY);
   poDetailsY += 4; // Reduced from 5
 
   // PO NUMBER
-  doc.setFont("helvetica", "bold");
+  doc.setFont(fontFamily, "bold");
   doc.text("PO NUMBER:", col3X, poDetailsY);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(fontFamily, "normal");
   doc.text(po.poNumber, valueX, poDetailsY);
   poDetailsY += 4; // Reduced from 5
 
   // PO TOTAL (with dollar sign)
-  doc.setFont("helvetica", "bold");
+  doc.setFont(fontFamily, "bold");
   doc.text("PO TOTAL:", col3X, poDetailsY);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(fontFamily, "normal");
   doc.text(`$${formatCurrency(po.totalValue)}`, valueX, poDetailsY);
 
   // Calculate max height of all three sections for proper spacing
@@ -360,7 +365,7 @@ export const generatePOPDF = async (
     let tableX = margin;
 
     doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
+    doc.setFont(fontFamily, "bold");
     doc.setFillColor(0, 0, 0);
     // Header bar: 8mm height, starting at tableStartY
     const headerY = tableStartY - headerHeight;
@@ -385,7 +390,7 @@ export const generatePOPDF = async (
     });
 
     doc.setTextColor(0, 0, 0);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(fontFamily, "normal");
 
     // Table Rows - start after header with proper spacing
     // Fix: Start rows after header ends (tableStartY) with additional spacing to prevent overlap
@@ -485,7 +490,7 @@ export const generatePOPDF = async (
   const financialTableX = pageWidth - margin - financialTableWidth;
 
   doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(fontFamily, "bold");
 
   // Table borders
   doc.rect(financialTableX, financialY, financialTableWidth, 8, "S");
@@ -494,19 +499,19 @@ export const generatePOPDF = async (
 
   // TOTAL row
   doc.text("TOTAL", financialTableX + 2, financialY + 6);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(fontFamily, "normal");
   doc.text(`$${formatCurrency(po.totalValue)}`, financialTableX + 35, financialY + 6);
 
   // DEPOSIT row
-  doc.setFont("helvetica", "bold");
+  doc.setFont(fontFamily, "bold");
   doc.text("DEPOSIT", financialTableX + 2, financialY + 14);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(fontFamily, "normal");
   doc.text(`$${formatCurrency(deposit)}`, financialTableX + 35, financialY + 14);
 
   // BALANCE row
-  doc.setFont("helvetica", "bold");
+  doc.setFont(fontFamily, "bold");
   doc.text("BALANCE", financialTableX + 2, financialY + 22);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(fontFamily, "normal");
   doc.text(`$${formatCurrency(balance)}`, financialTableX + 35, financialY + 22);
 
   yPos = financialY + 35;
@@ -518,7 +523,7 @@ export const generatePOPDF = async (
   }
 
   doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(fontFamily, "normal");
   doc.text("Approved PO will have 2 approved Signatures Below", margin, yPos);
   yPos += 5;
   doc.text("PO MUST BE EMAILED TO AP@YEEZY.COM AND HUSSEIN@YEEZY.COM PRIOR TO SUPPLIER", margin, yPos);
@@ -529,7 +534,7 @@ export const generatePOPDF = async (
 
   // Approval Signatures Section
   doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
+  doc.setFont(fontFamily, "bold");
   doc.setFillColor(0, 0, 0);
   doc.rect(margin, yPos, contentWidth, 8, "F");
   doc.setTextColor(255, 255, 255);
@@ -637,7 +642,7 @@ export const generatePOPDF = async (
     
     // Name and role
     doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(fontFamily, "normal");
     if (firstApproval.userName) {
       doc.text(firstApproval.userName, firstSignatureX, signatureY + 20);
     }
@@ -646,7 +651,7 @@ export const generatePOPDF = async (
     // Placeholder - just line, no X
     doc.line(firstSignatureX, signatureY + 15, firstSignatureX + 50, signatureY + 15);
     doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(fontFamily, "normal");
     doc.text("CFO", firstSignatureX, signatureY + 25);
   }
 
@@ -670,14 +675,14 @@ export const generatePOPDF = async (
     
     // Name and role
     doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(fontFamily, "normal");
     doc.text("SECOND APPROVAL", secondSignatureX, signatureY + 20);
     doc.text("DIRECTOR", secondSignatureX, signatureY + 25);
   } else {
     // Placeholder - just line, no X
     doc.line(secondSignatureX, signatureY + 15, secondSignatureX + 50, signatureY + 15);
     doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
+    doc.setFont(fontFamily, "normal");
     doc.text("SECOND APPROVAL", secondSignatureX, signatureY + 20);
     doc.text("DIRECTOR", secondSignatureX, signatureY + 25);
   }
@@ -688,7 +693,7 @@ export const generatePOPDF = async (
   doc.rect(margin, footerY, contentWidth, 8, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
+  doc.setFont(fontFamily, "normal");
 
   const footerText = [
     `ORDER PLACED BY: ${po.createdByName || "YEEZY"}`,
@@ -729,14 +734,14 @@ export const generatePOPDF = async (
 
       // Section Title
       doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
+      doc.setFont(fontFamily, "bold");
       doc.setTextColor(0, 0, 0); // Ensure black text color
       doc.text(title, margin, currentY);
       currentY += 8;
 
       // Section Content
       doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
+      doc.setFont(fontFamily, "normal");
       doc.setTextColor(0, 0, 0); // Ensure black text color
       
       // Split content by newlines first, then by width
