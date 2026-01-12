@@ -213,10 +213,11 @@ export const generatePOPDF = async (
   yPos += 20; // Reduced spacing
 
   // Three Column Layout: SHIP TO, VENDOR, and PO DETAILS (all in one row)
-  const colWidth = contentWidth / 3;
+  const columnGap = 3; // Gap between columns to prevent overlap (reduced from 5)
+  const colWidth = (contentWidth - (2 * columnGap)) / 3; // Reduced width with gaps
   const col1X = margin; // SHIP TO
-  const col2X = margin + colWidth; // VENDOR
-  const col3X = margin + 2 * colWidth; // PO DETAILS
+  const col2X = margin + colWidth + columnGap; // VENDOR
+  const col3X = margin + 2 * colWidth + 2 * columnGap; // PO DETAILS
 
   // Column 1: SHIP TO (Warehouse)
   doc.setFontSize(10); // Reduced from 12
@@ -230,12 +231,16 @@ export const generatePOPDF = async (
 
   if (warehouseAddress) {
     if (warehouseAddress.name) {
-      doc.text(warehouseAddress.name, col1X, shipToY);
-      shipToY += 4; // Reduced from 5
+      // Wrap long names to prevent overlap
+      const nameLines = splitText(warehouseAddress.name, colWidth - 3, doc);
+      nameLines.forEach((line) => {
+        doc.text(line, col1X, shipToY);
+        shipToY += 4; // Reduced from 5
+      });
     }
     if (warehouseAddress.address) {
       // Wrap long addresses
-      const addressLines = splitText(warehouseAddress.address, colWidth - 5, doc);
+      const addressLines = splitText(warehouseAddress.address, colWidth - 3, doc);
       addressLines.forEach((line) => {
         doc.text(line, col1X, shipToY);
         shipToY += 4; // Reduced from 5
@@ -249,18 +254,36 @@ export const generatePOPDF = async (
       .filter(Boolean)
       .join(", ");
     if (cityStateZip) {
-      doc.text(cityStateZip, col1X, shipToY);
-      shipToY += 4; // Reduced from 5
+      // Wrap long city/state/zip to prevent overlap
+      const cityLines = splitText(cityStateZip, colWidth - 3, doc);
+      cityLines.forEach((line) => {
+        doc.text(line, col1X, shipToY);
+        shipToY += 4; // Reduced from 5
+      });
     }
     if (warehouseAddress.phone) {
-      doc.text(warehouseAddress.phone, col1X, shipToY);
-      shipToY += 4; // Reduced from 5
+      // Wrap long phone numbers to prevent overlap
+      const phoneLines = splitText(warehouseAddress.phone, colWidth - 3, doc);
+      phoneLines.forEach((line) => {
+        doc.text(line, col1X, shipToY);
+        shipToY += 4; // Reduced from 5
+      });
     }
     if (warehouseAddress.contactPerson) {
-      doc.text(`ATTN: ${warehouseAddress.contactPerson}`, col1X, shipToY);
+      // Wrap contact person to prevent overlap
+      const contactLines = splitText(`ATTN: ${warehouseAddress.contactPerson}`, colWidth - 3, doc);
+      contactLines.forEach((line) => {
+        doc.text(line, col1X, shipToY);
+        shipToY += 4; // Reduced from 5
+      });
     }
   } else if (po.warehouseName) {
-    doc.text(po.warehouseName, col1X, shipToY);
+    // Wrap warehouse name to prevent overlap
+    const warehouseNameLines = splitText(po.warehouseName, colWidth - 3, doc);
+    warehouseNameLines.forEach((line) => {
+      doc.text(line, col1X, shipToY);
+      shipToY += 4; // Reduced from 5
+    });
   }
 
   // Column 2: VENDOR
@@ -274,12 +297,16 @@ export const generatePOPDF = async (
 
   if (vendorAddress) {
     if (vendorAddress.name) {
-      doc.text(vendorAddress.name, col2X, vendorY);
-      vendorY += 4; // Reduced from 5
+      // Wrap long names to prevent overlap
+      const nameLines = splitText(vendorAddress.name, colWidth - 3, doc);
+      nameLines.forEach((line) => {
+        doc.text(line, col2X, vendorY);
+        vendorY += 4; // Reduced from 5
+      });
     }
     if (vendorAddress.address) {
       // Wrap long addresses
-      const addressLines = splitText(vendorAddress.address, colWidth - 5, doc);
+      const addressLines = splitText(vendorAddress.address, colWidth - 3, doc);
       addressLines.forEach((line) => {
         doc.text(line, col2X, vendorY);
         vendorY += 4; // Reduced from 5
@@ -293,18 +320,36 @@ export const generatePOPDF = async (
       .filter(Boolean)
       .join(",");
     if (cityStateZip) {
-      doc.text(cityStateZip, col2X, vendorY);
-      vendorY += 4; // Reduced from 5
+      // Wrap long city/state/zip to prevent overlap
+      const cityLines = splitText(cityStateZip, colWidth - 3, doc);
+      cityLines.forEach((line) => {
+        doc.text(line, col2X, vendorY);
+        vendorY += 4; // Reduced from 5
+      });
     }
     if (vendorAddress.phone) {
-      doc.text(vendorAddress.phone, col2X, vendorY);
-      vendorY += 4; // Reduced from 5
+      // Wrap long phone numbers to prevent overlap
+      const phoneLines = splitText(vendorAddress.phone, colWidth - 3, doc);
+      phoneLines.forEach((line) => {
+        doc.text(line, col2X, vendorY);
+        vendorY += 4; // Reduced from 5
+      });
     }
     if (vendorAddress.contactPerson) {
-      doc.text(`ATTN: ${vendorAddress.contactPerson}`, col2X, vendorY);
+      // Wrap contact person to prevent overlap
+      const contactLines = splitText(`ATTN: ${vendorAddress.contactPerson}`, colWidth - 3, doc);
+      contactLines.forEach((line) => {
+        doc.text(line, col2X, vendorY);
+        vendorY += 4; // Reduced from 5
+      });
     }
   } else if (po.vendorName) {
-    doc.text(po.vendorName, col2X, vendorY);
+    // Wrap vendor name to prevent overlap
+    const vendorNameLines = splitText(po.vendorName, colWidth - 3, doc);
+    vendorNameLines.forEach((line) => {
+      doc.text(line, col2X, vendorY);
+      vendorY += 4; // Reduced from 5
+    });
   }
 
   // Column 3: PO DETAILS (DATE, PO NUMBER, PO TOTAL)
@@ -349,7 +394,7 @@ export const generatePOPDF = async (
 
   // Calculate max height of all three sections for proper spacing
   const maxSectionHeight = Math.max(shipToY - yPos, vendorY - yPos, poDetailsY - yPos);
-  yPos += maxSectionHeight + 10; // Spacing after all sections
+  yPos += maxSectionHeight + 15; // Spacing after all sections
 
   // Line Items Table
   if (po.lineItems && po.lineItems.length > 0) {
@@ -375,18 +420,28 @@ export const generatePOPDF = async (
     const headers = ["IMAGE", "ITEM", "DESCRIPTION", "COLOR", "UNIT PRICE", "QUANTITY", "TOTAL"];
     // Calculate text Y position to center vertically in header
     const headerTextY = headerY + (headerHeight / 2) + 2; // Center of header bar + small offset for font baseline
+    
+    // Draw header text and vertical borders
+    let headerX = margin;
     headers.forEach((header, index) => {
       const cellWidth = colWidths[index];
       // Center align ITEM header (index 1), left align others
       if (index === 1) {
         const textWidth = doc.getTextWidth(header);
-        const textX = tableX + (cellWidth - textWidth) / 2;
+        const textX = headerX + (cellWidth - textWidth) / 2;
         doc.text(header, textX, headerTextY);
       } else {
         // Left align other headers with padding
-        doc.text(header, tableX + 3, headerTextY);
+        doc.text(header, headerX + 3, headerTextY);
       }
-      tableX += cellWidth;
+      
+      // Draw vertical border after each column (except last)
+      if (index < headers.length - 1) {
+        doc.setDrawColor(0, 0, 0);
+        doc.line(headerX + cellWidth, headerY, headerX + cellWidth, headerY + headerHeight);
+      }
+      
+      headerX += cellWidth;
     });
 
     doc.setTextColor(0, 0, 0);
@@ -394,7 +449,17 @@ export const generatePOPDF = async (
 
     // Table Rows - start after header with proper spacing
     // Fix: Start rows after header ends (tableStartY) with additional spacing to prevent overlap
-    let currentY = tableStartY + headerHeight + 2; // Start 2mm after header ends (was tableStartY + 2, causing overlap)
+    let currentY = tableStartY + headerHeight - 2; // Start 2mm after header ends (was tableStartY + 2, causing overlap)
+    
+    // Draw outer table border (will be completed after all rows)
+    doc.setDrawColor(0, 0, 0);
+    const tableTopY = headerY;
+    
+    // Draw header bottom border (top border of table body)
+    doc.line(margin, tableStartY, margin + contentWidth, tableStartY);
+    
+    // Note: Left and right borders will be drawn after all rows to get correct bottom position
+    
     for (let index = 0; index < po.lineItems.length; index++) {
       const item = po.lineItems[index];
       
@@ -402,6 +467,24 @@ export const generatePOPDF = async (
         // New page
         doc.addPage();
         currentY = margin + 10;
+        // Redraw table borders on new page
+        doc.setDrawColor(0, 0, 0);
+        const newPageTableTopY = currentY - rowHeight;
+        const remainingRows = po.lineItems.length - index;
+        const newPageTableBottomY = newPageTableTopY + (remainingRows * rowHeight);
+        // Draw borders for new page
+        doc.line(margin, newPageTableTopY, margin, newPageTableBottomY); // Left border
+        doc.line(margin + contentWidth, newPageTableTopY, margin + contentWidth, newPageTableBottomY); // Right border
+        doc.line(margin, newPageTableTopY, margin + contentWidth, newPageTableTopY); // Top border
+        
+        // Draw vertical column borders for header on new page
+        let newPageHeaderX = margin;
+        colWidths.forEach((cellWidth, colIndex) => {
+          if (colIndex < colWidths.length - 1) {
+            doc.line(newPageHeaderX + cellWidth, newPageTableTopY, newPageHeaderX + cellWidth, newPageTableTopY + rowHeight);
+          }
+          newPageHeaderX += cellWidth;
+        });
       }
 
       tableX = margin;
@@ -433,6 +516,10 @@ export const generatePOPDF = async (
         doc.rect(margin, currentY - 6, contentWidth, rowHeight, "F");
       }
 
+      // Draw vertical border after image column
+      doc.setDrawColor(0, 0, 0);
+      doc.line(margin + colWidths[0], currentY - 6, margin + colWidths[0], currentY - 6 + rowHeight);
+
       // Draw image in first column
       const imageColWidth = colWidths[0];
       const imageSize = 18; // Image size in mm (increased from 10)
@@ -456,7 +543,7 @@ export const generatePOPDF = async (
       
       tableX += colWidths[0]; // Move past image column
 
-      // Draw other columns
+      // Draw other columns with vertical borders
       rowData.forEach((data, colIndex) => {
         doc.setFontSize(9);
         const cellWidth = colWidths[colIndex + 1]; // +1 because we already handled image column
@@ -471,11 +558,32 @@ export const generatePOPDF = async (
           doc.text(data, tableX + 3, currentY);
         }
         
+        // Draw vertical border after each column (except last)
+        if (colIndex < rowData.length - 1) {
+          doc.setDrawColor(0, 0, 0);
+          doc.line(tableX + cellWidth, currentY - 6, tableX + cellWidth, currentY - 6 + rowHeight);
+        }
+        
         tableX += cellWidth;
       });
 
+      // Draw horizontal border after each row (except last row - outer border will cover it)
+      if (index < po.lineItems.length - 1) {
+        doc.setDrawColor(0, 0, 0);
+        const rowBottomY = currentY - 6 + rowHeight;
+        doc.line(margin, rowBottomY, margin + contentWidth, rowBottomY);
+      }
+
       currentY += rowHeight;
     }
+
+    // Draw outer table borders (left, right, and bottom) after all rows are drawn
+    doc.setDrawColor(0, 0, 0);
+    // Last row's bottom edge: currentY has been incremented, so last row bottom is at currentY - 6
+    const finalTableBottomY = currentY - 6;
+    doc.line(margin, tableTopY, margin, finalTableBottomY); // Left border
+    doc.line(margin + contentWidth, tableTopY, margin + contentWidth, finalTableBottomY); // Right border
+    doc.line(margin, finalTableBottomY, margin + contentWidth, finalTableBottomY); // Bottom border
 
     yPos = currentY + 10;
   }
@@ -516,21 +624,7 @@ export const generatePOPDF = async (
 
   yPos = financialY + 35;
 
-  // Instructions Section
-  if (yPos > pageHeight - 60) {
-    doc.addPage();
-    yPos = margin;
-  }
-
-  doc.setFontSize(9);
-  doc.setFont(fontFamily, "normal");
-  doc.text("Approved PO will have 2 approved Signatures Below", margin, yPos);
-  yPos += 5;
-  doc.text("PO MUST BE EMAILED TO AP@YEEZY.COM AND HUSSEIN@YEEZY.COM PRIOR TO SUPPLIER", margin, yPos);
-  yPos += 5;
-  doc.text("If you have any questions concerning this purchase order contact drtoin@yeezy.com", margin, yPos);
-
-  yPos += 15;
+  
 
   // Approval Signatures Section
   doc.setFontSize(12);
@@ -542,7 +636,21 @@ export const generatePOPDF = async (
 
   doc.setTextColor(0, 0, 0);
   yPos += 15;
+// Instructions Section
+if (yPos > pageHeight - 60) {
+  doc.addPage();
+  yPos = margin;
+}
 
+doc.setFontSize(9);
+doc.setFont(fontFamily, "normal");
+doc.text("Approved PO will have 2 approved Signatures Below", margin, yPos);
+yPos += 5;
+doc.text("PO MUST BE EMAILED TO AP@YEEZY.COM AND HUSSEIN@YEEZY.COM PRIOR TO SUPPLIER", margin, yPos);
+yPos += 5;
+doc.text("If you have any questions concerning this purchase order contact drtoin@yeezy.com", margin, yPos);
+
+yPos += 15;
   // Helper function to add signature image
   const addSignatureImage = async (signatureUrl: string, x: number, y: number, width: number = 40, height: number = 15) => {
     try {
@@ -644,15 +752,15 @@ export const generatePOPDF = async (
     doc.setFontSize(10);
     doc.setFont(fontFamily, "normal");
     if (firstApproval.userName) {
-      doc.text(firstApproval.userName, firstSignatureX, signatureY + 20);
+      doc.text(firstApproval.userName, firstSignatureX, signatureY + 18); // Increased spacing slightly
     }
-    doc.text("CFO", firstSignatureX, signatureY + 25);
+    doc.text("CFO", firstSignatureX, signatureY + 22); // Increased spacing slightly
   } else {
     // Placeholder - just line, no X
     doc.line(firstSignatureX, signatureY + 15, firstSignatureX + 50, signatureY + 15);
     doc.setFontSize(10);
     doc.setFont(fontFamily, "normal");
-    doc.text("CFO", firstSignatureX, signatureY + 25);
+    doc.text("CFO", firstSignatureX, signatureY + 22); // Increased spacing slightly
   }
 
   // Second Approval (Right Side)
@@ -676,15 +784,13 @@ export const generatePOPDF = async (
     // Name and role
     doc.setFontSize(10);
     doc.setFont(fontFamily, "normal");
-    doc.text("SECOND APPROVAL", secondSignatureX, signatureY + 20);
-    doc.text("DIRECTOR", secondSignatureX, signatureY + 25);
+    doc.text("DIRECTOR", secondSignatureX, signatureY + 22); // Increased spacing slightly, removed SECOND APPROVAL text
   } else {
     // Placeholder - just line, no X
     doc.line(secondSignatureX, signatureY + 15, secondSignatureX + 50, signatureY + 15);
     doc.setFontSize(10);
     doc.setFont(fontFamily, "normal");
-    doc.text("SECOND APPROVAL", secondSignatureX, signatureY + 20);
-    doc.text("DIRECTOR", secondSignatureX, signatureY + 25);
+    doc.text("DIRECTOR", secondSignatureX, signatureY + 22); // Removed SECOND APPROVAL text, increased spacing slightly
   }
 
   // Footer Bar

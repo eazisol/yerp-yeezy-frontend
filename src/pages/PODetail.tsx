@@ -573,7 +573,7 @@ export default function PODetail() {
             <div>
               <p className="text-sm text-muted-foreground">Remaining Balance</p>
               <p className="text-2xl font-bold text-yellow-600">
-                {formatCurrency(po.remainingBalance ?? 0)}
+                {formatCurrency((po.totalValue ?? 0) - (po.paymentsTotal ?? 0))}
               </p>
             </div>
           </div>
