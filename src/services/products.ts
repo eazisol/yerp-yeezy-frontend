@@ -202,6 +202,7 @@ export interface ProductVariant {
   variantSlug: string | null;
   availableStock: number;
   vendors: VariantVendor[];
+  warehouseInventories?: WarehouseInventory[]; // Variant-level warehouse inventory
 }
 
 // Variant Vendor interface
@@ -255,6 +256,7 @@ export interface Inventory {
 // Warehouse Inventory interface
 export interface WarehouseInventory {
   warehouseInventoryId: number;
+  productVariantId?: number | null; // Null for product-level, set for variant-level
   warehouseCode: string;
   availableStock: number;
   reservedStock: number;

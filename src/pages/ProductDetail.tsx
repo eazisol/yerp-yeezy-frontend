@@ -349,7 +349,7 @@ export default function ProductDetail() {
             <CardTitle className="text-lg">Inventory Levels</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {productDetail.inventory && (
+            {/* {productDetail.inventory ? (
               <>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Total Stock</span>
@@ -376,16 +376,77 @@ export default function ProductDetail() {
                   </span>
                 </div>
               </>
-            )}
-            {productDetail.warehouseInventories && productDetail.warehouseInventories.length > 0 && (
-              <div className="border-t pt-4 mt-4">
-                <h4 className="font-semibold mb-3">Warehouse Inventory</h4>
-                {productDetail.warehouseInventories.map((wi: any) => (
+            ) : (
+              <p className="text-sm text-muted-foreground">No inventory data available</p>
+            )} */}
+            {/* <div className="border-t pt-4 mt-4">
+              <h4 className="font-semibold mb-3">Warehouse Inventory (Product Level)</h4>
+              {productDetail.warehouseInventories && productDetail.warehouseInventories.length > 0 ? (
+                productDetail.warehouseInventories.map((wi: any) => (
                   <div key={wi.warehouseInventoryId} className="flex justify-between mb-2">
                     <span className="text-muted-foreground">{wi.warehouseCode}</span>
                     <span className="font-medium text-foreground">{wi.availableStock} units</span>
                   </div>
-                ))}
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground">No product-level warehouse inventory</p>
+              )}
+            </div> */}
+
+            {/* Variant-level Warehouse Inventory Summary */}
+            {productDetail.variants && productDetail.variants.length > 0 && (
+              <div className="border-t pt-4 mt-4">
+                <h4 className="font-semibold mb-3">Warehouse Inventory (Variant Level)</h4>
+                {(() => {
+                  // Collect all variant warehouse inventories
+                  const variantWarehouseMap = new Map<string, { warehouseCode: string; totalStock: number; variants: Array<{ variantName: string; stock: number }> }>();
+                  
+                  productDetail.variants.forEach((variant: any) => {
+                    if (variant.warehouseInventories && Array.isArray(variant.warehouseInventories) && variant.warehouseInventories.length > 0) {
+                      variant.warehouseInventories.forEach((wi: any) => {
+                        const key = wi.warehouseCode || 'Unknown';
+                        if (!variantWarehouseMap.has(key)) {
+                          variantWarehouseMap.set(key, {
+                            warehouseCode: key,
+                            totalStock: 0,
+                            variants: []
+                          });
+                        }
+                        const warehouseData = variantWarehouseMap.get(key)!;
+                        warehouseData.totalStock += wi.availableStock || 0;
+                        warehouseData.variants.push({
+                          variantName: variant.name || variant.sku || `Variant ${variant.variantId}`,
+                          stock: wi.availableStock || 0
+                        });
+                      });
+                    }
+                  });
+
+                  if (variantWarehouseMap.size === 0) {
+                    return <p className="text-sm text-muted-foreground">No variant-level warehouse inventory</p>;
+                  }
+
+                  return Array.from(variantWarehouseMap.values()).map((warehouseData) => (
+                    <div key={warehouseData.warehouseCode} className="mb-4 last:mb-0">
+                      <div className="flex justify-between items-center mb-2">
+                        <Badge variant="outline" className="font-semibold">
+                          {warehouseData.warehouseCode}
+                        </Badge>
+                        <span className="font-medium text-foreground">
+                          Total: {warehouseData.totalStock} units
+                        </span>
+                      </div>
+                      <div className="pl-2 space-y-1">
+                        {warehouseData.variants.map((v, idx) => (
+                          <div key={idx} className="flex justify-between text-xs text-muted-foreground">
+                            <span className="truncate max-w-[200px]">{v.variantName}:</span>
+                            <span className="font-medium ml-2">{v.stock} units</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ));
+                })()}
               </div>
             )}
           </CardContent>
@@ -489,11 +550,26 @@ export default function ProductDetail() {
                           </span>
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
-                          <span className="font-medium text-foreground">
-                            {variant.availableStock !== undefined && variant.availableStock !== null
-                              ? `${variant.availableStock} units`
-                              : "N/A"}
-                          </span>
+                          <div className="flex flex-col gap-1.5">
+                            <div className="font-medium text-foreground">
+                              {variant.availableStock !== undefined && variant.availableStock !== null
+                                ? `${variant.availableStock} units`
+                                : "N/A"}
+                            </div>
+                            {variant.warehouseInventories && Array.isArray(variant.warehouseInventories) && variant.warehouseInventories.length > 0 ? (
+                              <div className="text-xs space-y-1 mt-1 pt-1 border-t border-border">
+                                <div className="font-semibold text-muted-foreground mb-0.5">Warehouse:</div>
+                                {variant.warehouseInventories.map((wi: any) => (
+                                  <div key={wi.warehouseInventoryId || Math.random()} className="flex justify-between gap-3 items-center">
+                                    <Badge variant="outline" className="text-xs">
+                                      {wi.warehouseCode || "N/A"}
+                                    </Badge>
+                                    <span className="font-medium text-foreground">{wi.availableStock || 0} units</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
                         </TableCell>
                         <TableCell className="whitespace-nowrap max-w-[200px]">
                           {variant.vendors && variant.vendors.length > 0 ? (
