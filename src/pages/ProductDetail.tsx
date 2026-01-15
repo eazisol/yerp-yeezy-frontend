@@ -273,6 +273,12 @@ export default function ProductDetail() {
                 <span className="font-medium text-foreground">{productDetail.color}</span>
               </div>
             )}
+            {productDetail.sizes && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Sizes</span>
+                <span className="font-medium text-foreground">{productDetail.sizes}</span>
+              </div>
+            )}
             {productDetail.gender && (
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Gender</span>
@@ -303,13 +309,17 @@ export default function ProductDetail() {
                 <span className="text-sm text-foreground">{productDetail.metaDescription}</span>
               </div>
             )}
-            {productDetail.description && (
+            {productDetail.description !== null && productDetail.description !== undefined && (
               <div className="flex flex-col gap-2">
                 <span className="text-muted-foreground">Description</span>
-                <div 
-                  className="text-sm text-foreground whitespace-pre-wrap"
-                  dangerouslySetInnerHTML={{ __html: productDetail.description }}
-                />
+                {productDetail.description.trim() ? (
+                  <div
+                    className="text-sm text-foreground whitespace-pre-wrap"
+                    dangerouslySetInnerHTML={{ __html: productDetail.description }}
+                  />
+                ) : (
+                  <span className="text-sm text-muted-foreground">N/A</span>
+                )}
               </div>
             )}
             {productDetail.images && (
@@ -470,10 +480,14 @@ export default function ProductDetail() {
                     <TableHead className="whitespace-nowrap">Image</TableHead>
                     <TableHead className="whitespace-nowrap">Variant Name</TableHead>
                     <TableHead className="whitespace-nowrap">SKU</TableHead>
+                    <TableHead className="whitespace-nowrap">Variant Options</TableHead>
+                    <TableHead className="whitespace-nowrap">Description</TableHead>
+                    <TableHead className="whitespace-nowrap">Meta Description</TableHead>
                     <TableHead className="whitespace-nowrap">Price</TableHead>
                     <TableHead className="whitespace-nowrap">Compare Price</TableHead>
                     <TableHead className="whitespace-nowrap">Origin</TableHead>
                     <TableHead className="whitespace-nowrap">Chart of Account</TableHead>
+                    <TableHead className="whitespace-nowrap">HTS</TableHead>
                     <TableHead className="whitespace-nowrap">UPC</TableHead>
                     <TableHead className="whitespace-nowrap">COG</TableHead>
                     <TableHead className="whitespace-nowrap">Variant Slug</TableHead>
@@ -496,15 +510,47 @@ export default function ProductDetail() {
                             onImageClick={(url) => setImagePreview({ url, variantName: variant.name || "Variant" })}
                           />
                         </TableCell>
-                        <TableCell className="font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px] pl-4">
+                        <TableCell
+                          className="font-medium whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px] pl-4"
+                          title={variant.name || "N/A"}
+                        >
                           {variant.name || "N/A"}
                         </TableCell>
-                        <TableCell className="whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]">
+                        <TableCell
+                          className="whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]"
+                          title={variant.sku || "N/A"}
+                        >
                           <span className="text-muted-foreground">{variant.sku || "N/A"}</span>
+                        </TableCell>
+                        <TableCell
+                          className="whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]"
+                          title={variant.variantOptions && variant.variantOptions.trim() ? variant.variantOptions : "N/A"}
+                        >
+                          <span className="text-sm text-foreground">
+                            {variant.variantOptions && variant.variantOptions.trim() ? variant.variantOptions : "N/A"}
+                          </span>
+                        </TableCell>
+                        <TableCell
+                          className="whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]"
+                          title={variant.description && variant.description.trim() ? variant.description : "N/A"}
+                        >
+                          <span className="text-sm text-foreground">
+                            {variant.description && variant.description.trim() ? variant.description : "N/A"}
+                          </span>
+                        </TableCell>
+                        <TableCell
+                          className="whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]"
+                          title={variant.metaDescription && variant.metaDescription.trim() ? variant.metaDescription : "N/A"}
+                        >
+                          <span className="text-sm text-foreground">
+                            {variant.metaDescription && variant.metaDescription.trim() ? variant.metaDescription : "N/A"}
+                          </span>
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
                           {variant.price !== null && variant.price !== undefined
                             ? formatCurrency(variant.price, productDetail.currency || "USD")
+                            : productDetail.price !== null && productDetail.price !== undefined
+                            ? formatCurrency(productDetail.price, productDetail.currency || "USD")
                             : "N/A"}
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
@@ -519,21 +565,38 @@ export default function ProductDetail() {
                             <span className="text-muted-foreground">N/A</span>
                           )}
                         </TableCell>
-                        <TableCell className="whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]">
+                        <TableCell
+                          className="whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]"
+                          title={variant.chartOfAccount && variant.chartOfAccount.trim() !== "" ? variant.chartOfAccount : "N/A"}
+                        >
                           <span className="text-sm text-foreground">
                             {variant.chartOfAccount && variant.chartOfAccount.trim() !== "" 
                               ? variant.chartOfAccount 
                               : "N/A"}
                           </span>
                         </TableCell>
-                        <TableCell className="whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]">
+                        <TableCell
+                          className="whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]"
+                          title={variant.hts && variant.hts.trim() !== "" ? variant.hts : "N/A"}
+                        >
+                          <span className="text-sm text-foreground">
+                            {variant.hts && variant.hts.trim() !== "" ? variant.hts : "N/A"}
+                          </span>
+                        </TableCell>
+                        <TableCell
+                          className="whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]"
+                          title={variant.upc && variant.upc.trim() !== "" ? variant.upc : "N/A"}
+                        >
                           <span className="text-sm text-foreground">
                             {variant.upc && variant.upc.trim() !== "" 
                               ? variant.upc 
                               : "N/A"}
                           </span>
                         </TableCell>
-                        <TableCell className="whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]">
+                        <TableCell
+                          className="whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]"
+                          title={variant.cog && variant.cog.trim() !== "" ? variant.cog : "N/A"}
+                        >
                           {variant.cog && variant.cog.trim() !== "" ? (
                             <span className="font-medium text-foreground">
                               {variant.cog}
@@ -542,7 +605,10 @@ export default function ProductDetail() {
                             <span className="text-muted-foreground">N/A</span>
                           )}
                         </TableCell>
-                        <TableCell className="whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]">
+                        <TableCell
+                          className="whitespace-nowrap overflow-hidden text-ellipsis max-w-[200px]"
+                          title={variant.variantSlug && variant.variantSlug.trim() !== "" ? variant.variantSlug : "N/A"}
+                        >
                           <span className="text-sm text-foreground font-mono">
                             {variant.variantSlug && variant.variantSlug.trim() !== "" 
                               ? variant.variantSlug 
@@ -573,10 +639,22 @@ export default function ProductDetail() {
                         </TableCell>
                         <TableCell className="whitespace-nowrap max-w-[200px]">
                           {variant.vendors && variant.vendors.length > 0 ? (
-                            <div className="flex flex-col gap-1">
+                            <div className="flex flex-col gap-1.5">
                               {variant.vendors.map((vendor: any, idx: number) => (
-                                <div key={idx} className="text-sm overflow-hidden text-ellipsis">
-                                  <span className="font-medium">{vendor.vendorName}</span>
+                                <div
+                                  key={idx}
+                                  className="text-sm overflow-hidden text-ellipsis"
+                                  title={vendor.vendorName}
+                                >
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-medium">{vendor.vendorName}</span>
+                                    {vendor.cost !== null && vendor.cost !== undefined && (
+                                      <Badge variant="secondary" className="text-xs font-normal">
+                                        Cost: {formatCurrency(vendor.cost, productDetail.currency || "USD")}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  
                                 </div>
                               ))}
                             </div>

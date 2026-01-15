@@ -607,6 +607,20 @@ Packing List:
     }
   };
 
+  // Helper function to get Cost from variant vendors based on selected vendor
+  const getCostFromVariant = (variant: ProductVariant, vendorId: number | null | undefined): number | null => {
+    if (!variant.vendors || !vendorId || vendorId === 0) {
+      return null;
+    }
+
+    // Find vendor cost matching the selected vendor
+    const vendorCost = variant.vendors.find(
+      (v) => v.vendorId === vendorId && v.cost !== null && v.cost !== undefined
+    );
+
+    return vendorCost?.cost ?? null;
+  };
+
   // Handle variant selection
   const handleVariantChange = (variantId: number | undefined, lineItemIndex: number) => {
     if (!variantId) {
@@ -623,17 +637,40 @@ Packing List:
     const selectedVariant = variants.find((v) => v.variantId === variantId);
 
     if (selectedVariant) {
-      // Use variant price if available, otherwise use product price
       const product = lineItemProducts[lineItemIndex];
+      const selectedVendorId = form.watch("vendorId");
+
+      // Priority: Cost from vendor > variant.price > product.price
+      const vendorCost = getCostFromVariant(selectedVariant, selectedVendorId);
       const variantPrice = selectedVariant.price;
       const productPrice = product?.price || 0;
 
-      // Prefer variant price, fallback to product price
-      form.setValue(
-        `lineItems.${lineItemIndex}.unitPrice`,
-        variantPrice !== null && variantPrice !== undefined ? variantPrice : productPrice
-      );
+      let finalPrice = 0;
+      if (vendorCost !== null && vendorCost !== undefined) {
+        // Use Cost from selected vendor
+        finalPrice = vendorCost;
+      } else if (variantPrice !== null && variantPrice !== undefined) {
+        // Fallback to variant price
+        finalPrice = variantPrice;
+      } else {
+        // Fallback to product price
+        finalPrice = productPrice;
+      }
+
+      form.setValue(`lineItems.${lineItemIndex}.unitPrice`, finalPrice);
     }
+  };
+
+  // Handle vendor change - update all line items with variants
+  const handleVendorChange = (vendorId: number) => {
+    // Update all line items that have variants selected
+    fields.forEach((_, index) => {
+      const variantId = form.watch(`lineItems.${index}.productVariantId`);
+      if (variantId) {
+        // Re-trigger variant change to update price with new vendor's cost
+        handleVariantChange(variantId, index);
+      }
+    });
   };
 
   // Get variant display name - only show Color and Size
@@ -738,7 +775,12 @@ Packing List:
                       <FormLabel>Vendor <span className="text-red-500">*</span></FormLabel>
                     <Select
                       value={field.value && field.value > 0 ? field.value.toString() : undefined}
-                      onValueChange={(value) => field.onChange(parseInt(value))}
+                      onValueChange={(value) => {
+                        const vendorId = parseInt(value);
+                        field.onChange(vendorId);
+                        // Update all line items with variants when vendor changes
+                        handleVendorChange(vendorId);
+                      }}
                     >
                       <FormControl>
                         <SelectTrigger>

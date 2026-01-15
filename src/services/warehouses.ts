@@ -19,6 +19,8 @@ export interface Warehouse {
   isActive: boolean;
   createdDate: string;
   editDate?: string | null;
+  publicClientId?: string | null;
+  publicClientSecret?: string | null;
 }
 
 // Paginated response for warehouses
@@ -98,6 +100,11 @@ class WarehouseService {
   // Update warehouse
   async updateWarehouse(id: number, warehouseData: UpdateWarehouseRequest): Promise<Warehouse> {
     return apiClient.put<Warehouse>(`/api/Warehouses/${id}`, warehouseData);
+  }
+
+  // Regenerate public API credentials
+  async regenerateCredentials(id: number): Promise<Warehouse> {
+    return apiClient.post<Warehouse>(`/api/Warehouses/${id}/regenerate-credentials`);
   }
 
   // Delete warehouse (soft delete)

@@ -14,6 +14,7 @@ export interface Product {
   isActive: boolean;
   origin: string | null;
   category: string | null;
+  sizes?: string | null;
   createdDate: string;
   editDate: string | null;
   totalStock: number;
@@ -192,11 +193,15 @@ export interface ProductVariant {
   variantId: number;
   name: string | null;
   sku: string | null;
+  variantOptions?: string | null;
+  description?: string | null;
+  metaDescription?: string | null;
   price: number | null;
   comparePrice: number | null;
   attributes: string | null; // JSON string with variant attributes
   origin: string | null;
   chartOfAccount: string | null;
+  hts?: string | null;
   upc: string | null;
   cog: string | null;
   variantSlug: string | null;
@@ -229,6 +234,7 @@ export interface ProductDetail {
   origin: string | null;
   category: string | null;
   color: string | null;
+  sizes: string | null;
   gender: string | null;
   option: string | null;
   slot: string | null;

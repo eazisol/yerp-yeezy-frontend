@@ -77,6 +77,10 @@ export default function Warehouses() {
     status: "Active",
   });
   const [isEditMode, setIsEditMode] = useState(false);
+  const [publicCredentials, setPublicCredentials] = useState<{
+    clientId: string;
+    clientSecret: string;
+  } | null>(null);
 
   const { canRead, canModify, canDelete } = usePermissions();
   const { toast } = useToast();
@@ -91,14 +95,21 @@ export default function Warehouses() {
   // Create warehouse mutation
   const createWarehouseMutation = useMutation({
     mutationFn: (data: CreateWarehouseRequest) => warehouseService.createWarehouse(data),
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ["warehouses"] });
       toast({
         title: "Success",
         description: "Warehouse created successfully",
       });
-      setShowWarehouseForm(false);
-      resetForm();
+      if (response.publicClientId && response.publicClientSecret) {
+        setPublicCredentials({
+          clientId: response.publicClientId,
+          clientSecret: response.publicClientSecret,
+        });
+      } else {
+        setShowWarehouseForm(false);
+        resetForm();
+      }
     },
     onError: (error: any) => {
       const errorMessage = extractErrorMessage(error, "Failed to create warehouse");
@@ -114,14 +125,21 @@ export default function Warehouses() {
   const updateWarehouseMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdateWarehouseRequest }) =>
       warehouseService.updateWarehouse(id, data),
-    onSuccess: () => {
+    onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ["warehouses"] });
       toast({
         title: "Success",
         description: "Warehouse updated successfully",
       });
-      setShowWarehouseForm(false);
-      resetForm();
+      if (response.publicClientId && response.publicClientSecret) {
+        setPublicCredentials({
+          clientId: response.publicClientId,
+          clientSecret: response.publicClientSecret,
+        });
+      } else {
+        setShowWarehouseForm(false);
+        resetForm();
+      }
     },
     onError: (error: any) => {
       const errorMessage = extractErrorMessage(error, "Failed to update warehouse");
@@ -173,6 +191,7 @@ export default function Warehouses() {
     });
     setIsEditMode(false);
     setSelectedWarehouse(null);
+    setPublicCredentials(null);
   };
 
   const handleAddWarehouse = () => {
@@ -201,12 +220,29 @@ export default function Warehouses() {
     });
     setIsEditMode(true);
     setSelectedWarehouse(warehouse);
+    setPublicCredentials(null);
     setShowWarehouseForm(true);
   };
 
   const handleDeleteWarehouse = (warehouseId: number) => {
     setDeleteWarehouseId(warehouseId);
     setShowDeleteDialog(true);
+  };
+
+  const handleCopyValue = async (value: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast({
+        title: "Copied",
+        description: `${label} copied to clipboard`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to copy to clipboard",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleConfirmDelete = () => {
@@ -598,7 +634,70 @@ export default function Warehouses() {
                 />
               </div>
             </div>
-            <DialogFooter>
+
+            {publicCredentials && (
+              <div className="mt-4 rounded-lg border p-4 bg-secondary/40 space-y-3">
+                <div className="text-sm font-medium">Public API Credentials (copy now)</div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm truncate">
+                    <span className="text-muted-foreground">Client ID:</span> {publicCredentials.clientId}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleCopyValue(publicCredentials.clientId, "Client ID")}
+                  >
+                    Copy
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm truncate">
+                    <span className="text-muted-foreground">Client Secret:</span> {publicCredentials.clientSecret}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleCopyValue(publicCredentials.clientSecret, "Client Secret")}
+                  >
+                    Copy
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            <DialogFooter className="gap-2">
+              {isEditMode && selectedWarehouse && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={async () => {
+                    try {
+                      const response = await warehouseService.regenerateCredentials(selectedWarehouse.warehouseId);
+                      if (response.publicClientId && response.publicClientSecret) {
+                        setPublicCredentials({
+                          clientId: response.publicClientId,
+                          clientSecret: response.publicClientSecret,
+                        });
+                        toast({
+                          title: "Success",
+                          description: "Credentials regenerated",
+                        });
+                      }
+                    } catch (error) {
+                      const errorMessage = extractErrorMessage(error, "Failed to regenerate credentials");
+                      toast({
+                        title: "Error",
+                        description: errorMessage,
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                >
+                  Regenerate Credentials
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outline"
