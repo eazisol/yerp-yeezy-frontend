@@ -201,9 +201,13 @@ export interface ProductVariant {
   attributes: string | null; // JSON string with variant attributes
   origin: string | null;
   chartOfAccount: string | null;
+  revenueParentAccount: string | null;
+  revenueSubAccount: string | null;
   hts?: string | null;
   upc: string | null;
   cog: string | null;
+  cogParentAccount: string | null;
+  cogSubAccount: string | null;
   variantSlug: string | null;
   availableStock: number;
   vendors: VariantVendor[];

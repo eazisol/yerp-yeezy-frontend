@@ -452,6 +452,10 @@ export default function OrderDetail() {
               const variantImages = getImagesFromAttributes(variantAttributes);
               const firstVariantImage = variantImages.length > 0 ? variantImages[0] : null;
               
+              // Extract size and color from attributes (case-insensitive)
+              const size = variantAttributes?.size || variantAttributes?.Size || variantAttributes?.SIZE || "";
+              const color = variantAttributes?.color || variantAttributes?.Color || variantAttributes?.COLOR || "";
+              
               return (
                 <div
                   key={item.orderItemId}
@@ -460,7 +464,7 @@ export default function OrderDetail() {
                   <div className="flex-1 flex items-start gap-3">
                     {/* Variant Image Thumbnail */}
                     {firstVariantImage ? (
-                      <div className="flex-shrink-0">
+                      <div className="flex-shrink-0 flex items-center gap-1">
                         <button
                           onClick={() => setImagePreview({ 
                             url: firstVariantImage, 
@@ -480,7 +484,7 @@ export default function OrderDetail() {
                           />
                         </button>
                         {variantImages.length > 1 && (
-                          <Badge variant="secondary" className="text-xs mt-1 block text-center">
+                          <Badge variant="secondary" className="text-xs">
                             +{variantImages.length - 1}
                           </Badge>
                         )}
@@ -497,6 +501,24 @@ export default function OrderDetail() {
                         <p>SKU: {item.productSku || "N/A"}</p>
                         {item.variantName && (
                           <p className="text-xs">Variant: {item.variantName}</p>
+                        )}
+                        {/* Size and Color Display */}
+                        {(size || color) && (
+                          <div className="flex items-center gap-2 mt-1">
+                            {size && (
+                              <span className="text-xs">
+                                Size: <span className="font-medium text-foreground">{size}</span>
+                              </span>
+                            )}
+                            {size && color && (
+                              <span className="text-xs text-muted-foreground">·</span>
+                            )}
+                            {color && (
+                              <span className="text-xs">
+                                Color: <span className="font-medium text-foreground">{color}</span>
+                              </span>
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>

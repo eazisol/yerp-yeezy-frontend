@@ -33,6 +33,8 @@ export interface WarehouseInventory {
 export interface StockAlert {
   sku: string;
   name: string;
+  variantName?: string; // Variant name (if variant-level alert)
+  variantSku?: string; // Variant SKU (if variant-level alert)
   currentStock: number;
   warehouse: "CN" | "US";
   status: "low" | "critical";

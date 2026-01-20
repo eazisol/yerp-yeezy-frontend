@@ -380,14 +380,21 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {stockAlerts.slice(0, 5).map((item) => (
-                  <div
-                    key={item.sku}
-                    className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-smooth cursor-pointer"
-                  >
+                {stockAlerts.length === 0 ? (
+                  <div className="text-center py-4 text-sm text-muted-foreground">
+                    No stock alerts found
+                  </div>
+                ) : (
+                  stockAlerts.slice(0, 10).map((item, index) => (
+                    <div
+                      key={`${item.sku}-${item.variantSku || 'product'}-${item.warehouse}-${index}`}
+                      className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-smooth cursor-pointer"
+                    >
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-foreground">{item.sku}</span>
+                        <span className="text-sm font-medium text-foreground">
+                          {item.variantSku || item.sku}
+                        </span>
                         <Badge
                           variant={item.status === "critical" ? "destructive" : "secondary"}
                           className="text-xs"
@@ -395,14 +402,22 @@ export default function Dashboard() {
                           {item.status}
                         </Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">{item.name}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {item.name}
+                        {item.variantName && (
+                          <span className="ml-1 text-muted-foreground/80">
+                            - {item.variantName}
+                          </span>
+                        )}
+                      </p>
                     </div>
                     <div className="text-right">
                       <p className="text-sm font-medium text-foreground">{item.currentStock} units</p>
                       <p className="text-xs text-muted-foreground">{item.warehouse}</p>
                     </div>
                   </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>

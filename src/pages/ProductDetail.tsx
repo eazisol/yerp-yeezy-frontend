@@ -486,10 +486,12 @@ export default function ProductDetail() {
                     <TableHead className="whitespace-nowrap">Price</TableHead>
                     <TableHead className="whitespace-nowrap">Compare Price</TableHead>
                     <TableHead className="whitespace-nowrap">Origin</TableHead>
-                    <TableHead className="whitespace-nowrap">Chart of Account</TableHead>
+                    <TableHead className="whitespace-nowrap">Revenue Parent Account</TableHead>
+                    <TableHead className="whitespace-nowrap">Revenue Sub Account</TableHead>
                     <TableHead className="whitespace-nowrap">HTS</TableHead>
                     <TableHead className="whitespace-nowrap">UPC</TableHead>
-                    <TableHead className="whitespace-nowrap">COG</TableHead>
+                    <TableHead className="whitespace-nowrap">COG Parent Account</TableHead>
+                    <TableHead className="whitespace-nowrap">COG Sub Account</TableHead>
                     <TableHead className="whitespace-nowrap">Variant Slug</TableHead>
                     <TableHead className="whitespace-nowrap">Available Stock</TableHead>
                     <TableHead className="whitespace-nowrap">Vendors</TableHead>
@@ -567,11 +569,21 @@ export default function ProductDetail() {
                         </TableCell>
                         <TableCell
                           className="whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]"
-                          title={variant.chartOfAccount && variant.chartOfAccount.trim() !== "" ? variant.chartOfAccount : "N/A"}
+                          title={variant.revenueParentAccount && variant.revenueParentAccount.trim() !== "" ? variant.revenueParentAccount : "N/A"}
                         >
                           <span className="text-sm text-foreground">
-                            {variant.chartOfAccount && variant.chartOfAccount.trim() !== "" 
-                              ? variant.chartOfAccount 
+                            {variant.revenueParentAccount && variant.revenueParentAccount.trim() !== "" 
+                              ? variant.revenueParentAccount 
+                              : "N/A"}
+                          </span>
+                        </TableCell>
+                        <TableCell
+                          className="whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]"
+                          title={variant.revenueSubAccount && variant.revenueSubAccount.trim() !== "" ? variant.revenueSubAccount : "N/A"}
+                        >
+                          <span className="text-sm text-foreground">
+                            {variant.revenueSubAccount && variant.revenueSubAccount.trim() !== "" 
+                              ? variant.revenueSubAccount 
                               : "N/A"}
                           </span>
                         </TableCell>
@@ -595,11 +607,23 @@ export default function ProductDetail() {
                         </TableCell>
                         <TableCell
                           className="whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]"
-                          title={variant.cog && variant.cog.trim() !== "" ? variant.cog : "N/A"}
+                          title={variant.cogParentAccount && variant.cogParentAccount.trim() !== "" ? variant.cogParentAccount : "N/A"}
                         >
-                          {variant.cog && variant.cog.trim() !== "" ? (
+                          {variant.cogParentAccount && variant.cogParentAccount.trim() !== "" ? (
                             <span className="font-medium text-foreground">
-                              {variant.cog}
+                              {variant.cogParentAccount}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">N/A</span>
+                          )}
+                        </TableCell>
+                        <TableCell
+                          className="whitespace-nowrap overflow-hidden text-ellipsis max-w-[150px]"
+                          title={variant.cogSubAccount && variant.cogSubAccount.trim() !== "" ? variant.cogSubAccount : "N/A"}
+                        >
+                          {variant.cogSubAccount && variant.cogSubAccount.trim() !== "" ? (
+                            <span className="font-medium text-foreground">
+                              {variant.cogSubAccount}
                             </span>
                           ) : (
                             <span className="text-muted-foreground">N/A</span>
