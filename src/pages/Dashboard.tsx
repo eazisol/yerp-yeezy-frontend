@@ -89,9 +89,11 @@ export default function Dashboard() {
     return new Intl.NumberFormat('en-US').format(value);
   };
 
-  // Calculate critical vs low stock counts
-  const criticalStockCount = stockAlerts.filter(item => item.status === "critical").length;
-  const lowStockCount = stockAlerts.filter(item => item.status === "low").length;
+  // Calculate critical vs low stock counts (use totals from API when available)
+  const criticalStockCount = dashboardMetrics?.stockAlertsCriticalCount
+    ?? stockAlerts.filter(item => item.status === "critical").length;
+  const lowStockCount = dashboardMetrics?.stockAlertsLowCount
+    ?? stockAlerts.filter(item => item.status === "low").length;
 
   // Order status breakdown for pie chart
   const orderStatusChartData = [
@@ -372,7 +374,7 @@ export default function Dashboard() {
                 </p>
               </div>
               {canRead("INVENTORY") && (
-                <Button variant="outline" size="sm" onClick={() => navigate("/inventory")}>
+                <Button variant="outline" size="sm" onClick={() => navigate("/stock-alerts")}>
                   <Eye className="h-4 w-4 mr-2" />
                   View All
                 </Button>

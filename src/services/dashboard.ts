@@ -41,17 +41,44 @@ export interface StockAlert {
   threshold: number;
 }
 
+export interface StockAlertsResponse {
+  data: StockAlert[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+}
+
 export interface DashboardMetrics {
   dailyOrderMetrics: DailyOrderMetrics;
   orderStatusBreakdown: OrderStatusBreakdown;
   dailyShipments: DailyShipments;
   warehouseInventory: WarehouseInventory[];
   stockAlerts: StockAlert[];
+  stockAlertsCriticalCount: number;
+  stockAlertsLowCount: number;
 }
 
 class DashboardService {
   async getDashboardMetrics(): Promise<DashboardMetrics> {
     return apiClient.get<DashboardMetrics>("/api/Dashboard/metrics");
+  }
+
+  // Fetch paged stock alerts with optional SKU filter
+  async getStockAlerts(
+    page: number = 1,
+    pageSize: number = 10,
+    sku?: string
+  ): Promise<StockAlertsResponse> {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      pageSize: pageSize.toString(),
+    });
+    if (sku) params.append("sku", sku);
+
+    return apiClient.get<StockAlertsResponse>(`/api/Dashboard/stock-alerts?${params.toString()}`);
   }
 }
 
