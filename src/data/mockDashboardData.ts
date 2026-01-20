@@ -34,7 +34,7 @@ export interface StockAlert {
   sku: string;
   name: string;
   currentStock: number;
-  warehouse: "CN" | "US";
+  warehouse: string;
   status: "low" | "critical";
   threshold: number;
 }

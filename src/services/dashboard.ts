@@ -36,7 +36,7 @@ export interface StockAlert {
   variantName?: string; // Variant name (if variant-level alert)
   variantSku?: string; // Variant SKU (if variant-level alert)
   currentStock: number;
-  warehouse: "CN" | "US";
+  warehouse: string;
   status: "low" | "critical";
   threshold: number;
 }
