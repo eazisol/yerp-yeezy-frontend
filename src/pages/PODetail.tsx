@@ -200,6 +200,21 @@ export default function PODetail() {
     }
   };
 
+  // Get latest rejection date for resubmission checks
+  const getLatestRejectedDate = (items: POApproval[]) => {
+    const rejectedDates = items
+      .filter((approval) => approval.status === "Rejected" && approval.rejectedDate)
+      .map((approval) => new Date(approval.rejectedDate as string).getTime());
+    if (rejectedDates.length === 0) return null;
+    return new Date(Math.max(...rejectedDates));
+  };
+
+  // Check if PO was edited after last rejection
+  const isEditedAfterRejection = (editDate?: string, rejectedDate?: Date | null) => {
+    if (!editDate || !rejectedDate) return false;
+    return new Date(editDate).getTime() > rejectedDate.getTime();
+  };
+
   const handleSendToVendor = async () => {
     if (!id) return;
     try {
@@ -326,6 +341,10 @@ export default function PODetail() {
   }
 
   const canSubmitForApproval = po.status === "Draft" && canModify("PURCHASE_ORDERS");
+  const latestRejectedDate = getLatestRejectedDate(approvals);
+  const hasEditAfterReject = isEditedAfterRejection(po.editDate, latestRejectedDate);
+  const canResubmitForApproval =
+    canModify("PURCHASE_ORDERS") && po.status === "Rejected" && hasEditAfterReject;
   const canApprove = po.approvalStatus === "Pending" && canModify("PURCHASE_ORDERS");
   const canSendToVendor = po.status === "Approved" && !po.isSentToVendor && canModify("PURCHASE_ORDERS");
   const canEdit = canModify("PURCHASE_ORDERS"); // Always allow edit if user has modify permissions
@@ -419,6 +438,25 @@ export default function PODetail() {
                 <>
                   <FileCheck className="h-4 w-4 mr-2" />
                   Submit for Approval
+                </>
+              )}
+            </Button>
+          )}
+          {canResubmitForApproval && (
+            <Button
+              size="sm"
+              onClick={handleSubmitForApproval}
+              disabled={actionLoading}
+            >
+              {actionLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Resubmitting...
+                </>
+              ) : (
+                <>
+                  <FileCheck className="h-4 w-4 mr-2" />
+                  Resubmit for Approval
                 </>
               )}
             </Button>

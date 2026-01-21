@@ -4,7 +4,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Eye, Loader2, Pencil } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Search, Plus, Eye, Loader2, Pencil, Trash2 } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import {
   Table,
@@ -14,7 +24,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { getPurchaseOrders, PurchaseOrder } from "@/services/purchaseOrders";
+import {
+  deletePurchaseOrder,
+  getPurchaseOrders,
+  PurchaseOrder,
+} from "@/services/purchaseOrders";
 import { useToast } from "@/hooks/use-toast";
 
 export default function PurchaseOrders() {
@@ -30,48 +44,52 @@ export default function PurchaseOrders() {
     inProgress: 0,
     totalValue: 0,
   });
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selectedPurchaseOrder, setSelectedPurchaseOrder] = useState<PurchaseOrder | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const navigate = useNavigate();
-  const { canRead, canModify } = usePermissions();
+  const { canRead, canModify, canDelete } = usePermissions();
   const { toast } = useToast();
 
-  // Fetch purchase orders
+  // Fetch purchase orders list
+  const fetchPOs = async () => {
+    try {
+      setLoading(true);
+      const response = await getPurchaseOrders(page, pageSize);
+      setPurchaseOrders(response.data);
+      setTotalCount(response.totalCount);
+
+      // Calculate stats
+      const pendingApproval = response.data.filter(
+        (po) => po.approvalStatus === "Pending" || po.status === "PendingApproval"
+      ).length;
+      const inProgress = response.data.filter(
+        (po) =>
+          po.status === "VendorAccepted" ||
+          po.status === "PartiallyReceived" ||
+          po.status === "Released"
+      ).length;
+      const totalValue = response.data.reduce((sum, po) => sum + po.totalValue, 0);
+
+      setStats({
+        total: response.totalCount,
+        pendingApproval,
+        inProgress,
+        totalValue,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to load purchase orders",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch purchase orders on page changes
   useEffect(() => {
-    const fetchPOs = async () => {
-      try {
-        setLoading(true);
-        const response = await getPurchaseOrders(page, pageSize);
-        setPurchaseOrders(response.data);
-        setTotalCount(response.totalCount);
-
-        // Calculate stats
-        const pendingApproval = response.data.filter(
-          (po) => po.approvalStatus === "Pending" || po.status === "PendingApproval"
-        ).length;
-        const inProgress = response.data.filter(
-          (po) =>
-            po.status === "VendorAccepted" ||
-            po.status === "PartiallyReceived" ||
-            po.status === "Released"
-        ).length;
-        const totalValue = response.data.reduce((sum, po) => sum + po.totalValue, 0);
-
-        setStats({
-          total: response.totalCount,
-          pendingApproval,
-          inProgress,
-          totalValue,
-        });
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: error instanceof Error ? error.message : "Failed to load purchase orders",
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchPOs();
   }, [page, pageSize, toast]);
 
@@ -130,6 +148,36 @@ export default function PurchaseOrders() {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
+  };
+
+  // Open delete confirmation dialog
+  const handleDeleteClick = (po: PurchaseOrder) => {
+    setSelectedPurchaseOrder(po);
+    setShowDeleteDialog(true);
+  };
+
+  // Confirm delete action
+  const handleConfirmDelete = async () => {
+    if (!selectedPurchaseOrder) return;
+    try {
+      setIsDeleting(true);
+      await deletePurchaseOrder(selectedPurchaseOrder.purchaseOrderId);
+      toast({
+        title: "Success",
+        description: "Purchase order deleted successfully",
+      });
+      setShowDeleteDialog(false);
+      setSelectedPurchaseOrder(null);
+      await fetchPOs();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error?.response?.data?.message || "Failed to delete purchase order",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   if (loading) {
@@ -330,6 +378,16 @@ export default function PurchaseOrders() {
                             <Pencil className="h-4 w-4" />
                           </Button>
                         )}
+                        {canDelete("PURCHASE_ORDERS") && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteClick(po)}
+                            title="Delete purchase order"
+                          >
+                            <Trash2 className="h-4 w-4 text-red-600" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -339,6 +397,27 @@ export default function PurchaseOrders() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete purchase order</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete{" "}
+              <span className="font-medium">
+                {selectedPurchaseOrder?.poNumber || "this purchase order"}
+              </span>
+              ? This action will hide it from the list.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} disabled={isDeleting}>
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

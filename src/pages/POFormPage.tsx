@@ -486,7 +486,11 @@ Packing List:
         }
       }
 
-      navigate("/purchase-orders");
+      if (isEdit && createdOrUpdatedPO?.purchaseOrderId) {
+        navigate(`/po/preview/${createdOrUpdatedPO.purchaseOrderId}`);
+      } else {
+        navigate("/purchase-orders");
+      }
     } catch (error) {
       toast({
         title: "Error",

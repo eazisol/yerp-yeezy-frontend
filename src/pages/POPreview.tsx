@@ -3,9 +3,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, CheckCircle, XCircle, Loader2, DollarSign, Users, Download } from "lucide-react";
+import { ArrowLeft, CheckCircle, XCircle, Loader2, DollarSign, Users, Download, FileCheck } from "lucide-react";
 import {
   getPurchaseOrderById,
+  submitForApproval,
   PurchaseOrder,
 } from "@/services/purchaseOrders";
 import { approvePO, getPOApprovals, POApproval } from "@/services/poApprovals";
@@ -21,11 +22,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export default function POPreview() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { canModify } = usePermissions();
   const [po, setPO] = useState<PurchaseOrder | null>(null);
   const [approvals, setApprovals] = useState<POApproval[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,6 +129,48 @@ export default function POPreview() {
     }
   };
 
+  // Get latest rejection date for resubmission checks
+  const getLatestRejectedDate = (items: POApproval[]) => {
+    const rejectedDates = items
+      .filter((approval) => approval.status === "Rejected" && approval.rejectedDate)
+      .map((approval) => new Date(approval.rejectedDate as string).getTime());
+    if (rejectedDates.length === 0) return null;
+    return new Date(Math.max(...rejectedDates));
+  };
+
+  // Check if PO was edited after last rejection
+  const isEditedAfterRejection = (editDate?: string, rejectedDate?: Date | null) => {
+    if (!editDate || !rejectedDate) return false;
+    return new Date(editDate).getTime() > rejectedDate.getTime();
+  };
+
+  // Resubmit PO for approval after rejection and edit
+  const handleResubmitForApproval = async () => {
+    if (!id) return;
+    try {
+      setActionLoading(true);
+      await submitForApproval(parseInt(id));
+      toast({
+        title: "Success",
+        description: "PO resubmitted for approval successfully. Approvers will be notified via email.",
+      });
+      const [poData, approvalsData] = await Promise.all([
+        getPurchaseOrderById(parseInt(id)),
+        getPOApprovals(parseInt(id)),
+      ]);
+      setPO(poData);
+      setApprovals(approvalsData);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to resubmit PO for approval",
+        variant: "destructive",
+      });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
@@ -202,6 +247,10 @@ export default function POPreview() {
   // Check if current user has pending approval
   const userApproval = approvals.find((a) => a.status === "Pending");
   const canApprove = !!userApproval && po.status === "PendingApproval";
+  const latestRejectedDate = getLatestRejectedDate(approvals);
+  const hasEditAfterReject = isEditedAfterRejection(po.editDate, latestRejectedDate);
+  const canResubmitForApproval =
+    canModify("PURCHASE_ORDERS") && po.status === "Rejected" && hasEditAfterReject;
 
   return (
     <div className="space-y-6 p-6">
@@ -262,6 +311,25 @@ export default function POPreview() {
             Generate PDF
           </Button>
           <Badge variant="default">{po.status}</Badge>
+          {canResubmitForApproval && (
+            <Button
+              size="sm"
+              onClick={handleResubmitForApproval}
+              disabled={actionLoading}
+            >
+              {actionLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Resubmitting...
+                </>
+              ) : (
+                <>
+                  <FileCheck className="h-4 w-4 mr-2" />
+                  Resubmit for Approval
+                </>
+              )}
+            </Button>
+          )}
           {canApprove && (
             <Button
               size="sm"
