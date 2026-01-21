@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Filter, Plus, Eye, Edit, Trash2, Shield } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Shield } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -58,7 +58,7 @@ export default function Users() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize] = useState(50);
-  const [isActiveFilter, setIsActiveFilter] = useState<boolean | undefined>(undefined);
+  const [isActiveFilter, setIsActiveFilter] = useState<boolean | undefined>(true);
   const [showUserForm, setShowUserForm] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -368,24 +368,35 @@ export default function Users() {
                 }}
               />
             </div>
-            <Select
-              value={isActiveFilter === undefined ? "all" : isActiveFilter ? "active" : "inactive"}
-              onValueChange={(value) => {
-                setIsActiveFilter(
-                  value === "all" ? undefined : value === "active"
-                );
-                setPage(1);
-              }}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Users</SelectItem>
-                <SelectItem value="active">Active Only</SelectItem>
-                <SelectItem value="inactive">Inactive Only</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              <Button
+                variant={isActiveFilter === undefined ? "default" : "outline"}
+                onClick={() => {
+                  setIsActiveFilter(undefined);
+                  setPage(1);
+                }}
+              >
+                All
+              </Button>
+              <Button
+                variant={isActiveFilter === true ? "default" : "outline"}
+                onClick={() => {
+                  setIsActiveFilter(true);
+                  setPage(1);
+                }}
+              >
+                Active
+              </Button>
+              <Button
+                variant={isActiveFilter === false ? "default" : "outline"}
+                onClick={() => {
+                  setIsActiveFilter(false);
+                  setPage(1);
+                }}
+              >
+                Inactive
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

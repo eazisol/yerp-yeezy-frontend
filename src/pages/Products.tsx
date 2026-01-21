@@ -3,14 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Search, Filter, Plus, Eye, Edit, Trash2, RefreshCw, Download, Upload, FileSpreadsheet, Calendar } from "lucide-react";
+import { Search, Eye, Trash2, RefreshCw, Download, Upload, FileSpreadsheet, Calendar } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import {
   Table,
@@ -45,7 +38,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Products() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [activeFilter, setActiveFilter] = useState<string | null>(null); // null = all, "true" = active, "false" = inactive
+  const [activeFilter, setActiveFilter] = useState<boolean | undefined>(true);
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [page, setPage] = useState(1);
@@ -70,7 +63,7 @@ export default function Products() {
       page, 
       pageSize, 
       searchTerm || undefined, 
-      activeFilter || undefined,
+      activeFilter === undefined ? undefined : activeFilter.toString(),
       undefined, // origin
       startDate || undefined,
       endDate || undefined
@@ -287,7 +280,7 @@ export default function Products() {
       setIsExporting(true);
       const blob = await productService.exportProductsToCsv(
         searchTerm || undefined,
-        activeFilter || undefined,
+        activeFilter === undefined ? undefined : activeFilter.toString(),
         undefined, // origin
         startDate || undefined,
         endDate || undefined
@@ -389,22 +382,35 @@ export default function Products() {
                   }}
                 />
               </div>
-              <Select
-                value={activeFilter || "all"}
-                onValueChange={(value) => {
-                  setActiveFilter(value === "all" ? null : value);
-                  setPage(1); // Reset to first page on filter change
-                }}
-              >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Products</SelectItem>
-                  <SelectItem value="true">Active</SelectItem>
-                  <SelectItem value="false">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                <Button
+                  variant={activeFilter === undefined ? "default" : "outline"}
+                  onClick={() => {
+                    setActiveFilter(undefined);
+                    setPage(1);
+                  }}
+                >
+                  All
+                </Button>
+                <Button
+                  variant={activeFilter === true ? "default" : "outline"}
+                  onClick={() => {
+                    setActiveFilter(true);
+                    setPage(1);
+                  }}
+                >
+                  Active
+                </Button>
+                <Button
+                  variant={activeFilter === false ? "default" : "outline"}
+                  onClick={() => {
+                    setActiveFilter(false);
+                    setPage(1);
+                  }}
+                >
+                  Inactive
+                </Button>
+              </div>
             </div>
             {/* Date Range Filter */}
             <div className="flex flex-col sm:flex-row gap-4">

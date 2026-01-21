@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Filter, Eye, Download, RefreshCw } from "lucide-react";
+import { Search, Eye, Download, RefreshCw } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import {
   Table,
@@ -253,10 +253,10 @@ export default function Customers() {
                 }}
               />
             </div>
-            <Button variant="outline">
+            {/* <Button variant="outline">
               <Filter className="h-4 w-4 mr-2" />
               Filters
-            </Button>
+            </Button> */}
           </div>
         </CardContent>
       </Card>

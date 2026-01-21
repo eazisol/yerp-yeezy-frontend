@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, Filter, Plus, Eye, Loader2, Pencil } from "lucide-react";
+import { Search, Plus, Eye, Loader2, Pencil } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import {
   Table,
@@ -212,10 +212,10 @@ export default function PurchaseOrders() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Button variant="outline">
+            {/* <Button variant="outline">
               <Filter className="h-4 w-4 mr-2" />
               Filters
-            </Button>
+            </Button> */}
           </div>
         </CardContent>
       </Card>
