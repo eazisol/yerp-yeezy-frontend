@@ -21,8 +21,8 @@ export interface Order {
 
 export interface OrderStats {
   totalOrders: number;
-  paidOrders: number;
-  unpaidOrders: number;
+  unfulfilledOrders: number;
+  partiallyFulfilledOrders: number;
 }
 
 export interface OrdersResponse {

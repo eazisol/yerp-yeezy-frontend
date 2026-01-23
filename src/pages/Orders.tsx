@@ -44,8 +44,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Orders() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [paymentFilter, setPaymentFilter] = useState<string | null>(null); // null = all, "paid" = paid, "unpaid" = unpaid
-  const [fulfillmentFilter, setFulfillmentFilter] = useState<string | null>(null); // null = all, "fulfilled" = fulfilled, "unfulfilled" = unfulfilled
+  const [fulfillmentFilter, setFulfillmentFilter] = useState<string | null>(null); // null = all, "unfulfilled" = unfulfilled, "partial" = partial
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [page, setPage] = useState(1);
@@ -64,13 +63,13 @@ export default function Orders() {
 
   // Fetch orders with pagination
   const { data: ordersData, isLoading: loadingOrders } = useQuery({
-    queryKey: ["orders", page, pageSize, searchTerm, paymentFilter, fulfillmentFilter, startDate, endDate],
+    queryKey: ["orders", page, pageSize, searchTerm, fulfillmentFilter, startDate, endDate],
     queryFn: () => orderService.getOrders(
       page, 
       pageSize, 
       searchTerm || undefined, 
       fulfillmentFilter || undefined, 
-      paymentFilter || undefined,
+      "paid",
       startDate || undefined,
       endDate || undefined
     ),
@@ -225,7 +224,7 @@ export default function Orders() {
       const blob = await orderService.exportOrdersToCsv(
         searchTerm || undefined,
         fulfillmentFilter || undefined,
-        paymentFilter || undefined,
+        "paid",
         startDate || undefined,
         endDate || undefined
       );
@@ -444,24 +443,24 @@ export default function Orders() {
         <Card className="border-green-200 dark:border-green-800">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Paid Orders
+              Unfulfilled Orders
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {loadingStats ? "..." : stats?.paidOrders || 0}
+              {loadingStats ? "..." : stats?.unfulfilledOrders || 0}
             </div>
           </CardContent>
         </Card>
         <Card className="border-orange-200 dark:border-orange-800">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Unpaid Orders
+              Partially Fulfilled Orders
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
-              {loadingStats ? "..." : stats?.unpaidOrders || 0}
+              {loadingStats ? "..." : stats?.partiallyFulfilledOrders || 0}
             </div>
           </CardContent>
         </Card>
@@ -485,22 +484,6 @@ export default function Orders() {
                 />
               </div>
               <Select
-                value={paymentFilter || "all"}
-                onValueChange={(value) => {
-                  setPaymentFilter(value === "all" ? null : value);
-                  setPage(1); // Reset to first page on filter change
-                }}
-              >
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Payment Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Payment</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
-                  <SelectItem value="unpaid">Unpaid</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select
                 value={fulfillmentFilter || "all"}
                 onValueChange={(value) => {
                   setFulfillmentFilter(value === "all" ? null : value);
@@ -512,8 +495,8 @@ export default function Orders() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Fulfillment</SelectItem>
-                  <SelectItem value="fulfilled">Fulfilled</SelectItem>
                   <SelectItem value="unfulfilled">Unfulfilled</SelectItem>
+                  <SelectItem value="partial">Partially Fulfilled</SelectItem>
                 </SelectContent>
               </Select>
             </div>
