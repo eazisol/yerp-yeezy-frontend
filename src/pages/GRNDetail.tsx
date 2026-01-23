@@ -98,6 +98,19 @@ export default function GRNDetail() {
     return new Date(dateString).toLocaleDateString();
   };
 
+  const formatGrnStatus = (status?: string | null) => {
+    switch (status?.toLowerCase()) {
+      case "completed":
+        return "Fully Received";
+      case "partial":
+        return "Partially Received";
+      case "pending":
+        return "Pending";
+      default:
+        return status || "N/A";
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -165,7 +178,7 @@ export default function GRNDetail() {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Status</span>
-              <Badge variant="outline">{grn.status || "N/A"}</Badge>
+              <Badge variant="outline">{formatGrnStatus(grn.status)}</Badge>
             </div>
           </CardContent>
         </Card>

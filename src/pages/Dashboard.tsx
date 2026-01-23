@@ -84,6 +84,23 @@ export default function Dashboard() {
     }).format(value);
   };
 
+  const normalizeGrnStatus = (status?: string | null) => {
+    return (status || "").toLowerCase();
+  };
+
+  const formatGrnStatus = (status?: string | null) => {
+    switch (normalizeGrnStatus(status)) {
+      case "completed":
+        return "Fully Received";
+      case "partial":
+        return "Partially Received";
+      case "pending":
+        return "Pending";
+      default:
+        return status || "N/A";
+    }
+  };
+
   // Format number with commas
   const formatNumber = (value: number) => {
     return new Intl.NumberFormat('en-US').format(value);
@@ -432,7 +449,7 @@ export default function Dashboard() {
               <div>
                 <CardTitle className="text-lg">GRN Status</CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Pending: {grnStatus.pending} | Completed: {grnStatus.completed}
+                  Pending: {grnStatus.pending} | Fully Received: {grnStatus.completed}
                 </p>
               </div>
               {canRead("GRN") && (
@@ -453,10 +470,10 @@ export default function Dashboard() {
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-medium text-foreground">{grn.grnNumber}</span>
                         <Badge
-                          variant={grn.status === "completed" ? "default" : "secondary"}
+                          variant={normalizeGrnStatus(grn.status) === "completed" ? "default" : "secondary"}
                           className="text-xs"
                         >
-                          {grn.status}
+                          {formatGrnStatus(grn.status)}
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">PO: {grn.poNumber}</p>

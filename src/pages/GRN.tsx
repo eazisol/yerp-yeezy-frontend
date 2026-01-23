@@ -106,6 +106,19 @@ export default function GRN() {
     }
   };
 
+  const formatGrnStatus = (status?: string | null) => {
+    switch (status?.toLowerCase()) {
+      case "completed":
+        return "Fully Received";
+      case "partial":
+        return "Partially Received";
+      case "pending":
+        return "Pending";
+      default:
+        return status || "N/A";
+    }
+  };
+
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("en-US", {
       style: "currency",
@@ -266,7 +279,7 @@ export default function GRN() {
                         variant={getStatusVariant(grn.status || "")}
                         className={getStatusColor(grn.status || "")}
                       >
-                        {grn.status || "N/A"}
+                        {formatGrnStatus(grn.status)}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-sm">{grn.receivedBy || "N/A"}</TableCell>
