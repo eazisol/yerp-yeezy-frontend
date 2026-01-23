@@ -212,10 +212,12 @@ export default function GRN() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+            {/*
             <Button variant="outline">
               <Filter className="h-4 w-4 mr-2" />
               Filters
             </Button>
+            */}
           </div>
         </CardContent>
       </Card>
