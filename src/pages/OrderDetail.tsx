@@ -204,6 +204,11 @@ export default function OrderDetail() {
     return uniqueIds.map(getWarehouseLabel).join(" / ");
   };
 
+  const getItemWarehouseLabel = (warehouseId?: number | null) => {
+    if (!warehouseId) return "N/A";
+    return getWarehouseLabel(warehouseId);
+  };
+
   // Build shipping address from separate fields
   const buildShippingAddress = () => {
     if (!order) return "N/A";
@@ -328,7 +333,7 @@ export default function OrderDetail() {
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Fulfillment Status</span>
-              <Badge variant="outline">{order.fulfillmentStatus || "N/A"}</Badge>
+              <Badge variant="outline">{order.fulfillmentStatus || "unfulfilled"}</Badge>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Swell Shipment Created</span>
@@ -593,6 +598,9 @@ export default function OrderDetail() {
                         {item.variantName && (
                           <p className="text-xs">Variant: {item.variantName}</p>
                         )}
+                      <p className="text-xs">
+                        Warehouse: <span className="font-medium text-foreground">{getItemWarehouseLabel(item.warehouseId)}</span>
+                      </p>
                         {/* Size and Color Display */}
                         {(size || color) && (
                           <div className="flex items-center gap-2 mt-1">

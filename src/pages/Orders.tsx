@@ -370,7 +370,7 @@ export default function Orders() {
 
   // Get fulfillment status from FulfillmentStatus field or fallback to Status
   const getFulfillmentStatus = (order: Order) => {
-    const fulfillmentStatus = order.fulfillmentStatus || order.status;
+    const fulfillmentStatus = order.fulfillmentStatus || "unfulfilled";
     
     switch (fulfillmentStatus?.toLowerCase()) {
       case "fulfilled":
