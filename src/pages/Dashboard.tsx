@@ -25,11 +25,9 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { dashboardService, DashboardMetrics } from "@/services/dashboard";
 import { useQuery } from "@tanstack/react-query";
 import {
-  grnStatus,
   vendorBalances,
   vendorPerformance,
   poAging,
-  totalInventoryValue,
   orderTrendData,
   monthlyOrderTrendData,
   recentOrders,
@@ -73,6 +71,17 @@ export default function Dashboard() {
   const warehouseInventory = dashboardMetrics?.warehouseInventory || [];
 
   const stockAlerts = dashboardMetrics?.stockAlerts || [];
+
+  const grnStatus = dashboardMetrics?.grnStatus || {
+    pending: 0,
+    completed: 0,
+    total: 0,
+    recentGrns: [],
+  };
+
+  const cnWarehouse = warehouseInventory.find((warehouse) => warehouse.warehouse === "CN");
+  const usWarehouse = warehouseInventory.find((warehouse) => warehouse.warehouse === "US");
+  const totalInventoryValue = (cnWarehouse?.totalValue || 0) + (usWarehouse?.totalValue || 0);
 
   // Format currency
   const formatCurrency = (value: number) => {
@@ -404,7 +413,7 @@ export default function Dashboard() {
                     No stock alerts found
                   </div>
                 ) : (
-                  stockAlerts.slice(0, 10).map((item, index) => (
+                  stockAlerts.slice(0, 5).map((item, index) => (
                     <div
                       key={`${item.sku}-${item.variantSku || 'product'}-${item.warehouse}-${index}`}
                       className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-smooth cursor-pointer"
@@ -461,7 +470,7 @@ export default function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {grnStatus.recentGRNs.map((grn) => (
+                {grnStatus.recentGrns.map((grn) => (
                   <div
                     key={grn.id}
                     className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-smooth cursor-pointer"
@@ -713,33 +722,26 @@ export default function Dashboard() {
                     <div>
                       <p className="text-sm text-muted-foreground">Total Value</p>
                       <p className="text-3xl font-bold text-foreground">
-                        {formatCurrency(totalInventoryValue.totalValue)}
+                        {formatCurrency(totalInventoryValue)}
                       </p>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <p className="text-sm text-muted-foreground">CN Warehouse</p>
                         <p className="text-xl font-semibold text-foreground">
-                          {formatCurrency(totalInventoryValue.cnValue)}
+                          {formatCurrency(cnWarehouse?.totalValue || 0)}
                         </p>
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground">US Warehouse</p>
                         <p className="text-xl font-semibold text-foreground">
-                          {formatCurrency(totalInventoryValue.usValue)}
+                          {formatCurrency(usWarehouse?.totalValue || 0)}
                         </p>
                       </div>
                     </div>
                     <div className="pt-2 border-t">
-                      <p className={`text-xs flex items-center gap-1 ${totalInventoryValue.changePercentage >= 0 ? "text-success" : "text-destructive"
-                        }`}>
-                        {totalInventoryValue.changePercentage >= 0 ? (
-                          <TrendingUp className="h-3 w-3" />
-                        ) : (
-                          <TrendingDown className="h-3 w-3" />
-                        )}
-                        {totalInventoryValue.changePercentage >= 0 ? "+" : ""}
-                        {totalInventoryValue.changePercentage.toFixed(1)}% from last month
+                      <p className="text-xs text-muted-foreground">
+                        Live warehouse totals
                       </p>
                     </div>
                   </div>

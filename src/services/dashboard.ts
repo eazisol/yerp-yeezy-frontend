@@ -51,6 +51,21 @@ export interface StockAlertsResponse {
   hasNextPage: boolean;
 }
 
+export interface GrnRecent {
+  id: number;
+  grnNumber: string;
+  poNumber: string;
+  status: string;
+  date: string;
+}
+
+export interface GrnStatus {
+  pending: number;
+  completed: number;
+  total: number;
+  recentGrns: GrnRecent[];
+}
+
 export interface DashboardMetrics {
   dailyOrderMetrics: DailyOrderMetrics;
   orderStatusBreakdown: OrderStatusBreakdown;
@@ -59,6 +74,7 @@ export interface DashboardMetrics {
   stockAlerts: StockAlert[];
   stockAlertsCriticalCount: number;
   stockAlertsLowCount: number;
+  grnStatus: GrnStatus;
 }
 
 class DashboardService {

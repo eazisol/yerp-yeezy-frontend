@@ -104,6 +104,11 @@ class OrderService {
     return apiClient.post(`/api/Orders/resync/${orderId}`);
   }
 
+  // Create shipment in Swell for an order
+  async createShipment(orderId: number): Promise<{ message: string; shipment_id?: string }> {
+    return apiClient.post(`/api/Orders/${orderId}/create-shipment`);
+  }
+
   async resyncChinaOrders(): Promise<{ message: string; totalOrders: number }> {
     return apiClient.post("/api/Orders/resync-china");
   }
