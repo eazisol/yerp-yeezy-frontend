@@ -397,7 +397,7 @@ export default function Orders() {
           bgColor: "bg-blue-100",
           textColor: "text-blue-700",
           dotColor: "bg-blue-600",
-          label: "Partial",
+          label: "Partially Fulfilled",
         };
       case "cancelled":
       case "canceled":
@@ -564,7 +564,7 @@ export default function Orders() {
                   <SelectValue placeholder="Fulfillment Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Fulfillment</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
                   <SelectItem value="unfulfilled">Unfulfilled</SelectItem>
                   <SelectItem value="partial">Partially Fulfilled</SelectItem>
                 </SelectContent>
