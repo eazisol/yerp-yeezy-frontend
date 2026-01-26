@@ -269,12 +269,6 @@ export default function OrderDetail() {
     return parts.length > 0 ? parts.join(", ") : "N/A";
   };
 
-  // Check if shipment create is allowed
-  const canCreateShipment =
-    !order.hasSwellShipmentCreated &&
-    order.status?.toLowerCase() === "received from warehouse" &&
-    order.orderItems.some((item) => item.shippedQuantity > 0);
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -300,6 +294,12 @@ export default function OrderDetail() {
       </div>
     );
   }
+
+  // Check if shipment create is allowed
+  const canCreateShipment =
+    !order.hasSwellShipmentCreated &&
+    order.status?.toLowerCase() === "received from warehouse" &&
+    order.orderItems.some((item) => item.shippedQuantity > 0);
 
   return (
     <div className="space-y-6">
