@@ -566,6 +566,7 @@ export default function Orders() {
                     <TableHead>Customer</TableHead>
                     <TableHead>Payment</TableHead>
                     <TableHead>Fulfillment</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -574,7 +575,7 @@ export default function Orders() {
                   {orders.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={7}
+                        colSpan={8}
                         className="text-center py-8 text-muted-foreground"
                       >
                         No orders found
@@ -624,6 +625,9 @@ export default function Orders() {
                             />
                             <span>{fulfillmentStatus.label}</span>
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{order.status}</Badge>
                         </TableCell>
                         <TableCell className="text-right font-medium">
                           {formatCurrency(order.total, order.currency || "USD")}

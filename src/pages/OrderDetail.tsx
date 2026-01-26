@@ -21,11 +21,21 @@ interface OrderItem {
   variantName?: string | null; // Variant name
   productVariantAttributes?: string | null; // Product Variant attributes (JSON with images)
   quantity: number;
+  shippedQuantity: number;
   quantityFulfilled: number;
   quantityCanceled: number;
   quantityReturned: number;
   unitPrice: number;
   totalPrice: number;
+}
+
+interface OrderShipment {
+  orderShipmentId: number;
+  swellShipmentId?: string | null;
+  trackingCode?: string | null;
+  carrier?: string | null;
+  service?: string | null;
+  createdDate: string;
 }
 
 interface OrderDetail {
@@ -60,7 +70,9 @@ interface OrderDetail {
   billingAddress?: string | null;
   createdDate: string;
   editDate?: string | null;
+  hasSwellShipmentCreated: boolean;
   orderItems: OrderItem[];
+  orderShipments: OrderShipment[];
   statusHistory: any[];
 }
 
@@ -288,18 +300,22 @@ export default function OrderDetail() {
                 <span className="font-medium text-foreground text-sm">{order.swellOrderId}</span>
               </div>
             )}
-            {/* <div className="flex justify-between">
+            <div className="flex justify-between">
               <span className="text-muted-foreground">Status</span>
               <Badge variant={order.isCanceled ? "destructive" : "default"}>
                 {order.status}
               </Badge>
-            </div> */}
-            {order.fulfillmentStatus && (
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Fulfillment Status</span>
-                <Badge variant="outline">{order.fulfillmentStatus}</Badge>
-              </div>
-            )}
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Fulfillment Status</span>
+              <Badge variant="outline">{order.fulfillmentStatus || "N/A"}</Badge>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Swell Shipment Created</span>
+              <Badge variant={order.hasSwellShipmentCreated ? "default" : "secondary"}>
+                {order.hasSwellShipmentCreated ? "Yes" : "No"}
+              </Badge>
+            </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Payment Status</span>
               <Badge variant="outline">{order.paymentStatus || "N/A"}</Badge>
@@ -439,6 +455,57 @@ export default function OrderDetail() {
         </div>
       )}
 
+      {/* Shipment Details */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Shipment Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {order.orderShipments.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No shipments found.</p>
+          ) : (
+            <div className="space-y-3">
+              {order.orderShipments.map((shipment) => (
+                <div
+                  key={shipment.orderShipmentId}
+                  className="flex flex-col gap-2 p-4 bg-secondary/50 rounded-lg"
+                >
+                  <div className="flex flex-wrap gap-4 text-sm">
+                    <span>
+                      <span className="text-muted-foreground">Shipment ID:</span>{" "}
+                      <span className="font-medium text-foreground">
+                        {shipment.swellShipmentId || "N/A"}
+                      </span>
+                    </span>
+                    <span>
+                      <span className="text-muted-foreground">Tracking:</span>{" "}
+                      <span className="font-medium text-foreground">
+                        {shipment.trackingCode || "N/A"}
+                      </span>
+                    </span>
+                    <span>
+                      <span className="text-muted-foreground">Carrier:</span>{" "}
+                      <span className="font-medium text-foreground">
+                        {shipment.carrier || "N/A"}
+                      </span>
+                    </span>
+                    <span>
+                      <span className="text-muted-foreground">Service:</span>{" "}
+                      <span className="font-medium text-foreground">
+                        {shipment.service || "N/A"}
+                      </span>
+                    </span>
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Created: {formatDate(shipment.createdDate)}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Order Items */}
       <Card>
         <CardHeader>
@@ -537,6 +604,12 @@ export default function OrderDetail() {
                     <div className="flex items-center justify-end gap-3">
                       <span className="text-muted-foreground">Qty:</span>
                       <span className="font-medium">{item.quantity}</span>
+                    </div>
+                    <div className="flex items-center justify-end gap-2">
+                      <span className="text-muted-foreground">Shipped:</span>
+                      <span className={`font-medium ${item.shippedQuantity > 0 ? "text-green-600" : "text-muted-foreground"}`}>
+                        {item.shippedQuantity}
+                      </span>
                     </div>
                     <div className="flex items-center justify-end gap-2">
                       <span className="text-muted-foreground">Fulfilled:</span>
