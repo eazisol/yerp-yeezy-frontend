@@ -16,6 +16,7 @@ interface OrderItem {
   orderItemId: number;
   productId?: number | null;
   variantId?: number | null;
+  warehouseId?: number | null;
   productName?: string | null;
   productSku?: string | null;
   variantName?: string | null; // Variant name
@@ -71,6 +72,7 @@ interface OrderDetail {
   createdDate: string;
   editDate?: string | null;
   hasSwellShipmentCreated: boolean;
+  warehouseIds: number[];
   orderItems: OrderItem[];
   orderShipments: OrderShipment[];
   statusHistory: any[];
@@ -182,6 +184,24 @@ export default function OrderDetail() {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  // Map warehouse IDs to labels
+  const getWarehouseLabel = (warehouseId: number) => {
+    if (warehouseId === 2) return "CN";
+    if (warehouseId === 3) return "US";
+    return warehouseId.toString();
+  };
+
+  // Build warehouse summary from order items
+  const getWarehouseSummary = () => {
+    const idsFromOrder = order?.warehouseIds ?? [];
+    const idsFromItems = order?.orderItems
+      ?.map((item) => item.warehouseId)
+      .filter((id): id is number => typeof id === "number") ?? [];
+    const uniqueIds = Array.from(new Set([...idsFromOrder, ...idsFromItems]));
+    if (uniqueIds.length === 0) return "N/A";
+    return uniqueIds.map(getWarehouseLabel).join(" / ");
   };
 
   // Build shipping address from separate fields
@@ -319,6 +339,10 @@ export default function OrderDetail() {
             <div className="flex justify-between">
               <span className="text-muted-foreground">Payment Status</span>
               <Badge variant="outline">{order.paymentStatus || "N/A"}</Badge>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Warehouse</span>
+              <Badge variant="outline">{getWarehouseSummary()}</Badge>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Canceled</span>

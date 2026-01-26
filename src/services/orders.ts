@@ -17,6 +17,8 @@ export interface Order {
   route: string | null;
   createdDate: string;
   itemCount: number;
+  warehouseIds?: number[];
+  orderSyncTo?: number;
 }
 
 export interface OrderStats {
@@ -96,6 +98,14 @@ class OrderService {
 
   async getOrderStats(): Promise<OrderStats> {
     return apiClient.get<OrderStats>("/api/Orders/stats");
+  }
+
+  async resyncOrder(orderId: number): Promise<{ message: string; orderId: number }> {
+    return apiClient.post(`/api/Orders/resync/${orderId}`);
+  }
+
+  async resyncChinaOrders(): Promise<{ message: string; totalOrders: number }> {
+    return apiClient.post("/api/Orders/resync-china");
   }
 
   // Get total order count from Swell

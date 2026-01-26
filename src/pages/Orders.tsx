@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Filter, Eye, Download, RefreshCw, Upload, Calendar, FileSpreadsheet } from "lucide-react";
+import { Search, Filter, Eye, Download, RefreshCw, Upload, Calendar, FileSpreadsheet, Repeat } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -55,11 +55,58 @@ export default function Orders() {
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [importResult, setImportResult] = useState<OrderImportResult | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [showBulkResyncConfirm, setShowBulkResyncConfirm] = useState(false);
+  const [showResyncConfirm, setShowResyncConfirm] = useState(false);
+  const [resyncOrderId, setResyncOrderId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { canRead, canModify } = usePermissions();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const resyncOrderMutation = useMutation({
+    mutationFn: (orderId: number) => orderService.resyncOrder(orderId),
+    onSuccess: (data) => {
+      toast({
+        title: "Resync triggered",
+        description: data.message,
+      });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to resync order",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resyncChinaMutation = useMutation({
+    mutationFn: () => orderService.resyncChinaOrders(),
+    onSuccess: (data) => {
+      toast({
+        title: "Bulk resync triggered",
+        description: data.message,
+      });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+      setShowBulkResyncConfirm(false);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to bulk resync orders",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const canResyncChinaOrder = (order: Order) => {
+    const hasChinaWarehouse = (order.warehouseIds ?? []).includes(2);
+    return hasChinaWarehouse && order.orderSyncTo === 0;
+  };
+
+  const resyncEligibleCount = orders.filter(canResyncChinaOrder).length;
 
   // Fetch orders with pagination
   const { data: ordersData, isLoading: loadingOrders } = useQuery({
@@ -370,6 +417,21 @@ export default function Orders() {
     }
   };
 
+  // Map warehouse IDs to labels
+  const getWarehouseLabel = (warehouseId: number) => {
+    if (warehouseId === 2) return "CN";
+    if (warehouseId === 3) return "US";
+    return warehouseId.toString();
+  };
+
+  // Build warehouse summary for list
+  const getWarehouseSummary = (order: Order) => {
+    const ids = order.warehouseIds ?? [];
+    if (ids.length === 0) return "N/A";
+    const uniqueIds = Array.from(new Set(ids));
+    return uniqueIds.map(getWarehouseLabel).join(" / ");
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -380,6 +442,14 @@ export default function Orders() {
         <div className="flex gap-2">
           {canModify("ORDERS") && (
             <>
+              <Button
+                variant="outline"
+                onClick={() => setShowBulkResyncConfirm(true)}
+                disabled={resyncChinaMutation.isPending}
+              >
+                <Repeat className="h-4 w-4 mr-2" />
+                {resyncChinaMutation.isPending ? "Resyncing..." : "Bulk Resync China"}
+              </Button>
               <Button
                 variant="outline"
                 onClick={handleImportClick}
@@ -567,6 +637,7 @@ export default function Orders() {
                     <TableHead>Payment</TableHead>
                     <TableHead>Fulfillment</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Warehouse</TableHead>
                     <TableHead className="text-right">Total</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -575,7 +646,7 @@ export default function Orders() {
                   {orders.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={8}
+                        colSpan={9}
                         className="text-center py-8 text-muted-foreground"
                       >
                         No orders found
@@ -629,6 +700,9 @@ export default function Orders() {
                         <TableCell>
                           <Badge variant="outline">{order.status}</Badge>
                         </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{getWarehouseSummary(order)}</Badge>
+                        </TableCell>
                         <TableCell className="text-right font-medium">
                           {formatCurrency(order.total, order.currency || "USD")}
                         </TableCell>
@@ -640,6 +714,19 @@ export default function Orders() {
                               onClick={() => navigate(`/orders/${order.orderId}`)}
                             >
                               <Eye className="h-4 w-4" />
+                            </Button>
+                          )}
+                          {canModify("ORDERS") && canResyncChinaOrder(order) && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setResyncOrderId(order.orderId);
+                                setShowResyncConfirm(true);
+                              }}
+                              title="Resend to China"
+                            >
+                              <Repeat className="h-4 w-4" />
                             </Button>
                           )}
                         </TableCell>
@@ -801,6 +888,105 @@ export default function Orders() {
                 <span>Syncing...</span>
               </div>
             )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Resync Confirmation Dialog */}
+      <AlertDialog
+        open={showBulkResyncConfirm}
+        onOpenChange={(open) => {
+          if (!resyncChinaMutation.isPending && !open) {
+            setShowBulkResyncConfirm(false);
+          }
+        }}
+      >
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              {resyncChinaMutation.isPending && (
+                <RefreshCw className="h-5 w-5 animate-spin text-primary" />
+              )}
+              {resyncChinaMutation.isPending ? "Resyncing..." : "Bulk Resync China Orders"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will resend all China-bound orders that have not been synced yet.
+              <div className="text-sm text-muted-foreground mt-2">
+                Eligible orders on this page: <strong>{resyncEligibleCount}</strong>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={resyncChinaMutation.isPending}
+              onClick={() => {
+                if (!resyncChinaMutation.isPending) {
+                  setShowBulkResyncConfirm(false);
+                }
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                resyncChinaMutation.mutate();
+              }}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <Repeat className="h-4 w-4 mr-2" />
+              Resend
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Single Resync Confirmation Dialog */}
+      <AlertDialog
+        open={showResyncConfirm}
+        onOpenChange={(open) => {
+          if (!resyncOrderMutation.isPending && !open) {
+            setShowResyncConfirm(false);
+            setResyncOrderId(null);
+          }
+        }}
+      >
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              {resyncOrderMutation.isPending && (
+                <RefreshCw className="h-5 w-5 animate-spin text-primary" />
+              )}
+              {resyncOrderMutation.isPending ? "Resyncing..." : "Resend Order to China"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will resend the selected order to the external China API.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={resyncOrderMutation.isPending}
+              onClick={() => {
+                if (!resyncOrderMutation.isPending) {
+                  setShowResyncConfirm(false);
+                  setResyncOrderId(null);
+                }
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                if (resyncOrderId) {
+                  resyncOrderMutation.mutate(resyncOrderId);
+                }
+              }}
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <Repeat className="h-4 w-4 mr-2" />
+              Resend
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
