@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Search, Filter, Eye, Download, RefreshCw, Upload, Calendar, FileSpreadsheet, Repeat } from "lucide-react";
 import {
@@ -105,8 +106,6 @@ export default function Orders() {
     const hasChinaWarehouse = (order.warehouseIds ?? []).includes(2);
     return hasChinaWarehouse && order.orderSyncTo === 0;
   };
-
-  const resyncEligibleCount = orders.filter(canResyncChinaOrder).length;
 
   // Fetch orders with pagination
   const { data: ordersData, isLoading: loadingOrders } = useQuery({
@@ -306,6 +305,7 @@ export default function Orders() {
   const totalPages = ordersData?.totalPages || 1;
   const hasNextPage = ordersData?.hasNextPage || false;
   const hasPreviousPage = ordersData?.hasPreviousPage || false;
+  const resyncEligibleCount = orders.filter(canResyncChinaOrder).length;
 
   // Format date for display
   const formatDate = (dateString: string) => {
