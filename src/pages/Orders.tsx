@@ -73,6 +73,8 @@ export default function Orders() {
         description: data.message,
       });
       queryClient.invalidateQueries({ queryKey: ["orders"] });
+      setShowResyncConfirm(false);
+      setResyncOrderId(null);
     },
     onError: () => {
       toast({
