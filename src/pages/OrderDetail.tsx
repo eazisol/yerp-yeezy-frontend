@@ -643,12 +643,12 @@ export default function OrderDetail() {
                         {item.shippedQuantity}
                       </span>
                     </div>
-                    <div className="flex items-center justify-end gap-2">
+                    {/* <div className="flex items-center justify-end gap-2">
                       <span className="text-muted-foreground">Fulfilled:</span>
                       <span className={`font-medium ${item.quantityFulfilled > 0 ? "text-green-600" : "text-muted-foreground"}`}>
                         {item.quantityFulfilled}
                       </span>
-                    </div>
+                    </div> */}
                     <div className="flex items-center justify-end gap-2">
                       <span className="text-muted-foreground">Canceled:</span>
                       <span className={`font-medium ${item.quantityCanceled > 0 ? "text-red-600" : "text-muted-foreground"}`}>
