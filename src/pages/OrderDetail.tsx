@@ -317,8 +317,7 @@ export default function OrderDetail() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {canCreateShipment && (
-            <Button
+        <Button
               variant="default"
               size="sm"
               onClick={() => createShipmentMutation.mutate(order.orderId)}
@@ -326,6 +325,8 @@ export default function OrderDetail() {
             >
               {createShipmentMutation.isPending ? "Creating..." : "Create Shipment"}
             </Button>
+          {canCreateShipment && (
+           <></>
           )}
           <Button
             variant="outline"
