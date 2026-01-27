@@ -137,6 +137,7 @@ export default function Dashboard() {
     ?? stockAlerts.filter(item => item.status === "low").length;
 
   const missingVariantSkus = missingVariantSkusData?.data || [];
+  const missingVariantSkusTotal = missingVariantSkusData?.totalCount || 0;
 
   // Order status breakdown for pie chart
   const orderStatusChartData = [
@@ -525,10 +526,15 @@ export default function Dashboard() {
                 Latest SKUs used in orders without a variant
               </p>
             </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs">
+                Total: {formatNumber(missingVariantSkusTotal)}
+              </Badge>
             <Button variant="outline" size="sm" onClick={() => navigate("/missing-variant-skus")}>
               <Eye className="h-4 w-4 mr-2" />
               View All
             </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">

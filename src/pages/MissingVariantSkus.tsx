@@ -45,12 +45,15 @@ export default function MissingVariantSkus() {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>
           <CardTitle className="text-lg">Missing Variant SKUs</CardTitle>
           <p className="text-sm text-muted-foreground mt-1">
             SKUs used in orders without a matching variant in the system
           </p>
+        </div>
+        <div className="text-sm text-muted-foreground">
+          Total Missing SKUs: <span className="font-medium text-foreground">{totalCount}</span>
         </div>
       </CardHeader>
       <CardContent>
