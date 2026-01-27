@@ -493,7 +493,7 @@ export default function ProductDetail() {
                     <TableHead className="whitespace-nowrap">COG Parent Account</TableHead>
                     <TableHead className="whitespace-nowrap">COG Sub Account</TableHead>
                     <TableHead className="whitespace-nowrap">Variant Slug</TableHead>
-                    <TableHead className="whitespace-nowrap">Available Stock</TableHead>
+                    <TableHead className="whitespace-nowrap">Stock</TableHead>
                     <TableHead className="whitespace-nowrap">Vendors</TableHead>
                     <TableHead className="whitespace-nowrap">Attributes</TableHead>
                   </TableRow>
@@ -641,20 +641,45 @@ export default function ProductDetail() {
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
                           <div className="flex flex-col gap-1.5">
-                            <div className="font-medium text-foreground">
-                              {variant.availableStock !== undefined && variant.availableStock !== null
-                                ? `${variant.availableStock} units`
-                                : "N/A"}
+                            <div className="text-xs">
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-muted-foreground">Qty:</span>
+                                <span className="font-medium text-foreground">
+                                  {variant.availableStock !== undefined && variant.availableStock !== null
+                                    ? variant.availableStock
+                                    : "N/A"}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-muted-foreground">Used Qty:</span>
+                                <span className="font-medium text-foreground">
+                                  {variant.usedStock !== undefined && variant.usedStock !== null
+                                    ? variant.usedStock
+                                    : 0}
+                                </span>
+                              </div>
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="text-muted-foreground">Available:</span>
+                                <span className="font-medium text-foreground">
+                                  {variant.availableStock !== undefined && variant.availableStock !== null
+                                    ? (variant.availableStock - (variant.usedStock || 0))
+                                    : "N/A"}
+                                </span>
+                              </div>
                             </div>
                             {variant.warehouseInventories && Array.isArray(variant.warehouseInventories) && variant.warehouseInventories.length > 0 ? (
                               <div className="text-xs space-y-1 mt-1 pt-1 border-t border-border">
                                 <div className="font-semibold text-muted-foreground mb-0.5">Warehouse:</div>
                                 {variant.warehouseInventories.map((wi: any) => (
-                                  <div key={wi.warehouseInventoryId || Math.random()} className="flex justify-between gap-3 items-center">
+                                  <div key={wi.warehouseInventoryId || Math.random()} className="flex items-center justify-between gap-3">
                                     <Badge variant="outline" className="text-xs">
                                       {wi.warehouseCode || "N/A"}
                                     </Badge>
-                                    <span className="font-medium text-foreground">{wi.availableStock || 0} units</span>
+                                    <span className="text-muted-foreground">Qty: {wi.availableStock ?? 0}</span>
+                                    <span className="text-muted-foreground">Used: {wi.usedStock ?? 0}</span>
+                                    <span className="font-medium text-foreground">
+                                      Available: {(wi.availableStock ?? 0) - (wi.usedStock ?? 0)}
+                                    </span>
                                   </div>
                                 ))}
                               </div>
