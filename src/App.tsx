@@ -38,6 +38,7 @@ import RolePermissions from "./pages/RolePermissions";
 import KPI from "./pages/KPI";
 import Reports from "./pages/Reports";
 import StockAlerts from "./pages/StockAlerts";
+import MissingVariantSkus from "./pages/MissingVariantSkus";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -86,6 +87,7 @@ const App = () => (
               <Route path="/kpi" element={<KPI />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/stock-alerts" element={<StockAlerts />} />
+              <Route path="/missing-variant-skus" element={<MissingVariantSkus />} />
             </Route>
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

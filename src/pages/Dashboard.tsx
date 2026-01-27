@@ -44,6 +44,13 @@ export default function Dashboard() {
     refetchInterval: 60000, // Refetch every 60 seconds for real-time updates
   });
 
+  // Fetch missing variant SKUs (top 5)
+  const { data: missingVariantSkusData, isLoading: loadingMissingVariantSkus } = useQuery({
+    queryKey: ["missing-variant-skus", 1, 5],
+    queryFn: () => dashboardService.getMissingVariantSkus(1, 5),
+    refetchInterval: 60000, // Refetch every 60 seconds for real-time updates
+  });
+
   // Use real data if available, otherwise use empty defaults
   const dailyOrderMetrics = dashboardMetrics?.dailyOrderMetrics || {
     totalOrders: 0,
@@ -115,11 +122,21 @@ export default function Dashboard() {
     return new Intl.NumberFormat('en-US').format(value);
   };
 
+  // Format ISO date string to short date
+  const formatShortDate = (value?: string) => {
+    if (!value) return "N/A";
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return "N/A";
+    return parsed.toLocaleDateString("en-US");
+  };
+
   // Calculate critical vs low stock counts (use totals from API when available)
   const criticalStockCount = dashboardMetrics?.stockAlertsCriticalCount
     ?? stockAlerts.filter(item => item.status === "critical").length;
   const lowStockCount = dashboardMetrics?.stockAlertsLowCount
     ?? stockAlerts.filter(item => item.status === "low").length;
+
+  const missingVariantSkus = missingVariantSkusData?.data || [];
 
   // Order status breakdown for pie chart
   const orderStatusChartData = [
@@ -497,6 +514,66 @@ export default function Dashboard() {
           </Card>
         )}
       </div>
+
+      {/* Missing Variant SKUs */}
+      {canRead("ORDERS") && (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-lg">Missing Variant SKUs</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Latest SKUs used in orders without a variant
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => navigate("/missing-variant-skus")}>
+              <Eye className="h-4 w-4 mr-2" />
+              View All
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {loadingMissingVariantSkus ? (
+                <div className="text-center py-4 text-sm text-muted-foreground">
+                  Loading missing variant SKUs...
+                </div>
+              ) : missingVariantSkus.length === 0 ? (
+                <div className="text-center py-4 text-sm text-muted-foreground">
+                  No missing variant SKUs found
+                </div>
+              ) : (
+                missingVariantSkus.map((item, index) => (
+                  <div
+                    key={`${item.sku}-${index}`}
+                    className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-smooth"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-foreground">
+                          {item.sku}
+                        </span>
+                        <Badge variant="secondary" className="text-xs">
+                          {item.totalUses} uses
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {item.productName || "Unknown product"}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">
+                        {item.latestOrderNumber || "N/A"}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatShortDate(item.latestOrderDate)}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Charts Section */}
       {/* <div> */}

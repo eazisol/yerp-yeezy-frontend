@@ -66,6 +66,26 @@ export interface GrnStatus {
   recentGrns: GrnRecent[];
 }
 
+// Missing variant SKU list item from dashboard API
+export interface MissingVariantSkuItem {
+  sku: string;
+  productName: string;
+  latestOrderNumber?: string;
+  latestOrderDate: string;
+  totalUses: number;
+}
+
+// Paged response for missing variant SKUs
+export interface MissingVariantSkusResponse {
+  data: MissingVariantSkuItem[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
+}
+
 export interface DashboardMetrics {
   dailyOrderMetrics: DailyOrderMetrics;
   orderStatusBreakdown: OrderStatusBreakdown;
@@ -95,6 +115,19 @@ class DashboardService {
     if (sku) params.append("sku", sku);
 
     return apiClient.get<StockAlertsResponse>(`/api/Dashboard/stock-alerts?${params.toString()}`);
+  }
+
+  // Fetch paged missing variant SKUs from orders
+  async getMissingVariantSkus(
+    page: number = 1,
+    pageSize: number = 10
+  ): Promise<MissingVariantSkusResponse> {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      pageSize: pageSize.toString(),
+    });
+
+    return apiClient.get<MissingVariantSkusResponse>(`/api/Dashboard/missing-variant-skus?${params.toString()}`);
   }
 }
 
