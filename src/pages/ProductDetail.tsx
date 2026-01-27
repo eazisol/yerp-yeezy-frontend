@@ -641,32 +641,6 @@ export default function ProductDetail() {
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
                           <div className="flex flex-col gap-1.5">
-                            <div className="text-xs">
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-muted-foreground">Qty:</span>
-                                <span className="font-medium text-foreground">
-                                  {variant.availableStock !== undefined && variant.availableStock !== null
-                                    ? variant.availableStock
-                                    : "N/A"}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-muted-foreground">Used Qty:</span>
-                                <span className="font-medium text-foreground">
-                                  {variant.usedStock !== undefined && variant.usedStock !== null
-                                    ? variant.usedStock
-                                    : 0}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-muted-foreground">Available:</span>
-                                <span className="font-medium text-foreground">
-                                  {variant.availableStock !== undefined && variant.availableStock !== null
-                                    ? (variant.availableStock - (variant.usedStock || 0))
-                                    : "N/A"}
-                                </span>
-                              </div>
-                            </div>
                             {variant.warehouseInventories && Array.isArray(variant.warehouseInventories) && variant.warehouseInventories.length > 0 ? (
                               <div className="text-xs space-y-1 mt-1 pt-1 border-t border-border">
                                 <div className="font-semibold text-muted-foreground mb-0.5">Warehouse:</div>
