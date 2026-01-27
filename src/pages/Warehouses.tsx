@@ -1,24 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import WarehouseFormDialog from "@/components/warehouses/WarehouseFormDialog";
 import {
   Table,
   TableBody,
@@ -52,6 +38,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { extractErrorMessage } from "@/utils/errorUtils";
 
+// Warehouses list with create/edit/delete actions.
 export default function Warehouses() {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
@@ -61,30 +48,23 @@ export default function Warehouses() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedWarehouse, setSelectedWarehouse] = useState<Warehouse | null>(null);
   const [deleteWarehouseId, setDeleteWarehouseId] = useState<number | null>(null);
-  const [formData, setFormData] = useState<CreateWarehouseRequest>({
-    warehouseCode: "",
-    name: "",
-    address: "",
-    city: "",
-    state: "",
-    zipCode: "",
-    country: "China",
-    contactPerson1: "",
-    contactPhone1: "",
-    contactPerson2: "",
-    contactPhone2: "",
-    email: "",
-    status: "Active",
-  });
-  const [isEditMode, setIsEditMode] = useState(false);
   const [publicCredentials, setPublicCredentials] = useState<{
     clientId: string;
     clientSecret: string;
   } | null>(null);
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
+  const navigate = useNavigate();
   const { canRead, canModify, canDelete } = usePermissions();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  // Close warehouse dialog and clear selection.
+  const handleCloseWarehouseForm = () => {
+    setShowWarehouseForm(false);
+    setSelectedWarehouse(null);
+    setPublicCredentials(null);
+  };
 
   // Fetch warehouses with pagination
   const { data: warehousesData, isLoading: loadingWarehouses } = useQuery({
@@ -107,8 +87,7 @@ export default function Warehouses() {
           clientSecret: response.publicClientSecret,
         });
       } else {
-        setShowWarehouseForm(false);
-        resetForm();
+        handleCloseWarehouseForm();
       }
     },
     onError: (error: any) => {
@@ -137,8 +116,7 @@ export default function Warehouses() {
           clientSecret: response.publicClientSecret,
         });
       } else {
-        setShowWarehouseForm(false);
-        resetForm();
+        handleCloseWarehouseForm();
       }
     },
     onError: (error: any) => {
@@ -173,52 +151,15 @@ export default function Warehouses() {
     },
   });
 
-  const resetForm = () => {
-    setFormData({
-      warehouseCode: "",
-      name: "",
-      address: "",
-      city: "",
-      state: "",
-      zipCode: "",
-      country: "China",
-      contactPerson1: "",
-      contactPhone1: "",
-      contactPerson2: "",
-      contactPhone2: "",
-      email: "",
-      status: "Active",
-    });
-    setIsEditMode(false);
+  // Open dialog for create mode.
+  const handleAddWarehouse = () => {
     setSelectedWarehouse(null);
     setPublicCredentials(null);
-  };
-
-  const handleAddWarehouse = () => {
-    resetForm();
-    setIsEditMode(false);
     setShowWarehouseForm(true);
   };
 
+  // Open dialog for edit mode.
   const handleEditWarehouse = (warehouse: Warehouse) => {
-    // Sync status from IsActive if status is not set
-    const status = warehouse.status || (warehouse.isActive ? "Active" : "Inactive");
-    setFormData({
-      warehouseCode: warehouse.warehouseCode,
-      name: warehouse.name,
-      address: warehouse.address || "",
-      city: warehouse.city || "",
-      state: warehouse.state || "",
-      zipCode: warehouse.zipCode || "",
-      country: warehouse.country || "China",
-      contactPerson1: warehouse.contactPerson1 || "",
-      contactPhone1: warehouse.contactPhone1 || "",
-      contactPerson2: warehouse.contactPerson2 || "",
-      contactPhone2: warehouse.contactPhone2 || "",
-      email: warehouse.email || "",
-      status: status,
-    });
-    setIsEditMode(true);
     setSelectedWarehouse(warehouse);
     setPublicCredentials(null);
     setShowWarehouseForm(true);
@@ -251,37 +192,40 @@ export default function Warehouses() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validate email format only if provided (email is optional)
-    if (formData.email && formData.email.trim() !== "") {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.email)) {
-        toast({
-          title: "Validation Error",
-          description: "Please enter a valid email address",
-          variant: "destructive",
-        });
-        return;
-      }
-    }
-
-    if (isEditMode && selectedWarehouse) {
-      // Status will automatically sync IsActive in backend
-      const updateData: UpdateWarehouseRequest = {
-        ...formData,
-        // Include email only if provided (convert empty string to undefined)
-        email: formData.email && formData.email.trim() !== "" ? formData.email : undefined,
-      };
-      updateWarehouseMutation.mutate({ id: selectedWarehouse.warehouseId, data: updateData });
+  // Submit warehouse form based on mode.
+  const handleSubmit = (data: CreateWarehouseRequest | UpdateWarehouseRequest) => {
+    if (selectedWarehouse) {
+      updateWarehouseMutation.mutate({ id: selectedWarehouse.warehouseId, data });
     } else {
-      // For create, convert empty string to undefined
-      const createData = {
-        ...formData,
-        email: formData.email && formData.email.trim() !== "" ? formData.email : undefined,
-      };
-      createWarehouseMutation.mutate(createData);
+      createWarehouseMutation.mutate(data as CreateWarehouseRequest);
+    }
+  };
+
+  // Regenerate public credentials for the selected warehouse.
+  const handleRegenerateCredentials = async () => {
+    if (!selectedWarehouse) return;
+    setIsRegenerating(true);
+    try {
+      const response = await warehouseService.regenerateCredentials(selectedWarehouse.warehouseId);
+      if (response.publicClientId && response.publicClientSecret) {
+        setPublicCredentials({
+          clientId: response.publicClientId,
+          clientSecret: response.publicClientSecret,
+        });
+        toast({
+          title: "Success",
+          description: "Credentials regenerated",
+        });
+      }
+    } catch (error) {
+      const errorMessage = extractErrorMessage(error, "Failed to regenerate credentials");
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsRegenerating(false);
     }
   };
 
@@ -414,7 +358,7 @@ export default function Warehouses() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleEditWarehouse(warehouse)}
+                              onClick={() => navigate(`/warehouses/${warehouse.warehouseId}`)}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
@@ -482,239 +426,25 @@ export default function Warehouses() {
       </Card>
 
       {/* Warehouse Form Dialog */}
-      <Dialog open={showWarehouseForm} onOpenChange={setShowWarehouseForm}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{isEditMode ? "Edit Warehouse" : "Add New Warehouse"}</DialogTitle>
-            <DialogDescription>
-              {isEditMode ? "Update warehouse information" : "Create a new warehouse in the system"}
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmit}>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="warehouseCode">
-                    Warehouse Code <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id="warehouseCode"
-                    value={formData.warehouseCode}
-                    onChange={(e) => setFormData({ ...formData, warehouseCode: e.target.value })}
-                    required
-                    placeholder="e.g., DG-MIKEDO"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="status">Status</Label>
-                  <Select
-                    value={formData.status || "Active"}
-                    onValueChange={(value) => setFormData({ ...formData, status: value })}
-                  >
-                    <SelectTrigger id="status">
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Active">Active</SelectItem>
-                      <SelectItem value="Inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="name">
-                  Warehouse Name <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="city">City</Label>
-                  <Input
-                    id="city"
-                    value={formData.city}
-                    onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="state">State/Province</Label>
-                  <Input
-                    id="state"
-                    value={formData.state}
-                    onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="zipCode">Zip Code</Label>
-                  <Input
-                    id="zipCode"
-                    value={formData.zipCode}
-                    onChange={(e) => setFormData({ ...formData, zipCode: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="country">Country</Label>
-                <Input
-                  id="country"
-                  value={formData.country}
-                  onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="contactPerson1">Primary Contact Person</Label>
-                  <Input
-                    id="contactPerson1"
-                    value={formData.contactPerson1}
-                    onChange={(e) => setFormData({ ...formData, contactPerson1: e.target.value })}
-                    placeholder="e.g., Terry, Mr Lee"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="contactPhone1">Primary Contact Phone</Label>
-                  <Input
-                    id="contactPhone1"
-                    type="tel"
-                    value={formData.contactPhone1}
-                    onChange={(e) => setFormData({ ...formData, contactPhone1: e.target.value })}
-                    placeholder="e.g., 15819851440"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="contactPerson2">Secondary Contact Person</Label>
-                  <Input
-                    id="contactPerson2"
-                    value={formData.contactPerson2}
-                    onChange={(e) => setFormData({ ...formData, contactPerson2: e.target.value })}
-                    placeholder="e.g., Cally"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="contactPhone2">Secondary Contact Phone</Label>
-                  <Input
-                    id="contactPhone2"
-                    type="tel"
-                    value={formData.contactPhone2}
-                    onChange={(e) => setFormData({ ...formData, contactPhone2: e.target.value })}
-                    placeholder="e.g., 156 5796 3655"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="e.g., warehouse@example.com"
-                />
-              </div>
-            </div>
-
-            {publicCredentials && (
-              <div className="mt-4 rounded-lg border p-4 bg-secondary/40 space-y-3">
-                <div className="text-sm font-medium">Public API Credentials (copy now)</div>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm truncate">
-                    <span className="text-muted-foreground">Client ID:</span> {publicCredentials.clientId}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleCopyValue(publicCredentials.clientId, "Client ID")}
-                  >
-                    Copy
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm truncate">
-                    <span className="text-muted-foreground">Client Secret:</span> {publicCredentials.clientSecret}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleCopyValue(publicCredentials.clientSecret, "Client Secret")}
-                  >
-                    Copy
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            <DialogFooter className="gap-2">
-              {isEditMode && selectedWarehouse && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={async () => {
-                    try {
-                      const response = await warehouseService.regenerateCredentials(selectedWarehouse.warehouseId);
-                      if (response.publicClientId && response.publicClientSecret) {
-                        setPublicCredentials({
-                          clientId: response.publicClientId,
-                          clientSecret: response.publicClientSecret,
-                        });
-                        toast({
-                          title: "Success",
-                          description: "Credentials regenerated",
-                        });
-                      }
-                    } catch (error) {
-                      const errorMessage = extractErrorMessage(error, "Failed to regenerate credentials");
-                      toast({
-                        title: "Error",
-                        description: errorMessage,
-                        variant: "destructive",
-                      });
-                    }
-                  }}
-                >
-                  Regenerate Credentials
-                </Button>
-              )}
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setShowWarehouseForm(false);
-                  resetForm();
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={createWarehouseMutation.isPending || updateWarehouseMutation.isPending}>
-                {isEditMode ? "Update" : "Create"} Warehouse
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <WarehouseFormDialog
+        open={showWarehouseForm}
+        mode={selectedWarehouse ? "edit" : "create"}
+        initialWarehouse={selectedWarehouse}
+        publicCredentials={publicCredentials}
+        isSubmitting={createWarehouseMutation.isPending || updateWarehouseMutation.isPending}
+        isRegenerating={isRegenerating}
+        onOpenChange={(open) => {
+          if (!open) {
+            handleCloseWarehouseForm();
+          } else {
+            setShowWarehouseForm(true);
+          }
+        }}
+        onSubmit={handleSubmit}
+        onCancel={handleCloseWarehouseForm}
+        onCopyValue={handleCopyValue}
+        onRegenerateCredentials={selectedWarehouse ? handleRegenerateCredentials : undefined}
+      />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

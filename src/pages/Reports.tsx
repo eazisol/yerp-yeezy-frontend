@@ -975,7 +975,7 @@ export default function Reports() {
                         <TableHead>Variant</TableHead>
                         <TableHead>Warehouse</TableHead>
                         <TableHead>Available</TableHead>
-                        <TableHead>Reserved</TableHead>
+                        <TableHead>Used Qty</TableHead>
                         <TableHead>Total Stock</TableHead>
                         <TableHead>Last Updated</TableHead>
                       </TableRow>
@@ -987,7 +987,7 @@ export default function Reports() {
                           <TableCell>{item.variantName || "-"}</TableCell>
                           <TableCell>{item.warehouse}</TableCell>
                           <TableCell>{formatNumber(item.availableQuantity)}</TableCell>
-                          <TableCell>{formatNumber(item.reservedQuantity)}</TableCell>
+                          <TableCell>{formatNumber(item.usedStock ?? item.reservedQuantity ?? 0)}</TableCell>
                           <TableCell>{formatNumber(item.totalStock)}</TableCell>
                           <TableCell>
                             {item.lastUpdatedDate

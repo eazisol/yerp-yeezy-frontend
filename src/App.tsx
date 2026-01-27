@@ -30,6 +30,7 @@ import Inventory from "./pages/Inventory";
 import Vendors from "./pages/Vendors";
 import VendorDetail from "./pages/VendorDetail";
 import Warehouses from "./pages/Warehouses";
+import WarehouseDetail from "./pages/WarehouseDetail";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Roles from "./pages/Roles";
@@ -76,6 +77,7 @@ const App = () => (
               <Route path="/vendors" element={<Vendors />} />
               <Route path="/vendors/:id" element={<VendorDetail />} />
               <Route path="/warehouses" element={<Warehouses />} />
+              <Route path="/warehouses/:id" element={<WarehouseDetail />} />
               <Route path="/users" element={<Users />} />
               <Route path="/roles" element={<Roles />} />
               <Route path="/roles/:id/permissions" element={<RolePermissions />} />

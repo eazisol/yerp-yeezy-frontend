@@ -5,7 +5,8 @@ export interface ReportFilter {
   dateRangeType: "Days" | "Weekly" | "Monthly" | "Yearly" | "Custom";
   startDate?: string;
   endDate?: string;
-  warehouse?: "CN" | "US" | "All";
+  warehouse?: string;
+  warehouseId?: number;
   vendorId?: number;
   sku?: string;
   variantId?: number;
@@ -149,7 +150,8 @@ export interface InventoryReportTable {
   variantName?: string;
   warehouse: string;
   availableQuantity: number;
-  reservedQuantity: number;
+  reservedQuantity?: number;
+  usedStock?: number;
   totalStock: number;
   lastUpdatedDate?: string;
 }

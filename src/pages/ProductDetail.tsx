@@ -414,10 +414,10 @@ export default function ProductDetail() {
                   productDetail.variants.forEach((variant: any) => {
                     if (variant.warehouseInventories && Array.isArray(variant.warehouseInventories) && variant.warehouseInventories.length > 0) {
                       variant.warehouseInventories.forEach((wi: any) => {
-                        const key = wi.warehouseCode || 'Unknown';
+                        const key = wi.warehouseId?.toString() || wi.warehouseCode || 'Unknown';
                         if (!variantWarehouseMap.has(key)) {
                           variantWarehouseMap.set(key, {
-                            warehouseCode: key,
+                            warehouseCode: wi.warehouseCode || "Unknown",
                             totalStock: 0,
                             variants: []
                           });
