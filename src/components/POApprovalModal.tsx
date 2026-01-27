@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +19,7 @@ interface POApprovalModalProps {
   onOpenChange: (open: boolean) => void;
   onApprove: (isApproved: boolean, comment?: string, signatureUrl?: string) => Promise<void>;
   isApproving: boolean;
+  initialSignatureUrl?: string | null;
 }
 
 export default function POApprovalModal({
@@ -26,16 +27,24 @@ export default function POApprovalModal({
   onOpenChange,
   onApprove,
   isApproving,
+  initialSignatureUrl,
 }: POApprovalModalProps) {
   const [comment, setComment] = useState("");
   const [signature, setSignature] = useState<string | null>(null); // Base64 for preview
-  const [signatureFilePath, setSignatureFilePath] = useState<string | null>(null); // File path after upload
+  const [signatureUrl, setSignatureUrl] = useState<string | null>(null); // Existing signature file path
   const [isDrawing, setIsDrawing] = useState(false);
   const [isUploadingSignature, setIsUploadingSignature] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const isMouseDownRef = useRef(false);
   const { toast } = useToast();
+
+  // Load initial signature when dialog opens
+  useEffect(() => {
+    if (open) {
+      setSignatureUrl(initialSignatureUrl || null);
+    }
+  }, [open, initialSignatureUrl]);
 
   const handleStartDrawing = () => {
     setIsDrawingMode(true);
@@ -97,6 +106,7 @@ export default function POApprovalModal({
       }
     }
     setSignature(null);
+    setSignatureUrl(null);
     setIsDrawingMode(false);
   };
 
@@ -138,7 +148,7 @@ export default function POApprovalModal({
           const file = base64ToFile(signature, `signature-${Date.now()}.png`);
           const uploadResponse = await fileUploadService.uploadPOSignature(file);
           filePath = uploadResponse.filePath;
-          setSignatureFilePath(filePath);
+          setSignatureUrl(filePath);
         } catch (error) {
           toast({
             title: "Error",
@@ -150,6 +160,9 @@ export default function POApprovalModal({
         } finally {
           setIsUploadingSignature(false);
         }
+      } else if (signatureUrl) {
+        // Use existing signature URL when no new drawing is provided
+        filePath = signatureUrl;
       }
 
       // Call onApprove with file path instead of base64
@@ -159,7 +172,7 @@ export default function POApprovalModal({
       setComment("");
       clearSignature();
       setSignature(null);
-      setSignatureFilePath(null);
+      setSignatureUrl(null);
       setIsDrawingMode(false);
     } catch (error) {
       toast({
@@ -206,7 +219,7 @@ export default function POApprovalModal({
           <div className="space-y-2">
             <Label>Signature</Label>
             <div className="border rounded-lg p-4 bg-white">
-              {!isDrawingMode && !signature && (
+              {!isDrawingMode && !signature && !signatureUrl && (
                 <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed rounded-lg">
                   <PenTool className="h-12 w-12 text-muted-foreground mb-4" />
                   <p className="text-muted-foreground mb-4">Click below to sign</p>
@@ -277,7 +290,7 @@ export default function POApprovalModal({
                       size="sm"
                       onClick={() => {
                         clearSignature();
-                        setSignatureFilePath(null);
+                        setSignatureUrl(null);
                         handleStartDrawing();
                       }}
                       disabled={isApproving || isUploadingSignature}
@@ -290,6 +303,30 @@ export default function POApprovalModal({
                         Uploading signature...
                       </span>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {!signature && !isDrawingMode && signatureUrl && (
+                <div className="space-y-2">
+                  <img
+                    src={fileUploadService.getSignatureUrl(signatureUrl)}
+                    alt="Signature"
+                    className="border rounded max-w-full h-auto"
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSignatureUrl(null);
+                        handleStartDrawing();
+                      }}
+                      disabled={isApproving || isUploadingSignature}
+                    >
+                      Re-sign
+                    </Button>
                   </div>
                 </div>
               )}

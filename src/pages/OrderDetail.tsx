@@ -317,7 +317,7 @@ export default function OrderDetail() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {/* {canCreateShipment && (
+          {canCreateShipment && (
             <Button
               variant="default"
               size="sm"
@@ -326,7 +326,7 @@ export default function OrderDetail() {
             >
               {createShipmentMutation.isPending ? "Creating..." : "Create Shipment"}
             </Button>
-          )} */}
+          )}
           <Button
             variant="outline"
             size="sm"

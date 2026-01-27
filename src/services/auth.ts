@@ -7,6 +7,7 @@ export interface User {
   id: number;
   email: string;
   fullName: string | null;
+  signatureUrl?: string | null; // Stored signature file path/url
   roles: string[];
   permissions?: Permission[]; // Make it optional
   vendorId?: number | null; // Vendor ID (for vendor portal users)

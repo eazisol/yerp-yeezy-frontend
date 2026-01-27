@@ -848,6 +848,7 @@ export default function PODetail() {
         onOpenChange={setShowApprovalModal}
         onApprove={handleApprove}
         isApproving={actionLoading}
+        initialSignatureUrl={user?.signatureUrl || null}
       />
     </div>
   );
