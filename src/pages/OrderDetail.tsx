@@ -21,6 +21,7 @@ interface OrderItem {
   productSku?: string | null;
   variantName?: string | null; // Variant name
   productVariantAttributes?: string | null; // Product Variant attributes (JSON with images)
+  label?: string | null; // Shipment label link
   quantity: number;
   shippedQuantity: number;
   quantityFulfilled: number;
@@ -635,6 +636,21 @@ export default function OrderDetail() {
                       <p className="text-xs">
                         Warehouse: <span className="font-medium text-foreground">{getItemWarehouseLabel(item.warehouseId)}</span>
                       </p>
+                        <p className="text-xs">
+                          Label:{" "}
+                          {item.label ? (
+                            <a
+                              href={item.label}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="font-medium text-primary underline underline-offset-2"
+                            >
+                              Open Label
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground">N/A</span>
+                          )}
+                        </p>
                         {/* Size and Color Display */}
                         {(size || color) && (
                           <div className="flex items-center gap-2 mt-1">
