@@ -39,6 +39,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { orderService, Order, OrderStats, OrderSyncResult, OrderImportResult } from "@/services/orders";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -658,6 +663,9 @@ export default function Orders() {
                     orders.map((order) => {
                     const paymentStatus = getPaymentStatus(order.paymentStatus);
                     const fulfillmentStatus = getFulfillmentStatus(order);
+                    const warehouseIds = order.warehouseIds ?? [];
+                    const hasWarehouseIds = warehouseIds.length > 0;
+                    const warehouseSummary = hasWarehouseIds ? getWarehouseSummary(order) : "N/A";
                     return (
                       <TableRow
                         key={order.orderId}
@@ -703,7 +711,21 @@ export default function Orders() {
                           <Badge variant="outline">{order.status}</Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{getWarehouseSummary(order)}</Badge>
+                          {hasWarehouseIds ? (
+                            <Badge variant="outline">{warehouseSummary}</Badge>
+                          ) : (
+                            // Tooltip for missing warehouse assignment
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge variant="outline" className="cursor-help">
+                                  {warehouseSummary}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Items are out of stock.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
                         </TableCell>
                         <TableCell className="text-right font-medium">
                           {formatCurrency(order.total, order.currency || "USD")}
