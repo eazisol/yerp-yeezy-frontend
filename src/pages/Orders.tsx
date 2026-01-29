@@ -717,11 +717,18 @@ export default function Orders() {
                             // Tooltip for missing warehouse assignment
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Badge variant="outline" className="cursor-help">
+                                <Badge
+                                  variant="outline"
+                                  className="cursor-help"
+                                >
                                   {warehouseSummary}
                                 </Badge>
                               </TooltipTrigger>
-                              <TooltipContent>
+                              <TooltipContent
+                                side="bottom"
+                                align="center"
+                                collisionPadding={8}
+                              >
                                 <p>Items are out of stock.</p>
                               </TooltipContent>
                             </Tooltip>
