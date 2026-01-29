@@ -66,10 +66,52 @@ export interface GrnStatus {
   recentGrns: GrnRecent[];
 }
 
+// PO aging bucket summary
+export interface PoAgingBucket {
+  count: number;
+  value: number;
+}
+
+// PO aging summary for dashboard
+export interface PoAgingSummary {
+  age0To30: PoAgingBucket;
+  age31To60: PoAgingBucket;
+  age61To90: PoAgingBucket;
+  age90Plus: PoAgingBucket;
+}
+
+// Vendor balance summary from dashboard API
+export interface VendorBalanceSummary {
+  pendingAmount: number;
+  paidAmount: number;
+  totalBalance: number;
+}
+
+// Vendor on-time performance from dashboard API
+export interface VendorPerformance {
+  vendorId: number;
+  vendorName: string;
+  totalDeliveries: number;
+  onTimeDeliveries: number;
+  onTimePercentage: number;
+}
+
+// Recent order summary from dashboard API
+export interface RecentOrder {
+  orderId: number;
+  orderNumber?: string;
+  customerName?: string;
+  route?: string;
+  status: string;
+  total: number;
+  currency?: string;
+}
+
 // Missing variant SKU list item from dashboard API
 export interface MissingVariantSkuItem {
   sku: string;
   productName: string;
+  swellVariantId?: string; // Swell variant ID (if provided)
   latestOrderNumber?: string;
   latestOrderDate: string;
   totalUses: number;
@@ -95,6 +137,10 @@ export interface DashboardMetrics {
   stockAlertsCriticalCount: number;
   stockAlertsLowCount: number;
   grnStatus: GrnStatus;
+  recentOrders: RecentOrder[];
+  poAging: PoAgingSummary;
+  vendorBalanceSummary: VendorBalanceSummary;
+  vendorPerformance: VendorPerformance[];
 }
 
 class DashboardService {

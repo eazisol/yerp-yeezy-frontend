@@ -20,6 +20,7 @@ interface OrderItem {
   productName?: string | null;
   productSku?: string | null;
   variantName?: string | null; // Variant name
+  swellVariantId?: string | null; // Swell variant ID
   productVariantAttributes?: string | null; // Product Variant attributes (JSON with images)
   label?: string | null; // Shipment label link
   quantity: number;
@@ -633,6 +634,14 @@ export default function OrderDetail() {
                         <p>SKU: {item.productSku || "N/A"}</p>
                         {item.variantName && (
                           <p className="text-xs">Variant: {item.variantName}</p>
+                        )}
+                        {!item.variantId && (
+                          <p className="text-xs">
+                            Swell Variant ID:{" "}
+                            <span className="font-medium text-foreground">
+                              {item.swellVariantId || "N/A"}
+                            </span>
+                          </p>
                         )}
                       <p className="text-xs">
                         Warehouse: <span className="font-medium text-foreground">{getItemWarehouseLabel(item.warehouseId)}</span>

@@ -25,12 +25,8 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { dashboardService, DashboardMetrics } from "@/services/dashboard";
 import { useQuery } from "@tanstack/react-query";
 import {
-  vendorBalances,
-  vendorPerformance,
-  poAging,
   orderTrendData,
   monthlyOrderTrendData,
-  recentOrders,
 } from "@/data/mockDashboardData";
 
 export default function Dashboard() {
@@ -86,15 +82,30 @@ export default function Dashboard() {
     recentGrns: [],
   };
 
+  const poAging = dashboardMetrics?.poAging || {
+    age0To30: { count: 0, value: 0 },
+    age31To60: { count: 0, value: 0 },
+    age61To90: { count: 0, value: 0 },
+    age90Plus: { count: 0, value: 0 },
+  };
+
+  const vendorBalanceSummary = dashboardMetrics?.vendorBalanceSummary || {
+    pendingAmount: 0,
+    paidAmount: 0,
+    totalBalance: 0,
+  };
+
+  const recentOrders = dashboardMetrics?.recentOrders || [];
+
   const cnWarehouse = warehouseInventory.find((warehouse) => warehouse.warehouse === "CN");
   const usWarehouse = warehouseInventory.find((warehouse) => warehouse.warehouse === "US");
   const totalInventoryValue = (cnWarehouse?.totalValue || 0) + (usWarehouse?.totalValue || 0);
 
   // Format currency
-  const formatCurrency = (value: number) => {
+  const formatCurrency = (value: number, currency: string = "USD") => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: 'USD',
+      currency,
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(value);
@@ -148,14 +159,14 @@ export default function Dashboard() {
 
   // PO Aging chart data
   const poAgingChartData = [
-    { name: "0-30 Days", value: poAging.age0to30.value, count: poAging.age0to30.count },
-    { name: "31-60 Days", value: poAging.age31to60.value, count: poAging.age31to60.count },
-    { name: "61-90 Days", value: poAging.age61to90.value, count: poAging.age61to90.count },
+    { name: "0-30 Days", value: poAging.age0To30.value, count: poAging.age0To30.count },
+    { name: "31-60 Days", value: poAging.age31To60.value, count: poAging.age31To60.count },
+    { name: "61-90 Days", value: poAging.age61To90.value, count: poAging.age61To90.count },
     { name: "90+ Days", value: poAging.age90Plus.value, count: poAging.age90Plus.count },
   ];
 
   // Vendor performance chart data
-  const vendorPerformanceData = vendorPerformance.map(v => ({
+  const vendorPerformanceData = (dashboardMetrics?.vendorPerformance || []).map(v => ({
     name: v.vendorName.split(' ')[0], // First word only for chart
     performance: v.onTimePercentage,
     deliveries: v.totalDeliveries,
@@ -564,6 +575,9 @@ export default function Dashboard() {
                       <p className="text-xs text-muted-foreground mt-1">
                         {item.productName || "Unknown product"}
                       </p>
+                      <p className="text-xs text-muted-foreground">
+                        Variant ID: {item.swellVariantId || "N/A"}
+                      </p>
                     </div>
                     <div className="text-right">
                       <p className="text-xs text-muted-foreground">
@@ -671,34 +685,34 @@ export default function Dashboard() {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Vendor Balance Summary</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">Pending vs Paid (Manual Updates)</p>
+                  <p className="text-sm text-muted-foreground mt-1">Pending vs Paid </p>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
                     <div>
                       <p className="text-sm text-muted-foreground">Total Pending</p>
                       <p className="text-2xl font-bold text-warning">
-                        {formatCurrency(vendorBalances.reduce((sum, v) => sum + v.pendingAmount, 0))}
+                        {formatCurrency(vendorBalanceSummary.pendingAmount)}
                       </p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Total Paid</p>
                       <p className="text-2xl font-bold text-success">
-                        {formatCurrency(vendorBalances.reduce((sum, v) => sum + v.paidAmount, 0))}
+                        {formatCurrency(vendorBalanceSummary.paidAmount)}
                       </p>
                     </div>
                     <div className="pt-2 border-t">
                       <p className="text-sm text-muted-foreground">Total Balance</p>
                       <p className="text-xl font-semibold text-foreground">
-                        {formatCurrency(vendorBalances.reduce((sum, v) => sum + v.totalBalance, 0))}
+                        {formatCurrency(vendorBalanceSummary.totalBalance)}
                       </p>
                     </div>
-                    {canRead("VENDORS") && (
+                    {/* {canRead("VENDORS") && (
                       <Button variant="outline" size="sm" className="w-full" onClick={() => navigate("/vendors")}>
                         <Eye className="h-4 w-4 mr-2" />
                         View Vendor Details
                       </Button>
-                    )}
+                    )} */}
                   </div>
                 </CardContent>
               </Card>
@@ -903,20 +917,28 @@ export default function Dashboard() {
             <div className="space-y-3">
               {recentOrders.map((order) => (
                 <div
-                  key={order.id}
+                  key={order.orderId}
                   className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-smooth cursor-pointer"
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-foreground">{order.id}</span>
-                      <Badge variant="outline" className="text-xs">
-                        {order.route}
-                      </Badge>
+                      <span className="text-sm font-medium text-foreground">
+                        {order.orderNumber || `#${order.orderId}`}
+                      </span>
+                      {order.route && (
+                        <Badge variant="outline" className="text-xs">
+                          {order.route}
+                        </Badge>
+                      )}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">{order.customer}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {order.customerName || "N/A"}
+                    </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-medium text-foreground">{order.value}</p>
+                    <p className="text-sm font-medium text-foreground">
+                      {formatCurrency(order.total, order.currency || "USD")}
+                    </p>
                     <Badge
                       variant={
                         order.status === "fulfilled"
@@ -953,7 +975,7 @@ export default function Dashboard() {
               </Button>
             )}
             {canRead("INVENTORY") && (
-              <Button variant="outline" onClick={() => navigate("/inventory")}>
+              <Button variant="outline" onClick={() => navigate("/stock-alerts")}>
                 <AlertTriangle className="h-4 w-4 mr-2" />
                 View Low Stock Items
               </Button>
@@ -964,12 +986,12 @@ export default function Dashboard() {
                 View GRN
               </Button>
             )}
-            {canModify("INVENTORY") && (
+            {/* {canModify("INVENTORY") && (
               <Button variant="outline">
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Sync Inventory
               </Button>
-            )}
+            )} */}
           </div>
         </CardContent>
       </Card>
