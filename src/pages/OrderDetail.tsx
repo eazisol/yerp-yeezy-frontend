@@ -639,7 +639,13 @@ export default function OrderDetail() {
                     )}
                     
                     <div className="flex-1">
-                      <p className="font-medium text-foreground">{item.productName || "N/A"}</p>
+                      <p
+                        className={`font-medium ${item.productId ? "text-primary hover:underline cursor-pointer" : "text-foreground"}`}
+                        onClick={() => item.productId && navigate(`/products/${item.productId}`)}
+                        title={item.productId ? "Open product detail" : "Product not linked"}
+                      >
+                        {item.productName || "N/A"}
+                      </p>
                       <div className="text-sm text-muted-foreground space-y-0.5 mt-1">
                         <p>SKU: {item.productSku || "N/A"}</p>
                         {item.variantName && (
