@@ -17,6 +17,10 @@ interface OrderItem {
   productId?: number | null;
   variantId?: number | null;
   warehouseId?: number | null;
+  orderItemWarehouses?: Array<{
+    warehouseId: number;
+    quantity: number;
+  }>;
   productName?: string | null;
   productSku?: string | null;
   variantName?: string | null; // Variant name
@@ -217,16 +221,22 @@ export default function OrderDetail() {
   const getWarehouseSummary = () => {
     const idsFromOrder = order?.warehouseIds ?? [];
     const idsFromItems = order?.orderItems
-      ?.map((item) => item.warehouseId)
+      ?.flatMap((item) => item.orderItemWarehouses?.map((w) => w.warehouseId) ?? [])
       .filter((id): id is number => typeof id === "number") ?? [];
     const uniqueIds = Array.from(new Set([...idsFromOrder, ...idsFromItems]));
     if (uniqueIds.length === 0) return "N/A";
     return uniqueIds.map(getWarehouseLabel).join(" / ");
   };
 
-  const getItemWarehouseLabel = (warehouseId?: number | null) => {
-    if (!warehouseId) return "N/A";
-    return getWarehouseLabel(warehouseId);
+  const getItemWarehouseLabel = (item: OrderItem) => {
+    const allocations = item.orderItemWarehouses ?? [];
+    if (allocations.length === 0) {
+      return item.warehouseId ? getWarehouseLabel(item.warehouseId) : "N/A";
+    }
+    return allocations
+      .filter((w) => w.quantity > 0)
+      .map((w) => `${getWarehouseLabel(w.warehouseId)} (${w.quantity})`)
+      .join(" / ");
   };
 
   // Build shipping address from separate fields
@@ -644,7 +654,7 @@ export default function OrderDetail() {
                           </p>
                         )}
                       <p className="text-xs">
-                        Warehouse: <span className="font-medium text-foreground">{getItemWarehouseLabel(item.warehouseId)}</span>
+                        Warehouse: <span className="font-medium text-foreground">{getItemWarehouseLabel(item)}</span>
                       </p>
                         <p className="text-xs">
                           Label:{" "}
