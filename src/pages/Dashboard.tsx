@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { LineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useNavigate } from "react-router-dom";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useAuth } from "@/contexts/AuthContext";
 import { dashboardService, DashboardMetrics } from "@/services/dashboard";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -32,11 +33,13 @@ import {
 export default function Dashboard() {
   const navigate = useNavigate();
   const { canRead, canModify, canAccess } = usePermissions();
+  const { user } = useAuth();
 
   // Fetch real-time dashboard metrics
   const { data: dashboardMetrics, isLoading: loadingMetrics } = useQuery({
     queryKey: ["dashboard-metrics"],
     queryFn: () => dashboardService.getDashboardMetrics(),
+    enabled: canAccess("DASHBOARD"),
     refetchInterval: 60000, // Refetch every 60 seconds for real-time updates
   });
 
@@ -44,6 +47,7 @@ export default function Dashboard() {
   const { data: missingVariantSkusData, isLoading: loadingMissingVariantSkus } = useQuery({
     queryKey: ["missing-variant-skus", 1, 5],
     queryFn: () => dashboardService.getMissingVariantSkus(1, 5),
+    enabled: canAccess("DASHBOARD"),
     refetchInterval: 60000, // Refetch every 60 seconds for real-time updates
   });
 
@@ -182,6 +186,24 @@ export default function Dashboard() {
 
   // Check if user has any permission to view dashboard sections
   const hasAnySectionPermission = hasOrdersPermission || hasInventoryPermission || hasGrnPermission || hasVendorsPermission || hasPurchaseOrdersPermission || hasDashboardPermission;
+
+  if (!hasDashboardPermission) {
+    const displayName = user?.fullName || user?.email || "there";
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-8">
+              <h1 className="text-2xl font-bold text-foreground">Welcome, {displayName}</h1>
+              <p className="text-sm text-muted-foreground mt-2">
+                Your dashboard access is not enabled yet.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
