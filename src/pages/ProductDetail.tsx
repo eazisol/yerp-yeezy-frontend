@@ -412,14 +412,19 @@ export default function ProductDetail() {
                   const variantWarehouseMap = new Map<string, { warehouseCode: string; totalStock: number; variants: Array<{ variantName: string; stock: number }> }>();
                   
                   productDetail.variants.forEach((variant: any) => {
-                    if (variant.warehouseInventories && Array.isArray(variant.warehouseInventories) && variant.warehouseInventories.length > 0) {
+                    const hasInventories =
+                      variant.warehouseInventories &&
+                      Array.isArray(variant.warehouseInventories) &&
+                      variant.warehouseInventories.length > 0;
+
+                    if (hasInventories) {
                       variant.warehouseInventories.forEach((wi: any) => {
-                        const key = wi.warehouseId?.toString() || wi.warehouseCode || 'Unknown';
+                        const key = wi.warehouseId?.toString() || wi.warehouseCode || "Unknown";
                         if (!variantWarehouseMap.has(key)) {
                           variantWarehouseMap.set(key, {
                             warehouseCode: wi.warehouseCode || "Unknown",
                             totalStock: 0,
-                            variants: []
+                            variants: [],
                           });
                         }
                         const warehouseData = variantWarehouseMap.get(key)!;
@@ -431,10 +436,29 @@ export default function ProductDetail() {
 
                         warehouseData.variants.push({
                           variantName: variantLabel,
-                          stock: wi.availableStock || 0
+                          stock: wi.availableStock || 0,
                         });
                       });
+                      return;
                     }
+
+                    // Show variants with zero inventory too
+                    const fallbackKey = "NoWarehouse";
+                    if (!variantWarehouseMap.has(fallbackKey)) {
+                      variantWarehouseMap.set(fallbackKey, {
+                        warehouseCode: "No Warehouse",
+                        totalStock: 0,
+                        variants: [],
+                      });
+                    }
+                    const fallbackWarehouse = variantWarehouseMap.get(fallbackKey)!;
+                    const fallbackVariantLabel = variant.name
+                      ? `${variant.name} (${variant.sku || "N/A"})`
+                      : (variant.sku || `Variant ${variant.variantId}`);
+                    fallbackWarehouse.variants.push({
+                      variantName: fallbackVariantLabel,
+                      stock: 0,
+                    });
                   });
 
                   if (variantWarehouseMap.size === 0) {
