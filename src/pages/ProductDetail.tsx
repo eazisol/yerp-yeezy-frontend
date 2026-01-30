@@ -442,20 +442,30 @@ export default function ProductDetail() {
                       return;
                     }
 
-                    // Show variants with zero inventory too
-                    const fallbackKey = "NoWarehouse";
-                    if (!variantWarehouseMap.has(fallbackKey)) {
-                      variantWarehouseMap.set(fallbackKey, {
-                        warehouseCode: "No Warehouse",
-                        totalStock: 0,
-                        variants: [],
-                      });
-                    }
-                    const fallbackWarehouse = variantWarehouseMap.get(fallbackKey)!;
+                    // Show zero-qty variants under CN/US
+                    const ensureWarehouse = (key: string, code: string) => {
+                      if (!variantWarehouseMap.has(key)) {
+                        variantWarehouseMap.set(key, {
+                          warehouseCode: code,
+                          totalStock: 0,
+                          variants: [],
+                        });
+                      }
+                      return variantWarehouseMap.get(key)!;
+                    };
+
                     const fallbackVariantLabel = variant.name
                       ? `${variant.name} (${variant.sku || "N/A"})`
                       : (variant.sku || `Variant ${variant.variantId}`);
-                    fallbackWarehouse.variants.push({
+
+                    const cnWarehouse = ensureWarehouse("2", "China");
+                    cnWarehouse.variants.push({
+                      variantName: fallbackVariantLabel,
+                      stock: 0,
+                    });
+
+                    const usWarehouse = ensureWarehouse("3", "US");
+                    usWarehouse.variants.push({
                       variantName: fallbackVariantLabel,
                       stock: 0,
                     });
