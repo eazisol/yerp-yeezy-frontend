@@ -195,9 +195,9 @@ export default function Dashboard() {
           <CardContent className="pt-6">
             <div className="text-center py-8">
               <h1 className="text-2xl font-bold text-foreground">Welcome, {displayName}</h1>
-              <p className="text-sm text-muted-foreground mt-2">
+              {/* <p className="text-sm text-muted-foreground mt-2">
                 Your dashboard access is not enabled yet.
-              </p>
+              </p> */}
             </div>
           </CardContent>
         </Card>
