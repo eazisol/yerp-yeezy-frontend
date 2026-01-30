@@ -424,8 +424,13 @@ export default function ProductDetail() {
                         }
                         const warehouseData = variantWarehouseMap.get(key)!;
                         warehouseData.totalStock += wi.availableStock || 0;
+                        // Include SKU in variant label for clarity
+                        const variantLabel = variant.name
+                          ? `${variant.name} (${variant.sku || "N/A"})`
+                          : (variant.sku || `Variant ${variant.variantId}`);
+
                         warehouseData.variants.push({
-                          variantName: variant.name || variant.sku || `Variant ${variant.variantId}`,
+                          variantName: variantLabel,
                           stock: wi.availableStock || 0
                         });
                       });
@@ -641,23 +646,67 @@ export default function ProductDetail() {
                         </TableCell>
                         <TableCell className="whitespace-nowrap">
                           <div className="flex flex-col gap-1.5">
-                            {variant.warehouseInventories && Array.isArray(variant.warehouseInventories) && variant.warehouseInventories.length > 0 ? (
-                              <div className="text-xs space-y-1 mt-1 pt-1 border-t border-border">
-                                <div className="font-semibold text-muted-foreground mb-0.5">Warehouse:</div>
-                                {variant.warehouseInventories.map((wi: any) => (
-                                  <div key={wi.warehouseInventoryId || Math.random()} className="flex items-center justify-between gap-3">
-                                    <Badge variant="outline" className="text-xs">
-                                      {wi.warehouseCode || "N/A"}
-                                    </Badge>
-                                    <span className="text-muted-foreground">Qty: {wi.availableStock ?? 0}</span>
-                                    <span className="text-muted-foreground">Used: {wi.usedStock ?? 0}</span>
-                                    <span className="font-medium text-foreground">
-                                      Available: {(wi.availableStock ?? 0) - (wi.usedStock ?? 0)}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : null}
+                            {(() => {
+                              if (!variant.warehouseInventories || !Array.isArray(variant.warehouseInventories)) {
+                                return null;
+                              }
+
+                              // Ensure China (2) and US (3) always show, others only when present
+                              const warehouseList = variant.warehouseInventories;
+                              const byId = new Map<number, any>();
+                              warehouseList.forEach((wi: any) => {
+                                if (typeof wi?.warehouseId === "number") {
+                                  byId.set(wi.warehouseId, wi);
+                                }
+                              });
+
+                              const normalized: Array<any> = [];
+                              const pushWarehouse = (warehouseId: number, fallbackCode: string) => {
+                                const wi = byId.get(warehouseId);
+                                normalized.push({
+                                  warehouseId,
+                                  warehouseCode: wi?.warehouseCode || fallbackCode,
+                                  availableStock: wi?.availableStock ?? 0,
+                                  usedStock: wi?.usedStock ?? 0,
+                                  warehouseInventoryId: wi?.warehouseInventoryId,
+                                });
+                              };
+
+                              pushWarehouse(2, "China");
+                              pushWarehouse(3, "US");
+
+                              // Add other warehouses only if they exist in API response
+                              warehouseList.forEach((wi: any) => {
+                                if (wi?.warehouseId !== 2 && wi?.warehouseId !== 3) {
+                                  normalized.push(wi);
+                                }
+                              });
+
+                              if (normalized.length === 0) {
+                                return null;
+                              }
+
+                              return (
+                                <div className="text-xs space-y-1 mt-1 pt-1 border-t border-border">
+                                  <div className="font-semibold text-muted-foreground mb-0.5">Warehouse:</div>
+                                  {normalized.map((wi: any, idx: number) => (
+                                    <div
+                                      key={wi.warehouseInventoryId || wi.warehouseId || wi.warehouseCode || idx}
+                                      className="flex items-center justify-between gap-3"
+                                    >
+                                      <Badge variant="outline" className="text-xs">
+                                        {wi.warehouseCode || "N/A"}
+                                      </Badge>
+                                      <span className="text-muted-foreground">Qty: {wi.availableStock ?? 0}</span>
+                                      <span className="text-muted-foreground">Used: {wi.usedStock ?? 0}</span>
+                                      <span className="font-medium text-foreground">
+                                        Available: {(wi.availableStock ?? 0) - (wi.usedStock ?? 0)}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            })()}
                           </div>
                         </TableCell>
                         <TableCell className="whitespace-nowrap max-w-[200px]">
