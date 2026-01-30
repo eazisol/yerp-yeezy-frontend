@@ -685,7 +685,7 @@ export default function ProductDetail() {
                               : "N/A"}
                           </span>
                         </TableCell>
-                        <TableCell className="whitespace-nowrap">
+                        <TableCell className="whitespace-nowrap max-w-[200px]">
                           <div className="flex flex-col gap-1.5">
                             {(() => {
                               if (!variant.warehouseInventories || !Array.isArray(variant.warehouseInventories)) {
