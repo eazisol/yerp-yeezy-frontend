@@ -541,7 +541,7 @@ export default function ProductDetail() {
                     <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">Variant Slug</TableHead>
                     <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">Stock</TableHead>
                     <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">Vendors</TableHead>
-                    <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">Attributes</TableHead>
+                    {/* <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">Attributes</TableHead> */}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -780,7 +780,7 @@ export default function ProductDetail() {
                             <span className="text-muted-foreground text-sm">No vendors</span>
                           )}
                         </TableCell>
-                        <TableCell className="whitespace-nowrap max-w-[200px] overflow-x-auto">
+                        {/* <TableCell className="whitespace-nowrap max-w-[200px] overflow-x-auto">
                           {Object.keys(attributes).length > 0 ? (
                             <div className="flex gap-2 overflow-x-auto">
                               {Object.entries(attributes)
@@ -794,7 +794,7 @@ export default function ProductDetail() {
                           ) : (
                             <span className="text-muted-foreground">No attributes</span>
                           )}
-                        </TableCell>
+                        </TableCell> */}
                       </TableRow>
                     );
                   })}
