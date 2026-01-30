@@ -478,7 +478,7 @@ export default function ProductDetail() {
                       <div className="pl-2 space-y-1">
                         {warehouseData.variants.map((v, idx) => (
                           <div key={idx} className="flex justify-between text-xs text-muted-foreground">
-                            <span className="truncate max-w-[200px]">{v.variantName}:</span>
+                            <span className="whitespace-normal break-words">{v.variantName}:</span>
                             <span className="font-medium ml-2">{v.stock} units</span>
                           </div>
                         ))}
