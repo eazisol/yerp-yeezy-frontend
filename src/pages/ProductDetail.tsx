@@ -358,7 +358,7 @@ export default function ProductDetail() {
           <CardHeader>
             <CardTitle className="text-lg">Inventory Levels</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 max-h-[320px] overflow-y-auto">
+          <CardContent className="space-y-4 max-h-[686px] overflow-y-auto">
             {/* {productDetail.inventory ? (
               <>
                 <div className="flex justify-between">
