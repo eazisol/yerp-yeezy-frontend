@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -60,11 +60,12 @@ export default function Products() {
   const { data: productsData, isLoading: loadingProducts } = useQuery({
     queryKey: ["products", page, pageSize, searchTerm, activeFilter, startDate, endDate],
     queryFn: () => productService.getProducts(
-      page, 
-      pageSize, 
-      searchTerm || undefined, 
+      page,
+      pageSize,
+      searchTerm || undefined,
       activeFilter === undefined ? undefined : activeFilter.toString(),
       undefined, // origin
+      undefined, // vendorId
       startDate || undefined,
       endDate || undefined
     ),
@@ -474,18 +475,19 @@ export default function Products() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[20%]">Product</TableHead>
+                    <TableHead className="w-[10%]">Variants</TableHead>
                     <TableHead className="w-[15%]">Stock</TableHead>
                     <TableHead className="w-[15%]">Price</TableHead>
                     <TableHead className="w-[15%]">Status</TableHead>
                     <TableHead className="w-[15%]">Updated</TableHead>
-                    <TableHead className="text-right w-[20%]">Actions</TableHead>
+                    <TableHead className="text-right w-[10%]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {products.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={7}
                         className="text-center py-8 text-muted-foreground"
                       >
                         No products found
@@ -499,17 +501,22 @@ export default function Products() {
                         key={product.productId}
                         className="cursor-pointer hover:bg-secondary/50"
                       >
-                        <TableCell className="w-[20%]">
+                        <TableCell className="p-2 w-[20%]">
                           <div>
                             <div className="font-medium text-foreground">
-                              {product.name}
+                              {product.name} <span className="text-xs text-muted-foreground">({product.sku})</span>
                             </div>
-                            <div className="text-xs text-muted-foreground">
+                            {/* <div className="text-xs text-muted-foreground">
                               {product.sku}
-                            </div>
+                            </div> */}
                           </div>
                         </TableCell>
-                        <TableCell className="w-[15%]">
+                        <TableCell className="p-2 w-[10%]">
+                          <span className="text-muted-foreground">
+                            {product.variantCount ?? product.variants?.length ?? 0}
+                          </span>
+                        </TableCell>
+                        <TableCell className="p-2 w-[15%]">
                           <span
                             className={`font-medium ${
                               totalStock > 0
@@ -522,13 +529,13 @@ export default function Products() {
                             {totalStock}
                           </span>
                         </TableCell>
-                        <TableCell className="font-medium w-[15%]">
+                        <TableCell className="p-2 font-medium w-[15%]">
                           {formatCurrency(
                             product.price,
                             product.currency || "USD"
                           )}
                         </TableCell>
-                        <TableCell className="w-[15%]">
+                        <TableCell className="p-2 w-[15%]">
                           <div
                             className={`inline-flex items-center gap-2 rounded-full px-2.5 py-0.5 text-xs font-medium ${
                               product.isActive
@@ -546,12 +553,12 @@ export default function Products() {
                             <span>{product.isActive ? "Active" : "Inactive"}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground w-[15%]">
+                        <TableCell className="p-2 text-muted-foreground w-[15%]">
                           {formatDate(
                             product.editDate || product.createdDate
                           )}
                         </TableCell>
-                        <TableCell className="text-right w-[20%]">
+                        <TableCell className="p-2 text-right w-[20%]">
                           <div className="flex items-center justify-end gap-2">
                             {canRead("PRODUCTS") && (
                               <Button

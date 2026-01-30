@@ -396,12 +396,12 @@ export default function OrderDetail() {
               <span className="text-muted-foreground">Warehouse</span>
               <Badge variant="outline">{getWarehouseSummary()}</Badge>
             </div>
-            <div className="flex justify-between">
+            {/* <div className="flex justify-between">
               <span className="text-muted-foreground">Canceled</span>
               <Badge variant={order.isCanceled ? "destructive" : "secondary"}>
                 {order.isCanceled ? "Yes" : "No"}
               </Badge>
-            </div>
+            </div> */}
             <div className="flex justify-between">
               <span className="text-muted-foreground">Created Date</span>
               <span className="font-medium text-foreground">{formatDate(order.createdDate)}</span>

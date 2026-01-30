@@ -22,6 +22,8 @@ export interface Product {
   reservedStock: number;
   cnStock: number;
   usStock: number;
+  variantCount?: number;
+  variants?: ProductVariant[];
 }
 
 export interface ProductsResponse {

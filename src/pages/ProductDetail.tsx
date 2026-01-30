@@ -22,6 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { productService } from "@/services/products";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -56,25 +57,29 @@ function VariantImageThumbnail({
   };
 
   return (
-    <div className="flex items-center gap-1">
-      <button
-        onClick={() => onImageClick(currentImage)}
-        className="flex-shrink-0 hover:opacity-80 transition-opacity"
-        title="Click to preview images"
-      >
-        <img
-          src={currentImage}
-          alt={variantName || "Variant"}
-          className="w-10 h-10 object-cover rounded border"
-          onError={handleImageError}
-          onLoad={() => setImageError(false)}
-        />
-      </button>
-      {images.length > 1 && (
-        <Badge variant="secondary" className="text-xs">
-          +{images.length - 1}
-        </Badge>
-      )}
+    <div onClick={() => onImageClick(currentImage)} className="flex items-center gap-1 cursor-pointer">
+      <div className="relative flex-shrink-0">
+        <button
+          className="flex-shrink-0 hover:opacity-80 transition-opacity"
+          title="Click to preview images"
+        >
+          <img
+            src={currentImage}
+            alt={variantName || "Variant"}
+            className="w-10 h-10 object-cover rounded border"
+            onError={handleImageError}
+            onLoad={() => setImageError(false)}
+          />
+        </button>
+        {images.length > 1 && (
+          <Badge
+            variant="secondary"
+            className="text-[10px] px-1 py-0.5 absolute -top-1 -right-1"
+          >
+            +{images.length - 1}
+          </Badge>
+        )}
+      </div>
     </div>
   );
 }
@@ -89,6 +94,8 @@ export default function ProductDetail() {
   const [imagePreview, setImagePreview] = useState<{ url: string; variantName: string } | null>(null);
 
   const productId = id ? parseInt(id) : 0;
+
+  // (moved below productDetail initialization)
 
   // Fetch product detail
   const { data: product, isLoading } = useQuery({
@@ -199,10 +206,10 @@ export default function ProductDetail() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/products")}>
+          {/* <Button variant="ghost" size="sm" onClick={() => navigate("/products")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
-          </Button>
+          </Button> */}
           <div>
             <h1 className="text-2xl font-bold text-foreground">{productDetail.name}</h1>
           </div>
@@ -356,7 +363,7 @@ export default function ProductDetail() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Inventory Levels</CardTitle>
+            <CardTitle className="text-lg">Warehouse Inventory (Variant Level)</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 max-h-[686px] overflow-y-auto">
             {/* {productDetail.inventory ? (
@@ -405,8 +412,8 @@ export default function ProductDetail() {
 
             {/* Variant-level Warehouse Inventory Summary */}
             {productDetail.variants && productDetail.variants.length > 0 && (
-              <div className="border-t pt-4 mt-4">
-                <h4 className="font-semibold mb-3">Warehouse Inventory (Variant Level)</h4>
+              <div className="">
+                {/* <h4 className="font-semibold mb-3">Warehouse Inventory (Variant Level)</h4> */}
                 {(() => {
                   // Collect all variant warehouse inventories
                   const variantWarehouseMap = new Map<string, { warehouseCode: string; totalStock: number; variants: Array<{ variantName: string; stock: number }> }>();
@@ -506,35 +513,35 @@ export default function ProductDetail() {
       {productDetail.variants && productDetail.variants.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Product Variants</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
+            <CardTitle className="text-lg">Product Variants({productDetail.variants.length})</CardTitle>
+            {/* <p className="text-sm text-muted-foreground mt-1">
               {productDetail.variants.length} variant(s) available
-            </p>
+            </p> */}
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto overflow-y-auto max-h-[600px]">
-              <Table>
+            <div className="relative overflow-x-auto">
+              <Table containerClassName="max-h-[420px] overflow-y-auto">
                 <TableHeader className="sticky top-0 bg-background z-10">
-                  <TableRow>
-                    <TableHead className="whitespace-nowrap">Image</TableHead>
-                    <TableHead className="whitespace-nowrap">Variant Name</TableHead>
-                    <TableHead className="whitespace-nowrap">SKU</TableHead>
-                    <TableHead className="whitespace-nowrap">Variant Options</TableHead>
-                    <TableHead className="whitespace-nowrap">Description</TableHead>
-                    <TableHead className="whitespace-nowrap">Meta Description</TableHead>
-                    <TableHead className="whitespace-nowrap">Price</TableHead>
-                    <TableHead className="whitespace-nowrap">Compare Price</TableHead>
-                    <TableHead className="whitespace-nowrap">Origin</TableHead>
-                    <TableHead className="whitespace-nowrap">Revenue Parent Account</TableHead>
-                    <TableHead className="whitespace-nowrap">Revenue Sub Account</TableHead>
-                    <TableHead className="whitespace-nowrap">HTS</TableHead>
-                    <TableHead className="whitespace-nowrap">UPC</TableHead>
-                    <TableHead className="whitespace-nowrap">COG Parent Account</TableHead>
-                    <TableHead className="whitespace-nowrap">COG Sub Account</TableHead>
-                    <TableHead className="whitespace-nowrap">Variant Slug</TableHead>
-                    <TableHead className="whitespace-nowrap">Stock</TableHead>
-                    <TableHead className="whitespace-nowrap">Vendors</TableHead>
-                    <TableHead className="whitespace-nowrap">Attributes</TableHead>
+                  <TableRow className="bg-background">
+                    <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">Image</TableHead>
+                    <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">Variant Name</TableHead>
+                    <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">SKU</TableHead>
+                    <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">Variant Options</TableHead>
+                    <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">Description</TableHead>
+                    <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">Meta Description</TableHead>
+                    <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">Price</TableHead>
+                    {/* <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">Compare Price</TableHead> */}
+                    <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">Origin</TableHead>
+                    <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">Revenue Parent Account</TableHead>
+                    <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">Revenue Sub Account</TableHead>
+                    <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">HTS</TableHead>
+                    <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">UPC</TableHead>
+                    <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">COG Parent Account</TableHead>
+                    <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">COG Sub Account</TableHead>
+                    <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">Variant Slug</TableHead>
+                    <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">Stock</TableHead>
+                    <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">Vendors</TableHead>
+                    <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">Attributes</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -544,7 +551,7 @@ export default function ProductDetail() {
                     
                     return (
                       <TableRow key={variant.variantId}>
-                        <TableCell className="whitespace-nowrap pr-8">
+                        <TableCell className="whitespace-nowrap pr-8 p-2 ">
                           <VariantImageThumbnail
                             images={images}
                             variantName={variant.name || "Variant"}
@@ -594,11 +601,11 @@ export default function ProductDetail() {
                             ? formatCurrency(productDetail.price, productDetail.currency || "USD")
                             : "N/A"}
                         </TableCell>
-                        <TableCell className="whitespace-nowrap">
+                        {/* <TableCell className="whitespace-nowrap">
                           {variant.comparePrice
                             ? formatCurrency(variant.comparePrice, productDetail.currency || "USD")
                             : "N/A"}
-                        </TableCell>
+                        </TableCell> */}
                         <TableCell className="whitespace-nowrap">
                           {variant.origin ? (
                             <Badge variant="outline">{variant.origin}</Badge>
@@ -721,23 +728,28 @@ export default function ProductDetail() {
                               }
 
                               return (
-                                <div className="text-xs space-y-1 mt-1 pt-1 border-t border-border">
-                                  <div className="font-semibold text-muted-foreground mb-0.5">Warehouse:</div>
-                                  {normalized.map((wi: any, idx: number) => (
-                                    <div
-                                      key={wi.warehouseInventoryId || wi.warehouseId || wi.warehouseCode || idx}
-                                      className="flex items-center justify-between gap-3"
-                                    >
-                                      <Badge variant="outline" className="text-xs">
-                                        {wi.warehouseCode || "N/A"}
-                                      </Badge>
-                                      <span className="text-muted-foreground">Qty: {wi.availableStock ?? 0}</span>
-                                      <span className="text-muted-foreground">Used: {wi.usedStock ?? 0}</span>
-                                      <span className="font-medium text-foreground">
-                                        Available: {(wi.availableStock ?? 0) - (wi.usedStock ?? 0)}
-                                      </span>
-                                    </div>
-                                  ))}
+                                <div className="text-xs flex items-center gap-2 mt-1 pt-1 border-border">
+                                  <TooltipProvider>
+                                    {normalized.map((wi: any, idx: number) => {
+                                      const availableQty = (wi.availableStock ?? 0) - (wi.usedStock ?? 0);
+                                      return (
+                                        <Tooltip key={wi.warehouseInventoryId || wi.warehouseId || wi.warehouseCode || idx}>
+                                          <TooltipTrigger asChild>
+                                            <Badge variant="outline" className="text-xs cursor-default">
+                                              {wi.warehouseCode || "N/A"} ({availableQty})
+                                            </Badge>
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <div className="text-xs space-y-1">
+                                              <div>Qty: {wi.availableStock ?? 0}</div>
+                                              <div>Used: {wi.usedStock ?? 0}</div>
+                                              <div>Available: {availableQty}</div>
+                                            </div>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      );
+                                    })}
+                                  </TooltipProvider>
                                 </div>
                               );
                             })()}
@@ -753,10 +765,10 @@ export default function ProductDetail() {
                                   title={vendor.vendorName}
                                 >
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="font-medium">{vendor.vendorName}</span>
+                                    {/* <span className="font-medium">{vendor.vendorName}</span> */}
                                     {vendor.cost !== null && vendor.cost !== undefined && (
                                       <Badge variant="secondary" className="text-xs font-normal">
-                                        Cost: {formatCurrency(vendor.cost, productDetail.currency || "USD")}
+                                        {vendor.vendorName}({formatCurrency(vendor.cost, productDetail.currency || "USD")})
                                       </Badge>
                                     )}
                                   </div>
@@ -775,7 +787,7 @@ export default function ProductDetail() {
                                 .filter(([key]) => key.toLowerCase() !== 'images' && key.toLowerCase() !== 'image') // Filter out images
                                 .map(([key, value]) => (
                                   <Badge key={key} variant="outline" className="flex-shrink-0">
-                                    {key}: {String(value)}
+                                    {String(value)}
                                   </Badge>
                                 ))}
                             </div>
