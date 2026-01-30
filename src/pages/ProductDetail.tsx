@@ -228,7 +228,7 @@ export default function ProductDetail() {
           <CardHeader>
             <CardTitle className="text-lg">Product Information</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4 max-h-[320px] overflow-y-auto">
+          <CardContent className="space-y-4">
             <div className="flex justify-between">
               <span className="text-muted-foreground">SKU</span>
               <span className="font-medium text-foreground">{productDetail.sku}</span>
@@ -358,7 +358,7 @@ export default function ProductDetail() {
           <CardHeader>
             <CardTitle className="text-lg">Inventory Levels</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-4 max-h-[320px] overflow-y-auto">
             {/* {productDetail.inventory ? (
               <>
                 <div className="flex justify-between">
