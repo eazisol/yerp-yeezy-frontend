@@ -113,6 +113,11 @@ class OrderService {
     return apiClient.post("/api/Orders/resync-china");
   }
 
+  // Assign warehouses for order items missing WarehouseId (VariantId only)
+  async assignMissingWarehouses(): Promise<{ message: string; updatedCount: number }> {
+    return apiClient.post("/api/Orders/assign-missing-warehouses");
+  }
+
   // Get total order count from Swell
   async getSwellOrderCount(): Promise<{ count: number; message: string }> {
     return apiClient.get<{ count: number; message: string }>("/api/Orders/sync/count");

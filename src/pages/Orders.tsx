@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -64,6 +64,7 @@ export default function Orders() {
   const [showBulkResyncConfirm, setShowBulkResyncConfirm] = useState(false);
   const [showResyncConfirm, setShowResyncConfirm] = useState(false);
   const [resyncOrderId, setResyncOrderId] = useState<number | null>(null);
+  const [isWarehouseCheckDone, setIsWarehouseCheckDone] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const { canRead, canModify } = usePermissions();
@@ -109,6 +110,24 @@ export default function Orders() {
     },
   });
 
+  // Assign missing warehouses before loading orders list
+  const assignMissingWarehousesMutation = useMutation({
+    mutationFn: () => orderService.assignMissingWarehouses(),
+    onSuccess: () => {
+      setIsWarehouseCheckDone(true);
+    },
+    onError: () => {
+      setIsWarehouseCheckDone(true);
+    },
+  });
+
+  // Run the warehouse assignment once on page load
+  useEffect(() => {
+    if (!isWarehouseCheckDone) {
+      assignMissingWarehousesMutation.mutate();
+    }
+  }, [assignMissingWarehousesMutation, isWarehouseCheckDone]);
+
   const canResyncChinaOrder = (order: Order) => {
     const hasChinaWarehouse = (order.warehouseIds ?? []).includes(2);
     return hasChinaWarehouse && order.orderSyncTo === 0;
@@ -126,6 +145,7 @@ export default function Orders() {
       startDate || undefined,
       endDate || undefined
     ),
+    enabled: isWarehouseCheckDone,
   });
 
   // Fetch stats
@@ -133,6 +153,8 @@ export default function Orders() {
     queryKey: ["orderStats"],
     queryFn: () => orderService.getOrderStats(),
   });
+
+  const isOrdersLoading = loadingOrders || !isWarehouseCheckDone || assignMissingWarehousesMutation.isPending;
 
   // Get Swell order count mutation
   const countMutation = useMutation({
@@ -487,7 +509,7 @@ export default function Orders() {
               <Button
                 variant="outline"
                 onClick={handleExportToCsv}
-                disabled={isExporting || loadingOrders}
+                disabled={isExporting || isOrdersLoading}
               >
                 <FileSpreadsheet className="h-4 w-4 mr-2" />
                 {isExporting ? "Exporting..." : "Export CSV"}
@@ -629,7 +651,7 @@ export default function Orders() {
           <CardTitle>Order List ({totalCount} total)</CardTitle>
         </CardHeader>
         <CardContent>
-          {loadingOrders ? (
+          {isOrdersLoading ? (
             <div className="flex items-center justify-center py-8">
               <p className="text-sm text-muted-foreground">Loading orders...</p>
             </div>
