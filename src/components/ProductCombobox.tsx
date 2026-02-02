@@ -26,6 +26,9 @@ interface ProductComboboxProps {
   vendorId?: number; // Filter products by vendor
 }
 
+// Page size for product list in PO form - show all products (backend max 500)
+const PRODUCT_LIST_PAGE_SIZE = 500;
+
 /**
  * Searchable product combobox component with server-side search
  * Allows users to search and select products from the database
@@ -58,11 +61,11 @@ export function ProductCombobox({
         setLoading(true);
         const response = await productService.getProducts(
           1,
-          debouncedSearchTerm.trim().length > 0 ? 50 : 10, // Top 10 if no search, 50 if searching
-          debouncedSearchTerm.trim().length > 0 ? debouncedSearchTerm : undefined, // Only pass search if not empty
-          "true", // Only show active products
-          undefined, // origin
-          vendorId // Filter by vendor if provided
+          PRODUCT_LIST_PAGE_SIZE,
+          debouncedSearchTerm.trim().length > 0 ? debouncedSearchTerm : undefined,
+          "true",
+          undefined,
+          vendorId
         );
         setProducts(response.data);
       } catch (error) {
