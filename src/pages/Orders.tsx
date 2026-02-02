@@ -126,7 +126,7 @@ export default function Orders() {
     if (!isWarehouseCheckDone) {
       assignMissingWarehousesMutation.mutate();
     }
-  }, [assignMissingWarehousesMutation, isWarehouseCheckDone]);
+  }, []);
 
   const canResyncChinaOrder = (order: Order) => {
     const hasChinaWarehouse = (order.warehouseIds ?? []).includes(2);
