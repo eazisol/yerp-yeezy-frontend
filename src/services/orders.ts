@@ -45,7 +45,8 @@ class OrderService {
     status?: string,
     paymentStatus?: string,
     startDate?: string,
-    endDate?: string
+    endDate?: string,
+    warehouse?: string
   ): Promise<OrdersResponse> {
     const params = new URLSearchParams({
       page: page.toString(),
@@ -56,6 +57,7 @@ class OrderService {
     if (paymentStatus) params.append("paymentStatus", paymentStatus);
     if (startDate) params.append("startDate", startDate);
     if (endDate) params.append("endDate", endDate);
+    if (warehouse) params.append("warehouse", warehouse);
 
     return apiClient.get<OrdersResponse>(`/api/Orders?${params.toString()}`);
   }

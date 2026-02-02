@@ -51,6 +51,7 @@ import { useToast } from "@/hooks/use-toast";
 export default function Orders() {
   const [searchTerm, setSearchTerm] = useState("");
   const [fulfillmentFilter, setFulfillmentFilter] = useState<string | null>(null); // null = all, "unfulfilled" = unfulfilled, "partial" = partial
+  const [warehouseFilter, setWarehouseFilter] = useState<string | null>(null); // null = all, "na" = N/A, "cn" = China, "us" = US, "mixed" = CN+US
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
   const [page, setPage] = useState(1);
@@ -138,7 +139,7 @@ export default function Orders() {
 
   // Fetch orders with pagination
   const { data: ordersData, isLoading: loadingOrders } = useQuery({
-    queryKey: ["orders", page, pageSize, searchTerm, fulfillmentFilter, startDate, endDate],
+    queryKey: ["orders", page, pageSize, searchTerm, fulfillmentFilter, warehouseFilter, startDate, endDate],
     queryFn: () => orderService.getOrders(
       page, 
       pageSize, 
@@ -146,7 +147,8 @@ export default function Orders() {
       fulfillmentFilter || undefined, 
       "paid",
       startDate || undefined,
-      endDate || undefined
+      endDate || undefined,
+      warehouseFilter || undefined
     ),
     enabled: isWarehouseCheckDone,
   });
@@ -599,6 +601,24 @@ export default function Orders() {
                   <SelectItem value="all">All</SelectItem>
                   <SelectItem value="unfulfilled">Unfulfilled</SelectItem>
                   <SelectItem value="partial">Partially Fulfilled</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={warehouseFilter || "all"}
+                onValueChange={(value) => {
+                  setWarehouseFilter(value === "all" ? null : value);
+                  setPage(1); // Reset to first page on filter change
+                }}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Warehouse" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="na">N/A</SelectItem>
+                  <SelectItem value="cn">CN</SelectItem>
+                  <SelectItem value="us">US</SelectItem>
+                  <SelectItem value="mixed">Mixed</SelectItem>
                 </SelectContent>
               </Select>
             </div>
