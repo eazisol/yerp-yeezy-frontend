@@ -66,6 +66,7 @@ export default function Orders() {
   const [resyncOrderId, setResyncOrderId] = useState<number | null>(null);
   const [isWarehouseCheckDone, setIsWarehouseCheckDone] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const hasRunWarehouseCheckRef = useRef(false);
   const navigate = useNavigate();
   const { canRead, canModify } = usePermissions();
   const { toast } = useToast();
@@ -123,10 +124,12 @@ export default function Orders() {
 
   // Run the warehouse assignment once on page load
   useEffect(() => {
-    if (!isWarehouseCheckDone) {
-      assignMissingWarehousesMutation.mutate();
+    if (hasRunWarehouseCheckRef.current || isWarehouseCheckDone) {
+      return;
     }
-  }, []);
+    hasRunWarehouseCheckRef.current = true;
+    assignMissingWarehousesMutation.mutate();
+  }, [assignMissingWarehousesMutation, isWarehouseCheckDone]);
 
   const canResyncChinaOrder = (order: Order) => {
     const hasChinaWarehouse = (order.warehouseIds ?? []).includes(2);
