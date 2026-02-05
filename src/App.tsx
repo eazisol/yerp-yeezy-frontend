@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Layout from "./components/common/Layout";
 import ProtectedRoute from "./components/common/ProtectedRoute";
+import PermissionRoute from "./components/common/PermissionRoute";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -57,28 +58,200 @@ const App = () => (
             <Route path="/vendor/accept-po" element={<VendorAcceptPO />} />
             <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
               <Route path="/" element={<Dashboard />} />
-              <Route path="/products" element={<Products />} />
-              <Route path="/products/new" element={<ProductFormPage />} />
-              <Route path="/products/:id" element={<ProductDetail />} />
-              <Route path="/products/:id/edit" element={<ProductFormPage />} />
-              <Route path="/orders" element={<Orders />} />
-              <Route path="/orders/:id" element={<OrderDetail />} />
-              <Route path="/customers" element={<Customers />} />
-              <Route path="/customers/:id" element={<CustomerDetail />} />
-              <Route path="/purchase-orders" element={<PurchaseOrders />} />
-              <Route path="/purchase-orders/new" element={<POFormPage />} />
-              <Route path="/purchase-orders/:id" element={<PODetail />} />
-              <Route path="/purchase-orders/:id/edit" element={<POFormPage />} />
-              <Route path="/po/preview/:id" element={<POPreview />} />
-              <Route path="/grn" element={<GRN />} />
-              <Route path="/grn/new" element={<GRNFormPage />} />
-              <Route path="/grn/:id" element={<GRNDetail />} />
-              <Route path="/grn/:id/edit" element={<GRNFormPage />} />
-              <Route path="/inventory" element={<Inventory />} />
-              <Route path="/vendors" element={<Vendors />} />
-              <Route path="/vendors/:id" element={<VendorDetail />} />
-              <Route path="/warehouses" element={<Warehouses />} />
-              <Route path="/warehouses/:id" element={<WarehouseDetail />} />
+
+              {/* Products */}
+              <Route
+                path="/products"
+                element={
+                  <PermissionRoute menuCode="PRODUCTS">
+                    <Products />
+                  </PermissionRoute>
+                }
+              />
+              <Route
+                path="/products/new"
+                element={
+                  <PermissionRoute menuCode="PRODUCTS">
+                    <ProductFormPage />
+                  </PermissionRoute>
+                }
+              />
+              <Route
+                path="/products/:id"
+                element={
+                  <PermissionRoute menuCode="PRODUCTS">
+                    <ProductDetail />
+                  </PermissionRoute>
+                }
+              />
+              <Route
+                path="/products/:id/edit"
+                element={
+                  <PermissionRoute menuCode="PRODUCTS">
+                    <ProductFormPage />
+                  </PermissionRoute>
+                }
+              />
+
+              {/* Orders */}
+              <Route
+                path="/orders"
+                element={
+                  <PermissionRoute menuCode="ORDERS">
+                    <Orders />
+                  </PermissionRoute>
+                }
+              />
+              <Route
+                path="/orders/:id"
+                element={
+                  <PermissionRoute menuCode="ORDERS">
+                    <OrderDetail />
+                  </PermissionRoute>
+                }
+              />
+
+              {/* Customers */}
+              <Route
+                path="/customers"
+                element={
+                  <PermissionRoute menuCode="CUSTOMERS">
+                    <Customers />
+                  </PermissionRoute>
+                }
+              />
+              <Route
+                path="/customers/:id"
+                element={
+                  <PermissionRoute menuCode="CUSTOMERS">
+                    <CustomerDetail />
+                  </PermissionRoute>
+                }
+              />
+
+              {/* Purchase Orders */}
+              <Route
+                path="/purchase-orders"
+                element={
+                  <PermissionRoute menuCode="PURCHASE_ORDERS">
+                    <PurchaseOrders />
+                  </PermissionRoute>
+                }
+              />
+              <Route
+                path="/purchase-orders/new"
+                element={
+                  <PermissionRoute menuCode="PURCHASE_ORDERS">
+                    <POFormPage />
+                  </PermissionRoute>
+                }
+              />
+              <Route
+                path="/purchase-orders/:id"
+                element={
+                  <PermissionRoute menuCode="PURCHASE_ORDERS">
+                    <PODetail />
+                  </PermissionRoute>
+                }
+              />
+              <Route
+                path="/purchase-orders/:id/edit"
+                element={
+                  <PermissionRoute menuCode="PURCHASE_ORDERS">
+                    <POFormPage />
+                  </PermissionRoute>
+                }
+              />
+              <Route
+                path="/po/preview/:id"
+                element={
+                  <PermissionRoute menuCode="PURCHASE_ORDERS">
+                    <POPreview />
+                  </PermissionRoute>
+                }
+              />
+
+              {/* GRN */}
+              <Route
+                path="/grn"
+                element={
+                  <PermissionRoute menuCode="GRN">
+                    <GRN />
+                  </PermissionRoute>
+                }
+              />
+              <Route
+                path="/grn/new"
+                element={
+                  <PermissionRoute menuCode="GRN">
+                    <GRNFormPage />
+                  </PermissionRoute>
+                }
+              />
+              <Route
+                path="/grn/:id"
+                element={
+                  <PermissionRoute menuCode="GRN">
+                    <GRNDetail />
+                  </PermissionRoute>
+                }
+              />
+              <Route
+                path="/grn/:id/edit"
+                element={
+                  <PermissionRoute menuCode="GRN">
+                    <GRNFormPage />
+                  </PermissionRoute>
+                }
+              />
+
+              {/* Inventory */}
+              <Route
+                path="/inventory"
+                element={
+                  <PermissionRoute menuCode="INVENTORY">
+                    <Inventory />
+                  </PermissionRoute>
+                }
+              />
+
+              {/* Vendors */}
+              <Route
+                path="/vendors"
+                element={
+                  <PermissionRoute menuCode="VENDORS">
+                    <Vendors />
+                  </PermissionRoute>
+                }
+              />
+              <Route
+                path="/vendors/:id"
+                element={
+                  <PermissionRoute menuCode="VENDORS">
+                    <VendorDetail />
+                  </PermissionRoute>
+                }
+              />
+
+              {/* Warehouses */}
+              <Route
+                path="/warehouses"
+                element={
+                  <PermissionRoute menuCode="WAREHOUSES">
+                    <Warehouses />
+                  </PermissionRoute>
+                }
+              />
+              <Route
+                path="/warehouses/:id"
+                element={
+                  <PermissionRoute menuCode="WAREHOUSES">
+                    <WarehouseDetail />
+                  </PermissionRoute>
+                }
+              />
+
+              {/* Users / Roles / Settings / KPI / Reports / Alerts */}
               <Route path="/users" element={<Users />} />
               <Route path="/roles" element={<Roles />} />
               <Route path="/roles/:id/permissions" element={<RolePermissions />} />
