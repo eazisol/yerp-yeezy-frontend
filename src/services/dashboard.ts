@@ -96,6 +96,38 @@ export interface VendorPerformance {
   onTimePercentage: number;
 }
 
+// Finance / profitability KPIs (MTD)
+export interface FinanceKpis {
+  netRevenueMtd: number;
+  grossMarginMtd: number;
+  grossMarginPercentMtd: number;
+  contributionMarginMtd: number;
+  contributionMarginPercentMtd: number;
+  vsForecast: number;
+  vsPriorMonth: number;
+  vsSameMonthLy: number;
+}
+
+// Purchase orders & supply chain KPIs
+export interface PoKpi {
+  openPoUnits: number; // Total open units across all open POs
+  openPoValue: number; // Total remaining value across all open POs
+  partiallyFulfilledPos: number; // Number of partially fulfilled POs
+  grnCount: number; // Total GRNs
+  inboundInventoryValue: number; // Value of inbound inventory (open POs)
+  pastDuePoUnits: number; // Units on past-due POs
+  pastDuePoValue: number; // Remaining value on past-due POs
+  vendorFillRate: number; // Overall vendor fill rate (%)
+}
+
+// PO aging by vendor for KPI dashboard
+export interface PoAgingByVendor {
+  vendor: string;
+  totalPos: number;
+  avgDays: number;
+  onTime: number; // On-time %
+}
+
 // Recent order summary from dashboard API
 export interface RecentOrder {
   orderId: number;
@@ -128,11 +160,45 @@ export interface MissingVariantSkusResponse {
   hasNextPage: boolean;
 }
 
+// Top seller KPI (sales performance) for dashboard
+export interface TopSellerKpi {
+  sku: string;
+  name: string;
+  units: number; // Units sold (MTD)
+  revenue: number; // Net revenue (MTD)
+  margin: number; // Gross margin dollars (MTD, approximate)
+}
+
 export interface DashboardMetrics {
   dailyOrderMetrics: DailyOrderMetrics;
   orderStatusBreakdown: OrderStatusBreakdown;
   dailyShipments: DailyShipments;
+  financeKpis: FinanceKpis;
+  // Total count of open, paid orders that are ready to ship
+  openOrdersReadyToShip: number;
+  // Total count of paid orders that were fulfilled today
+  ordersFulfilledToday: number;
+   // Total count of paid orders that were received (created) today
+  ordersReceivedToday: number;
+  // Total count of paid orders that were fulfilled month-to-date
+  ordersFulfilledMtd: number;
+  // Approximate backlog growth rate vs yesterday (percentage)
+  backlogGrowthRate: number;
+  // Average time to ship for MTD fulfilled orders (in hours)
+  averageTimeToShipHours: number;
+  // Total count of orders breaching fulfillment SLA
+  ordersBreachingSla: number;
+  // Oldest unshipped order age (in hours) among paid, not fulfilled orders
+  oldestUnshippedOrderHours: number;
+  // Global inventory KPIs (cost-based)
+  globalInventory?: GlobalInventoryKpis;
   warehouseInventory: WarehouseInventory[];
+  topSkusByInventoryValue: TopSkuInventoryValue[];
+  topSellersByUnits: TopSellerKpi[]; // Top 15 SKUs by units (MTD)
+  topSellersByRevenue: TopSellerKpi[]; // Top 15 SKUs by revenue (MTD)
+  topSellersByMargin: TopSellerKpi[]; // Top 15 SKUs by gross margin $ (MTD)
+  bottomSellersByMargin: TopSellerKpi[]; // Bottom 10 SKUs by gross margin $ (MTD)
+  topSkusBacklogRisk: TopSkuBacklogRisk[]; // Top SKUs by backlog risk (backlog units + weeks on hand)
   stockAlerts: StockAlert[];
   stockAlertsCriticalCount: number;
   stockAlertsLowCount: number;
@@ -141,6 +207,34 @@ export interface DashboardMetrics {
   poAging: PoAgingSummary;
   vendorBalanceSummary: VendorBalanceSummary;
   vendorPerformance: VendorPerformance[];
+  poKpis: PoKpi;
+  poAgingByVendor: PoAgingByVendor[];
+}
+
+export interface GlobalInventoryKpis {
+  totalValue: number;
+  weeksOnHand: number;
+  inventoryTurnsTTM: number;
+  inventoryTurnsMTD: number;
+  deadStockValue: number;
+  lowVelocity30Days: number;
+  lowVelocity60Days: number;
+  lowVelocity90Days: number;
+}
+
+export interface TopSkuInventoryValue {
+  sku: string;
+  name: string;
+  units: number;
+  value: number;
+}
+
+// Top SKU backlog risk (backlog units and weeks on hand per SKU)
+export interface TopSkuBacklogRisk {
+  sku: string;
+  name: string;
+  backlogUnits: number; // Total backlog units (paid, not fulfilled)
+  weeksOnHand: number; // Approximate weeks on hand based on MTD sales velocity
 }
 
 class DashboardService {

@@ -26,6 +26,8 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
+import { dashboardService } from "@/services/dashboard";
+import { useQuery } from "@tanstack/react-query";
 
 // Role-based view types
 type KPIViewType = "executive" | "ops" | "merch";
@@ -48,6 +50,7 @@ const getViewFromRoles = (roles: string[]): KPIViewType => {
 export default function KPI() {
   const { user } = useAuth();
   const { roles, isAdmin } = usePermissions();
+  const { canAccess } = usePermissions();
   
   // Auto-detect view based on user role, but allow manual override
   const userView = getViewFromRoles(roles || []);
@@ -61,14 +64,30 @@ export default function KPI() {
     }
   }, [user, roles]);
 
+  // Load dashboard metrics for shared KPIs (including openOrdersReadyToShip)
+  const { data: dashboardMetrics } = useQuery({
+    queryKey: ["dashboard-metrics"],
+    queryFn: () => dashboardService.getDashboardMetrics(),
+    enabled: canAccess("DASHBOARD"),
+    refetchInterval: 60000,
+  });
+
   // Role-based visibility helpers
-  const showExecutiveStrip = isAdmin || selectedRole === "executive" || selectedRole === "ops" || selectedRole === "merch";
-  const showSalesPerformance = isAdmin || selectedRole === "executive" || selectedRole === "merch";
-  const showShippingFulfillment = isAdmin || selectedRole === "executive" || selectedRole === "ops";
-  const showInventory = isAdmin || selectedRole === "executive" || selectedRole === "ops" || selectedRole === "merch";
-  const showPurchaseOrders = isAdmin || selectedRole === "executive" || selectedRole === "ops" || selectedRole === "merch";
-  const showProfitability = isAdmin || selectedRole === "executive" || selectedRole === "merch";
-  const showAlerts = isAdmin || selectedRole === "executive" || selectedRole === "ops" || selectedRole === "merch";
+  const isExecutiveView = selectedRole === "executive";
+  const isOpsView = selectedRole === "ops";
+  const isMerchView = selectedRole === "merch";
+
+  // Executive: summary strip + margin + inventory risk + forecast vs actual
+  // Ops: shipping backlog + SLA + inventory by warehouse + PO status
+  // Merch: sell-through + SKU velocity + weeks on hand + drop performance
+  // Admin par bhi yahi role selection apply hoga (no extra sections)
+  const showExecutiveStrip = isExecutiveView || isOpsView || isMerchView;
+  const showSalesPerformance = isExecutiveView || isMerchView; // Exec + Merch
+  const showShippingFulfillment = isOpsView; // Ops only
+  const showInventory = isExecutiveView || isOpsView || isMerchView; // All views
+  const showPurchaseOrders = isOpsView; // Ops only
+  const showProfitability = isExecutiveView || isMerchView; // Exec + Merch
+  const showAlerts = isExecutiveView || isOpsView || isMerchView; // All views see alerts
   
   // Role-based data filtering
   const getFilteredAlerts = () => {
@@ -95,141 +114,154 @@ export default function KPI() {
     return alerts;
   };
 
-  // Executive Control Strip Data
-  const executiveStrip = {
-    netRevenueToday: 45230,
-    netRevenueMTD: 1250000,
-    grossMarginMTD: 42.5,
-    contributionMarginMTD: 38.2,
-    ordersShippedToday: 145,
-    ordersReceivedToday: 180,
-    openOrderBacklog: { value: 245000, units: 320 },
-    inventoryWeeksOnHand: 8.5,
-    fulfillmentSLARate: 94.2,
-  };
+  // Top Sellers Data (real-time from backend)
+  const topSellersByUnits = dashboardMetrics?.topSellersByUnits ?? [];
+  const topSellersByRevenue = dashboardMetrics?.topSellersByRevenue ?? [];
+  const topSellersByMargin = dashboardMetrics?.topSellersByMargin ?? [];
+  const bottomSKUsByMargin = dashboardMetrics?.bottomSellersByMargin ?? [];
 
-  // Sales Performance Data
-  const dailySales = {
-    totalPaidOrders: 145,
-    netRevenue: 45230,
-    averageOrderValue: 312,
-    grossMarginDollar: 19223,
-    grossMarginPercent: 42.5,
-  };
-
-  const mtdSales = {
-    totalPaidOrders: 4200,
-    netRevenue: 1250000,
-    averageOrderValue: 298,
-    grossMarginDollar: 531250,
-    grossMarginPercent: 42.5,
-    vsForecast: 105.2,
-    vsPriorMonth: 112.5,
-    vsSameMonthLY: 98.3,
-  };
-
-  // Top Sellers Data
-  const topSellersByUnits = [
-    { sku: "YZ-001", name: "Yeezy Boost 350", units: 1250, revenue: 390000, margin: 165750 },
-    { sku: "YZ-002", name: "Yeezy Boost 700", units: 980, revenue: 294000, margin: 124950 },
-    { sku: "YZ-003", name: "Yeezy Slide", units: 850, revenue: 170000, margin: 76500 },
-    { sku: "YZ-004", name: "Yeezy Foam Runner", units: 720, revenue: 144000, margin: 64800 },
-    { sku: "YZ-005", name: "Yeezy 500", units: 650, revenue: 195000, margin: 82875 },
-  ];
-
-  const topSellersByRevenue = [
-    { sku: "YZ-001", name: "Yeezy Boost 350", units: 1250, revenue: 390000, margin: 165750 },
-    { sku: "YZ-005", name: "Yeezy 500", units: 650, revenue: 195000, margin: 82875 },
-    { sku: "YZ-002", name: "Yeezy Boost 700", units: 980, revenue: 294000, margin: 124950 },
-    { sku: "YZ-006", name: "Yeezy 450", units: 420, revenue: 168000, margin: 71400 },
-    { sku: "YZ-003", name: "Yeezy Slide", units: 850, revenue: 170000, margin: 76500 },
-  ];
-
-  const topSellersByMargin = [
-    { sku: "YZ-001", name: "Yeezy Boost 350", units: 1250, revenue: 390000, margin: 165750 },
-    { sku: "YZ-002", name: "Yeezy Boost 700", units: 980, revenue: 294000, margin: 124950 },
-    { sku: "YZ-005", name: "Yeezy 500", units: 650, revenue: 195000, margin: 82875 },
-    { sku: "YZ-006", name: "Yeezy 450", units: 420, revenue: 168000, margin: 71400 },
-    { sku: "YZ-003", name: "Yeezy Slide", units: 850, revenue: 170000, margin: 76500 },
-  ];
-
-  const bottomSKUsByMargin = [
-    { sku: "YZ-101", name: "Yeezy Accessory Pack", units: 25, revenue: 1250, margin: 125 },
-    { sku: "YZ-102", name: "Yeezy Socks", units: 45, revenue: 900, margin: 180 },
-    { sku: "YZ-103", name: "Yeezy Hat", units: 30, revenue: 1200, margin: 240 },
-  ];
-
-  const topSKUsBacklogRisk = [
-    { sku: "YZ-001", name: "Yeezy Boost 350", backlogUnits: 320, weeksOnHand: 2.5 },
-    { sku: "YZ-002", name: "Yeezy Boost 700", backlogUnits: 280, weeksOnHand: 3.2 },
-  ];
+  // Top SKUs Backlog Risk (real-time from backend)
+  const topSKUsBacklogRisk = dashboardMetrics?.topSkusBacklogRisk || [];
 
   // Shipping & Fulfillment Data
   const shippingKPIs = {
-    openOrdersReadyToShip: 45,
-    ordersFulfilledToday: 145,
-    ordersReceivedToday: 180,
-    ordersFulfilledMTD: 4200,
-    backlogGrowthRate: 2.5,
-    averageTimeToShip: 18.5,
-    ordersBreachingSLA: 8,
-    oldestUnshippedOrder: 48,
+    openOrdersReadyToShip: dashboardMetrics?.openOrdersReadyToShip ?? 0,
+    ordersFulfilledToday: dashboardMetrics?.ordersFulfilledToday ?? 0,
+    ordersReceivedToday: dashboardMetrics?.ordersReceivedToday ?? 0,
+    ordersFulfilledMTD: dashboardMetrics?.ordersFulfilledMtd ?? 0,
+    backlogGrowthRate: dashboardMetrics?.backlogGrowthRate ?? 0,
+    averageTimeToShip: dashboardMetrics?.averageTimeToShipHours ?? 0,
+    ordersBreachingSLA: dashboardMetrics?.ordersBreachingSla ?? 0,
+    oldestUnshippedOrder: dashboardMetrics?.oldestUnshippedOrderHours ?? 0,
   };
 
   // Inventory Data
-  const warehouses = [
-    {
-      name: "China Warehouse #1",
-      totalSKUs: 1250,
-      totalUnits: 45000,
-      totalValue: 1350000,
-    },
-    {
-      name: "China Warehouse #2",
-      totalSKUs: 980,
-      totalUnits: 32000,
-      totalValue: 960000,
-    },
-    {
-      name: "US Warehouse #1",
-      totalSKUs: 850,
-      totalUnits: 18000,
-      totalValue: 540000,
-    },
-  ];
+  const warehouseInventory = dashboardMetrics?.warehouseInventory || [];
+
+  const warehouses = warehouseInventory.map((w) => ({
+    name: w.warehouse === "CN" ? "China Warehouse" : "US Warehouse",
+    totalSKUs: w.totalSKUs,
+    totalUnits: w.totalUnits,
+    totalValue: w.totalValue,
+  }));
+
+  const totalInventoryValue = warehouses.reduce(
+    (sum, w) => sum + w.totalValue,
+    0
+  );
+
+  const backendGlobalInventory = dashboardMetrics?.globalInventory;
+  const financeKpis = dashboardMetrics?.financeKpis;
 
   const globalInventory = {
-    totalValue: 2850000,
-    weeksOnHand: 8.5,
-    inventoryTurnsTTM: 6.2,
-    inventoryTurnsMTD: 0.52,
-    deadStockValue: 125000,
-    lowVelocity30Days: 45000,
-    lowVelocity60Days: 85000,
-    lowVelocity90Days: 125000,
+    totalValue: backendGlobalInventory?.totalValue ?? totalInventoryValue,
+    weeksOnHand: backendGlobalInventory?.weeksOnHand ?? 0,
+    inventoryTurnsTTM: backendGlobalInventory?.inventoryTurnsTTM ?? 0,
+    inventoryTurnsMTD: backendGlobalInventory?.inventoryTurnsMTD ?? 0,
+    deadStockValue: backendGlobalInventory?.deadStockValue ?? 0,
+    lowVelocity30Days: backendGlobalInventory?.lowVelocity30Days ?? 0,
+    lowVelocity60Days: backendGlobalInventory?.lowVelocity60Days ?? 0,
+    lowVelocity90Days: backendGlobalInventory?.lowVelocity90Days ?? 0,
   };
 
-  const topSKUsByInventoryValue = [
-    { sku: "YZ-001", name: "Yeezy Boost 350", units: 8500, value: 255000 },
-    { sku: "YZ-002", name: "Yeezy Boost 700", units: 6200, value: 186000 },
-    { sku: "YZ-005", name: "Yeezy 500", units: 4800, value: 144000 },
-  ];
+  // Executive Control Strip Data (derived from backend KPIs, approximate for some fields)
+  const totalOrdersToday = dashboardMetrics?.dailyOrderMetrics.totalOrders ?? 0;
+  const totalOrderValueToday = dashboardMetrics?.dailyOrderMetrics.totalOrderValue ?? 0;
+  const averageOrderValueToday =
+    totalOrdersToday > 0 ? totalOrderValueToday / totalOrdersToday : 0;
 
-  // Purchase Orders Data
-  const poKPIs = {
-    openPOs: { units: 12500, value: 375000 },
-    partiallyFulfilledPOs: 8,
-    grns: 12,
-    inboundInventoryValue: 450000,
-    pastDuePOs: { units: 850, value: 25500 },
-    vendorFillRate: 92.5,
+  const openBacklogUnits = shippingKPIs.openOrdersReadyToShip;
+  const openBacklogValue = openBacklogUnits * averageOrderValueToday;
+
+  // Net revenue MTD: prefer backend finance KPI, fallback to simple approximation
+  const netRevenueMtdApprox =
+    dashboardMetrics?.ordersFulfilledMtd && averageOrderValueToday > 0
+      ? dashboardMetrics.ordersFulfilledMtd * averageOrderValueToday
+      : 0;
+  const netRevenueMtd =
+    financeKpis?.netRevenueMtd ?? netRevenueMtdApprox;
+
+  // Margin % MTD from backend (approx based on current cost model)
+  const grossMarginPercentMtd =
+    financeKpis?.grossMarginPercentMtd ?? 42.5;
+  const contributionMarginPercentMtd =
+    financeKpis?.contributionMarginPercentMtd ?? 38.2;
+
+  // Approximate fulfillment SLA hit rate (7-day style): based on current backlog + MTD fulfilled vs breaches
+  const totalRelevantOrdersForSla =
+    openBacklogUnits + shippingKPIs.ordersFulfilledMTD;
+  let fulfillmentSlaRate = 100;
+  if (totalRelevantOrdersForSla > 0) {
+    const breachRatio =
+      shippingKPIs.ordersBreachingSLA / totalRelevantOrdersForSla;
+    fulfillmentSlaRate = Math.max(0, Math.min(100, 100 * (1 - breachRatio)));
+    fulfillmentSlaRate = Math.round(fulfillmentSlaRate * 10) / 10;
+  }
+
+  const executiveStrip = {
+    // Today view
+    netRevenueToday: totalOrderValueToday,
+    // MTD revenue (backend + fallback)
+    netRevenueMTD: netRevenueMtd,
+    // Margin % from backend finance KPIs (approx)
+    grossMarginMTD: grossMarginPercentMtd,
+    contributionMarginMTD: contributionMarginPercentMtd,
+    // Orders shipped = fulfilled today, received = paid orders created today
+    ordersShippedToday: shippingKPIs.ordersFulfilledToday,
+    ordersReceivedToday: shippingKPIs.ordersReceivedToday,
+    // Backlog units from backend + approximate value using today's AOV
+    openOrderBacklog: { value: openBacklogValue, units: openBacklogUnits },
+    // Global inventory weeks on hand
+    inventoryWeeksOnHand: globalInventory.weeksOnHand,
+    // Approximate SLA hit rate
+    fulfillmentSLARate: fulfillmentSlaRate,
   };
 
-  const poAgingByVendor = [
-    { vendor: "Vendor A", totalPOs: 5, avgDays: 12, onTime: 95 },
-    { vendor: "Vendor B", totalPOs: 8, avgDays: 18, onTime: 88 },
-    { vendor: "Vendor C", totalPOs: 3, avgDays: 8, onTime: 100 },
-  ];
+  // Sales Performance Data (derived from backend KPIs)
+  const netRevenueTodayMetric =
+    dashboardMetrics?.dailyOrderMetrics.totalOrderValue ?? 0;
+  const totalPaidOrdersToday = shippingKPIs.ordersReceivedToday; // paid orders created today
+  const averageOrderValueTodaySales =
+    totalPaidOrdersToday > 0
+      ? netRevenueTodayMetric / totalPaidOrdersToday
+      : 0;
+
+  const grossMarginMtdDollar = financeKpis?.grossMarginMtd ?? 0;
+
+  const dailySales = {
+    totalPaidOrders: totalPaidOrdersToday,
+    netRevenue: netRevenueTodayMetric,
+    averageOrderValue: averageOrderValueTodaySales,
+    // Approximate daily gross margin using MTD margin %
+    grossMarginDollar:
+      grossMarginPercentMtd > 0
+        ? netRevenueTodayMetric * (grossMarginPercentMtd / 100)
+        : 0,
+    grossMarginPercent: grossMarginPercentMtd,
+  };
+
+  const totalPaidOrdersMtd = dashboardMetrics?.ordersFulfilledMtd ?? 0;
+  const netRevenueMtdValue = netRevenueMtd;
+  const averageOrderValueMtd =
+    totalPaidOrdersMtd > 0 ? netRevenueMtdValue / totalPaidOrdersMtd : 0;
+
+  const mtdSales = {
+    totalPaidOrders: totalPaidOrdersMtd,
+    netRevenue: netRevenueMtdValue,
+    averageOrderValue: averageOrderValueMtd,
+    grossMarginDollar: grossMarginMtdDollar,
+    grossMarginPercent: grossMarginPercentMtd,
+    // Comparative KPIs from backend (approximate)
+    vsForecast: financeKpis?.vsForecast ?? 100,
+    vsPriorMonth: financeKpis?.vsPriorMonth ?? 100,
+    vsSameMonthLY: financeKpis?.vsSameMonthLy ?? 100,
+  };
+
+  const topSKUsByInventoryValue = dashboardMetrics?.topSkusByInventoryValue || [];
+
+  // Purchase Orders Data (from backend)
+  const poKPIs = dashboardMetrics?.poKpis;
+  const poAgingByVendor = dashboardMetrics?.poAgingByVendor || [];
 
   // Profitability Data
   const profitability = {
@@ -273,7 +305,7 @@ export default function KPI() {
         <div className="flex gap-2">
           <select
             value={selectedRole}
-            onChange={(e) => setSelectedRole(e.target.value)}
+            onChange={(e) => setSelectedRole(e.target.value as KPIViewType)}
             className="px-4 py-2 border rounded-md"
           >
             <option value="executive">Executive View</option>
@@ -751,29 +783,43 @@ export default function KPI() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Open POs</p>
-              <p className="text-lg font-bold">{formatNumber(poKPIs.openPOs.units)} units</p>
-              <p className="text-sm">{formatCurrency(poKPIs.openPOs.value)}</p>
+              <p className="text-lg font-bold">
+                {formatNumber(poKPIs?.openPoUnits ?? 0)} units
+              </p>
+              <p className="text-sm">{formatCurrency(poKPIs?.openPoValue ?? 0)}</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Partially Fulfilled POs</p>
-              <p className="text-2xl font-bold">{poKPIs.partiallyFulfilledPOs}</p>
+              <p className="text-2xl font-bold">
+                {formatNumber(poKPIs?.partiallyFulfilledPos ?? 0)}
+              </p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">GRNs</p>
-              <p className="text-2xl font-bold">{poKPIs.grns}</p>
+              <p className="text-2xl font-bold">
+                {formatNumber(poKPIs?.grnCount ?? 0)}
+              </p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Inbound Inventory Value</p>
-              <p className="text-2xl font-bold">{formatCurrency(poKPIs.inboundInventoryValue)}</p>
+              <p className="text-2xl font-bold">
+                {formatCurrency(poKPIs?.inboundInventoryValue ?? 0)}
+              </p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">POs Past Due</p>
-              <p className="text-lg font-bold text-red-600">{formatNumber(poKPIs.pastDuePOs.units)} units</p>
-              <p className="text-sm text-red-600">{formatCurrency(poKPIs.pastDuePOs.value)}</p>
+              <p className="text-lg font-bold text-red-600">
+                {formatNumber(poKPIs?.pastDuePoUnits ?? 0)} units
+              </p>
+              <p className="text-sm text-red-600">
+                {formatCurrency(poKPIs?.pastDuePoValue ?? 0)}
+              </p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Vendor Fill Rate</p>
-              <p className="text-2xl font-bold">{poKPIs.vendorFillRate}%</p>
+              <p className="text-2xl font-bold">
+                {(poKPIs?.vendorFillRate ?? 0).toFixed(1)}%
+              </p>
             </div>
           </div>
 
@@ -793,11 +839,15 @@ export default function KPI() {
                 {poAgingByVendor.map((vendor) => (
                   <TableRow key={vendor.vendor}>
                     <TableCell className="font-medium">{vendor.vendor}</TableCell>
-                    <TableCell className="text-right">{vendor.totalPOs}</TableCell>
-                    <TableCell className="text-right">{vendor.avgDays} days</TableCell>
+                    <TableCell className="text-right">
+                      {formatNumber(vendor.totalPos)}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {formatNumber(vendor.avgDays)} days
+                    </TableCell>
                     <TableCell className="text-right">
                       <Badge variant={vendor.onTime >= 90 ? "default" : "secondary"}>
-                        {vendor.onTime}%
+                        {vendor.onTime.toFixed(1)}%
                       </Badge>
                     </TableCell>
                   </TableRow>
@@ -810,7 +860,7 @@ export default function KPI() {
       )}
 
       {/* PROFITABILITY */}
-      {showProfitability && (
+      {/* {showProfitability && (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -846,10 +896,11 @@ export default function KPI() {
           </div>
         </CardContent>
       </Card>
-      )}
+      )} */}
+      
 
       {/* ALERTS & EXCEPTIONS */}
-      {showAlerts && (
+      {/* {showAlerts && (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -880,7 +931,8 @@ export default function KPI() {
           </div>
         </CardContent>
       </Card>
-      )}
+      )} */}
+      
     </div>
   );
 }

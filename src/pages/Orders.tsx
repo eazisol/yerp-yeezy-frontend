@@ -57,6 +57,7 @@ export default function Orders() {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(50);
   const [swellOrderCount, setSwellOrderCount] = useState<number | null>(null);
+  const [syncFromDate, setSyncFromDate] = useState<string>(""); // Optional sync-from date for bulk sync
   const [showSyncConfirm, setShowSyncConfirm] = useState(false);
   const [syncProgress, setSyncProgress] = useState<string>("");
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -186,11 +187,11 @@ export default function Orders() {
 
   // Sync orders mutation
   const syncMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (fromDate?: string) => {
       setSyncProgress("Fetching orders from Swell...");
       await new Promise(resolve => setTimeout(resolve, 100));
       setSyncProgress("Processing orders and syncing to database...");
-      return orderService.syncOrdersFromSwell();
+      return orderService.syncOrdersFromSwell(fromDate);
     },
     onSuccess: (result: OrderSyncResult) => {
       setSyncProgress("");
@@ -222,7 +223,9 @@ export default function Orders() {
 
   const handleConfirmSync = () => {
     setSyncProgress("Initializing sync...");
-    syncMutation.mutate();
+    // Pass selected from-date if provided, otherwise let backend use current month start default
+    const effectiveFromDate = syncFromDate || undefined;
+    syncMutation.mutate(effectiveFromDate);
   };
 
   // Excel import mutation
@@ -920,16 +923,28 @@ export default function Orders() {
                   </div>
                 ) : (
                   swellOrderCount !== null && (
-                    <div className="space-y-2 mt-4">
-                      <p>
-                        Found <strong>{swellOrderCount}</strong> orders in Swell.
-                      </p>
-                      <p>
-                        This will sync all orders from Swell. New orders will be created and existing orders will be updated.
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        This may take a few minutes depending on the number of orders.
-                      </p>
+                    <div className="space-y-4 mt-4">
+                      <div className="space-y-2">
+                        <p>
+                          Found <strong>{swellOrderCount}</strong> orders in Swell.
+                        </p>
+                        <p>
+                          This will sync orders from Swell. New orders will be created and existing orders will be updated.
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="flex flex-col gap-1 text-sm">
+                          <span className="font-medium">Sync from date (optional)</span>
+                          <Input
+                            type="date"
+                            value={syncFromDate}
+                            onChange={(e) => setSyncFromDate(e.target.value)}
+                          />
+                          <span className="text-xs text-muted-foreground">
+                            If empty, sync will start from the first day of the current month (backend default).
+                          </span>
+                        </label>
+                      </div>
                     </div>
                   )
                 )}

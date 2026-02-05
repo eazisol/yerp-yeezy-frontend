@@ -126,8 +126,12 @@ class OrderService {
   }
 
   // Sync all orders from Swell
-  async syncOrdersFromSwell(): Promise<OrderSyncResult> {
-    return apiClient.post<OrderSyncResult>("/api/Orders/sync");
+  // fromDate: optional ISO date string (yyyy-MM-dd). If omitted, backend defaults to current month start.
+  async syncOrdersFromSwell(fromDate?: string): Promise<OrderSyncResult> {
+    const url = fromDate
+      ? `/api/Orders/sync?fromDate=${encodeURIComponent(fromDate)}`
+      : "/api/Orders/sync";
+    return apiClient.post<OrderSyncResult>(url);
   }
 
   // Import orders from Excel file
