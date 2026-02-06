@@ -138,20 +138,20 @@ export default function Orders() {
     return hasChinaWarehouse && order.orderSyncTo === 0;
   };
 
-  // Fetch orders with pagination
+  // Fetch orders with pagination (do not block on warehouse assignment)
   const { data: ordersData, isLoading: loadingOrders } = useQuery({
     queryKey: ["orders", page, pageSize, searchTerm, fulfillmentFilter, warehouseFilter, startDate, endDate],
-    queryFn: () => orderService.getOrders(
-      page, 
-      pageSize, 
-      searchTerm || undefined, 
-      fulfillmentFilter || undefined, 
-      "paid",
-      startDate || undefined,
-      endDate || undefined,
-      warehouseFilter || undefined
-    ),
-    enabled: isWarehouseCheckDone,
+    queryFn: () =>
+      orderService.getOrders(
+        page,
+        pageSize,
+        searchTerm || undefined,
+        fulfillmentFilter || undefined,
+        "paid",
+        startDate || undefined,
+        endDate || undefined,
+        warehouseFilter || undefined
+      ),
   });
 
   // Fetch stats
@@ -160,7 +160,8 @@ export default function Orders() {
     queryFn: () => orderService.getOrderStats(),
   });
 
-  const isOrdersLoading = loadingOrders || !isWarehouseCheckDone || assignMissingWarehousesMutation.isPending;
+  // Only depend on orders query loading state so list renders while warehouse assignment runs in background
+  const isOrdersLoading = loadingOrders;
 
   // Get Swell order count mutation
   const countMutation = useMutation({
