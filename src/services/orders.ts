@@ -121,8 +121,12 @@ class OrderService {
   }
 
   // Get total order count from Swell
-  async getSwellOrderCount(): Promise<{ count: number; message: string }> {
-    return apiClient.get<{ count: number; message: string }>("/api/Orders/sync/count");
+  // fromDate: optional ISO date string (yyyy-MM-dd). If omitted, backend defaults to current month range.
+  async getSwellOrderCount(fromDate?: string): Promise<{ count: number; message: string }> {
+    const url = fromDate
+      ? `/api/Orders/sync/count?fromDate=${encodeURIComponent(fromDate)}`
+      : "/api/Orders/sync/count";
+    return apiClient.get<{ count: number; message: string }>(url);
   }
 
   // Sync all orders from Swell

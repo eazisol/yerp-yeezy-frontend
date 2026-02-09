@@ -165,7 +165,7 @@ export default function Orders() {
 
   // Get Swell order count mutation
   const countMutation = useMutation({
-    mutationFn: () => orderService.getSwellOrderCount(),
+    mutationFn: (fromDate?: string) => orderService.getSwellOrderCount(fromDate),
     onSuccess: (data) => {
       setSwellOrderCount(data.count);
       if (data.count > 0) {
@@ -219,7 +219,9 @@ export default function Orders() {
   });
 
   const handleCheckSwellCount = () => {
-    countMutation.mutate();
+    // Use selected sync-from date (if any) when checking count
+    const effectiveFromDate = syncFromDate || undefined;
+    countMutation.mutate(effectiveFromDate);
   };
 
   const handleConfirmSync = () => {
@@ -939,7 +941,13 @@ export default function Orders() {
                           <Input
                             type="date"
                             value={syncFromDate}
-                            onChange={(e) => setSyncFromDate(e.target.value)}
+                            onChange={(e) => {
+                              const newDate = e.target.value;
+                              setSyncFromDate(newDate);
+                              // Refresh Swell order count when date changes
+                              const effectiveFromDate = newDate || undefined;
+                              countMutation.mutate(effectiveFromDate);
+                            }}
                           />
                           <span className="text-xs text-muted-foreground">
                             If empty, sync will start from the first day of the current month (backend default).
