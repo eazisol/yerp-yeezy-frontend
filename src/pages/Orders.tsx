@@ -996,7 +996,16 @@ export default function Orders() {
                             </strong>
                           </p>
                           <p>
-                            Progress: <strong>{latestSyncProgress.progressPercent.toFixed(2)}%</strong>
+                            Progress:{" "}
+                            <strong>
+                              {Number(
+                                // Handle both camelCase and PascalCase from backend, default to 0
+                                (latestSyncProgress as any).progressPercent ??
+                                (latestSyncProgress as any).ProgressPercent ??
+                                0
+                              ).toFixed(2)}
+                              %
+                            </strong>
                           </p>
                           {latestSyncProgress.lastOrderNumber && (
                             <p>
