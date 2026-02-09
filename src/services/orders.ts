@@ -37,6 +37,23 @@ export interface OrdersResponse {
   hasNextPage: boolean;
 }
 
+// Sync progress snapshot returned from backend for Swell order sync
+export interface OrderSyncProgress {
+  id: number;
+  syncRunId: string | null;
+  batchNumber: number;
+  totalOrders: number;
+  processedOrders: number;
+  createdCount: number;
+  updatedCount: number;
+  failedCount: number;
+  lastSwellOrderId: string | null;
+  lastOrderNumber: string | null;
+  lastOrderDateCreated: string | null;
+  createdDate: string;
+  progressPercent: number;
+}
+
 class OrderService {
   async getOrders(
     page: number = 1,
@@ -136,6 +153,15 @@ class OrderService {
       ? `/api/Orders/sync?fromDate=${encodeURIComponent(fromDate)}`
       : "/api/Orders/sync";
     return apiClient.post<OrderSyncResult>(url);
+  }
+
+  // Get latest batch-level sync progress (optionally for a specific sync run)
+  // syncRunId: logical run identifier (we use from-date string, e.g. "2026-02-01")
+  async getLatestOrderSyncProgress(syncRunId?: string): Promise<OrderSyncProgress | null> {
+    const url = syncRunId
+      ? `/api/Orders/sync/progress?syncRunId=${encodeURIComponent(syncRunId)}`
+      : "/api/Orders/sync/progress";
+    return apiClient.get<OrderSyncProgress | null>(url);
   }
 
   // Import orders from Excel file
