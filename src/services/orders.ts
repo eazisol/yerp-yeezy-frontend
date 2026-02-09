@@ -15,7 +15,8 @@ export interface Order {
   currency: string | null;
   paymentStatus: string | null;
   route: string | null;
-  createdDate: string;
+  createdDate: string; // Display date (swellCreatedDate ?? createdDate)
+  swellCreatedDate?: string | null; // Swell's original created date
   itemCount: number;
   warehouseIds?: number[];
   orderSyncTo?: number;

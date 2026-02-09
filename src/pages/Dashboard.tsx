@@ -242,7 +242,7 @@ export default function Dashboard() {
                 <div className="text-2xl font-bold text-foreground">
                   {formatNumber(dailyOrderMetrics.totalOrders)}
                 </div>
-                <p className={`text-xs mt-1 flex items-center gap-1 ${dailyOrderMetrics.changePercentage >= 0 ? "text-success" : "text-destructive"
+                {/* <p className={`text-xs mt-1 flex items-center gap-1 ${dailyOrderMetrics.changePercentage >= 0 ? "text-success" : "text-destructive"
                   }`}>
                   {dailyOrderMetrics.changePercentage >= 0 ? (
                     <TrendingUp className="h-3 w-3" />
@@ -251,7 +251,7 @@ export default function Dashboard() {
                   )}
                   {dailyOrderMetrics.changePercentage >= 0 ? "+" : ""}
                   {dailyOrderMetrics.changePercentage.toFixed(1)}% from yesterday
-                </p>
+                </p> */}
               </CardContent>
             </Card>
 
@@ -267,7 +267,7 @@ export default function Dashboard() {
                 <div className="text-2xl font-bold text-foreground">
                   {formatCurrency(dailyOrderMetrics.totalOrderValue)}
                 </div>
-                <p className={`text-xs mt-1 flex items-center gap-1 ${dailyOrderMetrics.valueChangePercentage >= 0 ? "text-success" : "text-destructive"
+                {/* <p className={`text-xs mt-1 flex items-center gap-1 ${dailyOrderMetrics.valueChangePercentage >= 0 ? "text-success" : "text-destructive"
                   }`}>
                   {dailyOrderMetrics.valueChangePercentage >= 0 ? (
                     <TrendingUp className="h-3 w-3" />
@@ -276,7 +276,7 @@ export default function Dashboard() {
                   )}
                   {dailyOrderMetrics.valueChangePercentage >= 0 ? "+" : ""}
                   {dailyOrderMetrics.valueChangePercentage.toFixed(1)}% from yesterday
-                </p>
+                </p> */}
               </CardContent>
             </Card>
 

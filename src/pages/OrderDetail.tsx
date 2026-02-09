@@ -75,8 +75,10 @@ interface OrderDetail {
   shippingPhone?: string | null;
   shippingTaxId?: string | null;
   billingAddress?: string | null;
-  createdDate: string;
-  editDate?: string | null;
+  createdDate: string; // ERP created date
+  editDate?: string | null; // ERP last update date
+  swellCreatedDate?: string | null; // Swell created date
+  swellUpdatedDate?: string | null; // Swell updated date
   hasSwellShipmentCreated: boolean;
   warehouseIds: number[];
   orderItems: OrderItem[];
@@ -199,7 +201,7 @@ export default function OrderDetail() {
     }).format(amount);
   };
 
-  // Format date
+  // Format date (convert to US Pacific time - PDT/PST)
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString("en-US", {
       year: "numeric",
@@ -207,6 +209,7 @@ export default function OrderDetail() {
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
+      timeZone: "America/Los_Angeles",
     });
   };
 
@@ -403,13 +406,22 @@ export default function OrderDetail() {
               </Badge>
             </div> */}
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Created Date</span>
-              <span className="font-medium text-foreground">{formatDate(order.createdDate)}</span>
+              <span className="text-muted-foreground">Swell Created</span>
+              <span className="font-medium text-foreground">
+                {formatDate(order.swellCreatedDate || order.createdDate)}
+              </span>
             </div>
-            {order.editDate && (
+            {(order.swellUpdatedDate || order.editDate) && (
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Last Updated</span>
-                <span className="font-medium text-foreground">{formatDate(order.editDate)}</span>
+                <span className="text-muted-foreground">Swell Updated</span>
+                <span className="font-medium text-foreground">
+                  {formatDate(
+                    order.swellUpdatedDate ||
+                      order.editDate ||
+                      order.swellCreatedDate ||
+                      order.createdDate
+                  )}
+                </span>
               </div>
             )}
           </CardContent>

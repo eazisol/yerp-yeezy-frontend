@@ -421,13 +421,14 @@ export default function Orders() {
   const hasPreviousPage = ordersData?.hasPreviousPage || false;
   const resyncEligibleCount = orders.filter(canResyncChinaOrder).length;
 
-  // Format date for display
+  // Format date for display (convert to US Pacific time - PDT/PST)
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
+      timeZone: "America/Los_Angeles",
     });
   };
 
