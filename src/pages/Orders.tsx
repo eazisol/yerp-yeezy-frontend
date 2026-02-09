@@ -44,7 +44,14 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { orderService, Order, OrderStats, OrderSyncResult, OrderImportResult } from "@/services/orders";
+import {
+  orderService,
+  Order,
+  OrderStats,
+  OrderSyncResult,
+  OrderImportResult,
+  OrderSyncProgress,
+} from "@/services/orders";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
@@ -69,6 +76,9 @@ export default function Orders() {
   const [isWarehouseCheckDone, setIsWarehouseCheckDone] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const hasRunWarehouseCheckRef = useRef(false);
+  const [currentSyncRunId, setCurrentSyncRunId] = useState<string | null>(null); // Current logical sync run identifier
+  const [latestSyncProgress, setLatestSyncProgress] = useState<OrderSyncProgress | null>(null); // Latest batch progress snapshot
+  const progressPollingRef = useRef<number | null>(null); // Interval id for sync progress polling
   const navigate = useNavigate();
   const { canRead, canModify } = usePermissions();
   const { toast } = useToast();
@@ -133,6 +143,64 @@ export default function Orders() {
     assignMissingWarehousesMutation.mutate();
   }, [assignMissingWarehousesMutation, isWarehouseCheckDone]);
 
+  // Cleanup sync progress polling interval on unmount
+  useEffect(() => {
+    return () => {
+      if (progressPollingRef.current !== null) {
+        window.clearInterval(progressPollingRef.current);
+      }
+    };
+  }, []);
+
+  // Compute logical sync run id (should match backend SyncRunId)
+  const computeSyncRunId = () => {
+    // If user selected a from-date, use that as run id
+    if (syncFromDate) {
+      return syncFromDate;
+    }
+
+    // Otherwise backend defaults to first day of current month
+    const now = new Date();
+    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    return firstOfMonth.toISOString().slice(0, 10);
+  };
+
+  // Fetch latest sync progress snapshot from backend
+  const fetchLatestSyncProgress = async (runId: string) => {
+    try {
+      const progress = await orderService.getLatestOrderSyncProgress(runId);
+      setLatestSyncProgress(progress);
+    } catch {
+      // Ignore polling errors so main sync flow is not affected
+    }
+  };
+
+  // Start polling sync progress for given run id
+  const startProgressPolling = (runId: string) => {
+    setCurrentSyncRunId(runId);
+    setLatestSyncProgress(null);
+
+    // Clear any existing interval
+    if (progressPollingRef.current !== null) {
+      window.clearInterval(progressPollingRef.current);
+    }
+
+    // Fetch immediately, then poll every 2 seconds
+    fetchLatestSyncProgress(runId);
+    progressPollingRef.current = window.setInterval(() => {
+      fetchLatestSyncProgress(runId);
+    }, 2000);
+  };
+
+  // Stop polling sync progress
+  const stopProgressPolling = () => {
+    if (progressPollingRef.current !== null) {
+      window.clearInterval(progressPollingRef.current);
+      progressPollingRef.current = null;
+    }
+    setCurrentSyncRunId(null);
+  };
+
   const canResyncChinaOrder = (order: Order) => {
     const hasChinaWarehouse = (order.warehouseIds ?? []).includes(2);
     return hasChinaWarehouse && order.orderSyncTo === 0;
@@ -195,6 +263,7 @@ export default function Orders() {
       return orderService.syncOrdersFromSwell(fromDate);
     },
     onSuccess: (result: OrderSyncResult) => {
+      stopProgressPolling();
       setSyncProgress("");
       toast({
         title: "Sync Completed",
@@ -205,8 +274,10 @@ export default function Orders() {
       queryClient.invalidateQueries({ queryKey: ["orderStats"] });
       setShowSyncConfirm(false);
       setSwellOrderCount(null);
+      setLatestSyncProgress(null);
     },
     onError: (error: any) => {
+      stopProgressPolling();
       setSyncProgress("");
       toast({
         title: "Sync Failed",
@@ -215,6 +286,7 @@ export default function Orders() {
         duration: 5000,
       });
       setShowSyncConfirm(false);
+      setLatestSyncProgress(null);
     },
   });
 
@@ -228,6 +300,8 @@ export default function Orders() {
     setSyncProgress("Initializing sync...");
     // Pass selected from-date if provided, otherwise let backend use current month start default
     const effectiveFromDate = syncFromDate || undefined;
+    const runId = computeSyncRunId();
+    startProgressPolling(runId);
     syncMutation.mutate(effectiveFromDate);
   };
 
@@ -906,6 +980,30 @@ export default function Orders() {
                         <p className="text-sm text-muted-foreground">
                           Syncing <strong>{swellOrderCount}</strong> orders from Swell. Please wait...
                         </p>
+                      )}
+                      {latestSyncProgress && (
+                        <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                          <p>
+                            Batch <strong>{latestSyncProgress.batchNumber}</strong> •{" "}
+                            Processed <strong>{latestSyncProgress.processedOrders}</strong> /{" "}
+                            <strong>{latestSyncProgress.totalOrders}</strong> orders
+                          </p>
+                          <p>
+                            Created: <strong>{latestSyncProgress.createdCount}</strong>, Updated:{" "}
+                            <strong>{latestSyncProgress.updatedCount}</strong>, Failed:{" "}
+                            <strong className={latestSyncProgress.failedCount > 0 ? "text-red-600" : ""}>
+                              {latestSyncProgress.failedCount}
+                            </strong>
+                          </p>
+                          <p>
+                            Progress: <strong>{latestSyncProgress.progressPercent.toFixed(2)}%</strong>
+                          </p>
+                          {latestSyncProgress.lastOrderNumber && (
+                            <p>
+                              Last order: <strong>{latestSyncProgress.lastOrderNumber}</strong>
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
                     <div className="bg-muted rounded-md p-3 border">
