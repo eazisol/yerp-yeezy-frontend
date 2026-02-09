@@ -422,13 +422,24 @@ export default function Orders() {
   const resyncEligibleCount = orders.filter(canResyncChinaOrder).length;
 
   // Format date for display (convert to US Pacific time - PDT/PST)
+  // Input dateString is expected to be in UTC format (ISO 8601)
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+    // Explicitly parse as UTC by ensuring 'Z' suffix if not present
+    // This ensures browser treats the date as UTC before converting to Pacific timezone
+    const trimmed = dateString.trim();
+    // Check if date already has timezone indicator (Z, +HH:MM, or -HH:MM)
+    const hasTimezone = trimmed.endsWith('Z') || 
+                        /[+-]\d{2}:\d{2}$/.test(trimmed) ||
+                        /[+-]\d{4}$/.test(trimmed);
+    
+    const utcDateString = hasTimezone ? trimmed : trimmed + 'Z';
+    
+    const date = new Date(utcDateString); // Explicitly UTC
     return date.toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",
-      timeZone: "America/Los_Angeles",
+      timeZone: "America/Los_Angeles", // Convert UTC to Pacific timezone
     });
   };
 
