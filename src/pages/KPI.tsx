@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
-import { dashboardService } from "@/services/dashboard";
+import { kpiService } from "@/services/kpi";
 import { useQuery } from "@tanstack/react-query";
 
 // Role-based view types
@@ -66,8 +66,8 @@ export default function KPI() {
 
   // Load dashboard metrics for shared KPIs (including openOrdersReadyToShip)
   const { data: dashboardMetrics } = useQuery({
-    queryKey: ["dashboard-metrics"],
-    queryFn: () => dashboardService.getDashboardMetrics(),
+    queryKey: ["kpi-metrics"],
+    queryFn: () => kpiService.getKpiMetrics(),
     enabled: canAccess("DASHBOARD"),
     refetchInterval: 60000,
   });

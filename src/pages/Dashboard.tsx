@@ -35,13 +35,37 @@ export default function Dashboard() {
   const { canRead, canModify, canAccess } = usePermissions();
   const { user } = useAuth();
 
-  // Fetch real-time dashboard metrics
-  const { data: dashboardMetrics, isLoading: loadingMetrics } = useQuery({
-    queryKey: ["dashboard-metrics"],
-    queryFn: () => dashboardService.getDashboardMetrics(),
+  // Fetch dashboard summary first (fast path)
+  const { data: dashboardSummaryMetrics, isLoading: loadingSummaryMetrics } = useQuery({
+    queryKey: ["dashboard-metrics-summary"],
+    queryFn: () => dashboardService.getDashboardSummaryMetrics(),
     enabled: canAccess("DASHBOARD"),
-    refetchInterval: 60000, // Refetch every 60 seconds for real-time updates
+    refetchInterval: 60000,
   });
+
+  // Fetch inventory-heavy metrics after summary
+  const { data: dashboardInventoryMetrics, isLoading: loadingInventoryMetrics } = useQuery({
+    queryKey: ["dashboard-metrics-inventory"],
+    queryFn: () => dashboardService.getDashboardInventoryMetrics(),
+    enabled: canAccess("DASHBOARD") && !!dashboardSummaryMetrics,
+    refetchInterval: 60000,
+  });
+
+  // Fetch finance/PO metrics after summary
+  const { data: dashboardFinanceMetrics, isLoading: loadingFinanceMetrics } = useQuery({
+    queryKey: ["dashboard-metrics-finance"],
+    queryFn: () => dashboardService.getDashboardFinanceMetrics(),
+    enabled: canAccess("DASHBOARD") && !!dashboardSummaryMetrics,
+    refetchInterval: 60000,
+  });
+
+  const dashboardMetrics: DashboardMetrics | undefined = {
+    ...(dashboardSummaryMetrics || {}),
+    ...(dashboardInventoryMetrics || {}),
+    ...(dashboardFinanceMetrics || {}),
+  } as DashboardMetrics;
+
+  const loadingMetrics = loadingSummaryMetrics || loadingInventoryMetrics || loadingFinanceMetrics;
 
   // Fetch missing variant SKUs (top 5)
   const { data: missingVariantSkusData, isLoading: loadingMissingVariantSkus } = useQuery({

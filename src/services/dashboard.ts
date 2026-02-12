@@ -242,6 +242,21 @@ class DashboardService {
     return apiClient.get<DashboardMetrics>("/api/Dashboard/metrics");
   }
 
+  // Fetch fast summary metrics for first paint
+  async getDashboardSummaryMetrics(): Promise<DashboardMetrics> {
+    return apiClient.get<DashboardMetrics>("/api/Dashboard/metrics/summary");
+  }
+
+  // Fetch inventory-heavy dashboard metrics
+  async getDashboardInventoryMetrics(): Promise<DashboardMetrics> {
+    return apiClient.get<DashboardMetrics>("/api/Dashboard/metrics/inventory");
+  }
+
+  // Fetch finance/PO dashboard metrics
+  async getDashboardFinanceMetrics(): Promise<DashboardMetrics> {
+    return apiClient.get<DashboardMetrics>("/api/Dashboard/metrics/finance");
+  }
+
   // Fetch paged stock alerts with optional SKU filter
   async getStockAlerts(
     page: number = 1,

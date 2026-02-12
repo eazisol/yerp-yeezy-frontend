@@ -65,6 +65,7 @@ export default function Orders() {
   const [pageSize] = useState(50);
   const [swellOrderCount, setSwellOrderCount] = useState<number | null>(null);
   const [syncFromDate, setSyncFromDate] = useState<string>(""); // Optional sync-from date for bulk sync
+  const [syncEndDate, setSyncEndDate] = useState<string>(""); // Optional sync-end date for bulk sync
   const [showSyncConfirm, setShowSyncConfirm] = useState(false);
   const [syncProgress, setSyncProgress] = useState<string>("");
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -140,7 +141,8 @@ export default function Orders() {
       return;
     }
     hasRunWarehouseCheckRef.current = true;
-    assignMissingWarehousesMutation.mutate();
+    // Disabled on request: do not auto-call assign-missing-warehouses on page load.
+    // assignMissingWarehousesMutation.mutate();
   }, [assignMissingWarehousesMutation, isWarehouseCheckDone]);
 
   // Cleanup sync progress polling interval on unmount
@@ -233,7 +235,7 @@ export default function Orders() {
 
   // Get Swell order count mutation
   const countMutation = useMutation({
-    mutationFn: (fromDate?: string) => orderService.getSwellOrderCount(fromDate),
+    mutationFn: ({ fromDate, endDate }: { fromDate?: string; endDate?: string }) => orderService.getSwellOrderCount(fromDate, endDate),
     onSuccess: (data) => {
       setSwellOrderCount(data.count);
       if (data.count > 0) {
@@ -256,11 +258,11 @@ export default function Orders() {
 
   // Sync orders mutation
   const syncMutation = useMutation({
-    mutationFn: async (fromDate?: string) => {
+    mutationFn: async ({ fromDate, endDate }: { fromDate?: string; endDate?: string }) => {
       setSyncProgress("Fetching orders from Swell...");
       await new Promise(resolve => setTimeout(resolve, 100));
       setSyncProgress("Processing orders and syncing to database...");
-      return orderService.syncOrdersFromSwell(fromDate);
+      return orderService.syncOrdersFromSwell(fromDate, endDate);
     },
     onSuccess: (result: OrderSyncResult) => {
       stopProgressPolling();
@@ -291,18 +293,20 @@ export default function Orders() {
   });
 
   const handleCheckSwellCount = () => {
-    // Use selected sync-from date (if any) when checking count
+    // Use selected sync-from and end dates (if any) when checking count
     const effectiveFromDate = syncFromDate || undefined;
-    countMutation.mutate(effectiveFromDate);
+    const effectiveEndDate = syncEndDate || undefined;
+    countMutation.mutate({ fromDate: effectiveFromDate, endDate: effectiveEndDate });
   };
 
   const handleConfirmSync = () => {
     setSyncProgress("Initializing sync...");
-    // Pass selected from-date if provided, otherwise let backend use current month start default
+    // Pass selected from-date and end-date if provided, otherwise let backend use defaults
     const effectiveFromDate = syncFromDate || undefined;
+    const effectiveEndDate = syncEndDate || undefined;
     const runId = computeSyncRunId();
     startProgressPolling(runId);
-    syncMutation.mutate(effectiveFromDate);
+    syncMutation.mutate({ fromDate: effectiveFromDate, endDate: effectiveEndDate });
   };
 
   // Excel import mutation
@@ -1054,24 +1058,47 @@ export default function Orders() {
                           This will sync orders from Swell. New orders will be created and existing orders will be updated.
                         </p>
                       </div>
-                      <div className="space-y-2">
-                        <label className="flex flex-col gap-1 text-sm">
-                          <span className="font-medium">Sync from date (optional)</span>
-                          <Input
-                            type="date"
-                            value={syncFromDate}
-                            onChange={(e) => {
-                              const newDate = e.target.value;
-                              setSyncFromDate(newDate);
-                              // Refresh Swell order count when date changes
-                              const effectiveFromDate = newDate || undefined;
-                              countMutation.mutate(effectiveFromDate);
-                            }}
-                          />
-                          <span className="text-xs text-muted-foreground">
-                            If empty, sync will start from the first day of the current month (backend default).
-                          </span>
-                        </label>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <label className="flex flex-col gap-1 text-sm">
+                            <span className="font-medium">Sync from date (optional)</span>
+                            <Input
+                              type="date"
+                              value={syncFromDate}
+                              onChange={(e) => {
+                                const newDate = e.target.value;
+                                setSyncFromDate(newDate);
+                                // Refresh Swell order count when date changes
+                                const effectiveFromDate = newDate || undefined;
+                                const effectiveEndDate = syncEndDate || undefined;
+                                countMutation.mutate({ fromDate: effectiveFromDate, endDate: effectiveEndDate });
+                              }}
+                            />
+                            <span className="text-xs text-muted-foreground">
+                              If empty, sync will start from the first day of the current month (backend default).
+                            </span>
+                          </label>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="flex flex-col gap-1 text-sm">
+                            <span className="font-medium">Sync end date (optional)</span>
+                            <Input
+                              type="date"
+                              value={syncEndDate}
+                              onChange={(e) => {
+                                const newDate = e.target.value;
+                                setSyncEndDate(newDate);
+                                // Refresh Swell order count when date changes
+                                const effectiveFromDate = syncFromDate || undefined;
+                                const effectiveEndDate = newDate || undefined;
+                                countMutation.mutate({ fromDate: effectiveFromDate, endDate: effectiveEndDate });
+                              }}
+                            />
+                            <span className="text-xs text-muted-foreground">
+                              If empty, sync will end at today end-of-day (backend default).
+                            </span>
+                          </label>
+                        </div>
                       </div>
                     </div>
                   )

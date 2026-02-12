@@ -140,19 +140,25 @@ class OrderService {
 
   // Get total order count from Swell
   // fromDate: optional ISO date string (yyyy-MM-dd). If omitted, backend defaults to current month range.
-  async getSwellOrderCount(fromDate?: string): Promise<{ count: number; message: string }> {
-    const url = fromDate
-      ? `/api/Orders/sync/count?fromDate=${encodeURIComponent(fromDate)}`
-      : "/api/Orders/sync/count";
+  // endDate: optional ISO date string (yyyy-MM-dd). If omitted, backend defaults to today end-of-day.
+  async getSwellOrderCount(fromDate?: string, endDate?: string): Promise<{ count: number; message: string }> {
+    const params = new URLSearchParams();
+    if (fromDate) params.append("fromDate", fromDate);
+    if (endDate) params.append("endDate", endDate);
+    const queryString = params.toString();
+    const url = queryString ? `/api/Orders/sync/count?${queryString}` : "/api/Orders/sync/count";
     return apiClient.get<{ count: number; message: string }>(url);
   }
 
   // Sync all orders from Swell
   // fromDate: optional ISO date string (yyyy-MM-dd). If omitted, backend defaults to current month start.
-  async syncOrdersFromSwell(fromDate?: string): Promise<OrderSyncResult> {
-    const url = fromDate
-      ? `/api/Orders/sync?fromDate=${encodeURIComponent(fromDate)}`
-      : "/api/Orders/sync";
+  // endDate: optional ISO date string (yyyy-MM-dd). If omitted, backend defaults to today end-of-day.
+  async syncOrdersFromSwell(fromDate?: string, endDate?: string): Promise<OrderSyncResult> {
+    const params = new URLSearchParams();
+    if (fromDate) params.append("fromDate", fromDate);
+    if (endDate) params.append("endDate", endDate);
+    const queryString = params.toString();
+    const url = queryString ? `/api/Orders/sync?${queryString}` : "/api/Orders/sync";
     return apiClient.post<OrderSyncResult>(url);
   }
 
