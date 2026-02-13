@@ -27,6 +27,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { kpiService } from "@/services/kpi";
+import { dashboardService } from "@/services/dashboard";
 import { useQuery } from "@tanstack/react-query";
 
 // Role-based view types
@@ -64,11 +65,18 @@ export default function KPI() {
     }
   }, [user, roles]);
 
-  // Load dashboard metrics for shared KPIs (including openOrdersReadyToShip)
-  const { data: dashboardMetrics } = useQuery({
-    queryKey: ["kpi-metrics"],
+  // Core KPI metrics (5 fields, optimized) - loads first for fast initial paint
+  const { data: kpiCore } = useQuery({
+    queryKey: ["kpi-core"],
     queryFn: () => kpiService.getKpiMetrics(),
     enabled: canAccess("DASHBOARD"),
+  });
+
+  // Full dashboard metrics - loads in background only after core KPIs are ready
+  const { data: dashboardMetrics, isFetching: isDashboardLoading } = useQuery({
+    queryKey: ["dashboard-metrics-kpi"],
+    queryFn: () => dashboardService.getDashboardMetrics(),
+    enabled: canAccess("DASHBOARD") && kpiCore !== undefined,
   });
 
   // Role-based visibility helpers
@@ -156,7 +164,8 @@ export default function KPI() {
     totalValue: backendGlobalInventory?.totalValue ?? totalInventoryValue,
     weeksOnHand: backendGlobalInventory?.weeksOnHand ?? 0,
     inventoryTurnsTTM: backendGlobalInventory?.inventoryTurnsTTM ?? 0,
-    inventoryTurnsMTD: backendGlobalInventory?.inventoryTurnsMTD ?? 0,
+    // Prefer core KPI inventoryTurnoverRatio (optimized)
+    inventoryTurnsMTD: kpiCore?.inventoryTurnoverRatio ?? backendGlobalInventory?.inventoryTurnsMTD ?? 0,
     deadStockValue: backendGlobalInventory?.deadStockValue ?? 0,
     lowVelocity30Days: backendGlobalInventory?.lowVelocity30Days ?? 0,
     lowVelocity60Days: backendGlobalInventory?.lowVelocity60Days ?? 0,
@@ -164,21 +173,21 @@ export default function KPI() {
   };
 
   // Executive Control Strip Data (derived from backend KPIs, approximate for some fields)
-  const totalOrdersToday = dashboardMetrics?.dailyOrderMetrics.totalOrders ?? 0;
-  const totalOrderValueToday = dashboardMetrics?.dailyOrderMetrics.totalOrderValue ?? 0;
+  const totalOrdersToday = dashboardMetrics?.dailyOrderMetrics?.totalOrders ?? 0;
+  const totalOrderValueToday = dashboardMetrics?.dailyOrderMetrics?.totalOrderValue ?? 0;
   const averageOrderValueToday =
     totalOrdersToday > 0 ? totalOrderValueToday / totalOrdersToday : 0;
 
   const openBacklogUnits = shippingKPIs.openOrdersReadyToShip;
   const openBacklogValue = openBacklogUnits * averageOrderValueToday;
 
-  // Net revenue MTD: prefer backend finance KPI, fallback to simple approximation
+  // Net revenue MTD: prefer core KPI (optimized), then backend finance, then approximation
   const netRevenueMtdApprox =
     dashboardMetrics?.ordersFulfilledMtd && averageOrderValueToday > 0
       ? dashboardMetrics.ordersFulfilledMtd * averageOrderValueToday
       : 0;
   const netRevenueMtd =
-    financeKpis?.netRevenueMtd ?? netRevenueMtdApprox;
+    kpiCore?.revenueThisMonth ?? financeKpis?.netRevenueMtd ?? netRevenueMtdApprox;
 
   // Margin % MTD from backend (approx based on current cost model)
   const grossMarginPercentMtd =
@@ -218,7 +227,7 @@ export default function KPI() {
 
   // Sales Performance Data (derived from backend KPIs)
   const netRevenueTodayMetric =
-    dashboardMetrics?.dailyOrderMetrics.totalOrderValue ?? 0;
+    dashboardMetrics?.dailyOrderMetrics?.totalOrderValue ?? 0;
   const totalPaidOrdersToday = shippingKPIs.ordersReceivedToday; // paid orders created today
   const averageOrderValueTodaySales =
     totalPaidOrdersToday > 0
@@ -241,8 +250,9 @@ export default function KPI() {
 
   const totalPaidOrdersMtd = dashboardMetrics?.ordersFulfilledMtd ?? 0;
   const netRevenueMtdValue = netRevenueMtd;
+  // Prefer core KPI averageOrderValue (optimized)
   const averageOrderValueMtd =
-    totalPaidOrdersMtd > 0 ? netRevenueMtdValue / totalPaidOrdersMtd : 0;
+    kpiCore?.averageOrderValue ?? (totalPaidOrdersMtd > 0 ? netRevenueMtdValue / totalPaidOrdersMtd : 0);
 
   const mtdSales = {
     totalPaidOrders: totalPaidOrdersMtd,
@@ -250,6 +260,9 @@ export default function KPI() {
     averageOrderValue: averageOrderValueMtd,
     grossMarginDollar: grossMarginMtdDollar,
     grossMarginPercent: grossMarginPercentMtd,
+    // Core KPI: revenue growth vs last month (optimized endpoint)
+    revenueGrowthPercentage: kpiCore?.revenueGrowthPercentage ?? 0,
+    revenueLastMonth: kpiCore?.revenueLastMonth ?? 0,
     // Comparative KPIs from backend (approximate)
     vsForecast: financeKpis?.vsForecast ?? 100,
     vsPriorMonth: financeKpis?.vsPriorMonth ?? 100,
@@ -320,6 +333,47 @@ export default function KPI() {
           </select>
         </div>
       </div>
+
+      {/* Core KPIs - loads first, shows immediately */}
+      {kpiCore && (
+        <Card className="bg-emerald-50/50 border-emerald-200 dark:bg-emerald-950/20 dark:border-emerald-800">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Core KPIs
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Revenue This Month</p>
+                <p className="text-xl font-bold">{formatCurrency(kpiCore.revenueThisMonth)}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Revenue Last Month</p>
+                <p className="text-xl font-bold">{formatCurrency(kpiCore.revenueLastMonth)}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Revenue Growth %</p>
+                <p className={`text-xl font-bold ${kpiCore.revenueGrowthPercentage >= 0 ? "text-green-600" : "text-red-600"}`}>
+                  {formatDecimal(kpiCore.revenueGrowthPercentage, 1)}%
+                </p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Avg Order Value</p>
+                <p className="text-xl font-bold">{formatCurrency(kpiCore.averageOrderValue)}</p>
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground">Inventory Turnover</p>
+                <p className="text-xl font-bold">{formatDecimal(kpiCore.inventoryTurnoverRatio, 2)}</p>
+              </div>
+            </div>
+            {isDashboardLoading && (
+              <p className="text-xs text-muted-foreground mt-3">Loading full metrics...</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* LEVEL 1 - Executive Control Strip */}
       {showExecutiveStrip && (
@@ -459,6 +513,21 @@ export default function KPI() {
                   <div className="flex items-center gap-2">
                     <p className="text-2xl font-bold">{formatDecimal(mtdSales.vsSameMonthLY, 1)}%</p>
                     <TrendingDown className="h-4 w-4 text-red-600" />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Revenue Last Month</p>
+                  <p className="text-2xl font-bold">{formatCurrency(mtdSales.revenueLastMonth)}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">Revenue Growth % vs Last Month</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-2xl font-bold">{formatDecimal(mtdSales.revenueGrowthPercentage, 1)}%</p>
+                    {mtdSales.revenueGrowthPercentage >= 0 ? (
+                      <TrendingUp className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <TrendingDown className="h-4 w-4 text-red-600" />
+                    )}
                   </div>
                 </div>
               </div>

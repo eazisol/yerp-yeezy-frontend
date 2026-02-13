@@ -191,7 +191,7 @@ export default function Customers() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-6 md:grid-cols-4">
+      {/* <div className="grid gap-6 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -204,7 +204,7 @@ export default function Customers() {
             </div>
           </CardContent>
         </Card>
-        {/* <Card>
+        <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Total Orders
@@ -239,8 +239,8 @@ export default function Customers() {
               {loadingCustomers ? "..." : formatNumber(customers.filter(c => c.emailOptIn).length)}
             </div>
           </CardContent>
-        </Card> */}
-      </div>
+        </Card>
+      </div> */}
 
       {/* Filters */}
       <Card>
