@@ -111,6 +111,11 @@ export default function Users() {
     });
   };
 
+  // Format numeric values using English locale.
+  const formatNumber = (value: number) => {
+    return new Intl.NumberFormat("en-US").format(value);
+  };
+
   // Get role color
   const getRoleColor = (roleCode: string) => {
     const roleColors: Record<string, string> = {
@@ -317,7 +322,7 @@ export default function Users() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalCount}</div>
+            <div className="text-2xl font-bold">{formatNumber(totalCount)}</div>
           </CardContent>
         </Card>
         <Card>
@@ -327,7 +332,7 @@ export default function Users() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{activeUsersCount}</div>
+            <div className="text-2xl font-bold">{formatNumber(activeUsersCount)}</div>
           </CardContent>
         </Card>
         <Card>
@@ -337,7 +342,7 @@ export default function Users() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{inactiveUsersCount}</div>
+            <div className="text-2xl font-bold">{formatNumber(inactiveUsersCount)}</div>
           </CardContent>
         </Card>
         <Card>
@@ -347,7 +352,7 @@ export default function Users() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{Array.isArray(roles) ? roles.length : 0}</div>
+            <div className="text-2xl font-bold">{formatNumber(Array.isArray(roles) ? roles.length : 0)}</div>
           </CardContent>
         </Card>
       </div>
@@ -404,7 +409,7 @@ export default function Users() {
       {/* Users Table */}
       <Card>
         <CardHeader>
-          <CardTitle>User List ({totalCount} total)</CardTitle>
+          <CardTitle>User List ({formatNumber(totalCount)} total)</CardTitle>
         </CardHeader>
         <CardContent>
           {loadingUsers ? (
@@ -559,7 +564,7 @@ export default function Users() {
                                   isActive={page === pageNum}
                                   className="cursor-pointer"
                                 >
-                                  {pageNum}
+                                  {formatNumber(pageNum)}
                                 </PaginationLink>
                               </PaginationItem>
                             </div>
@@ -578,7 +583,7 @@ export default function Users() {
                     </PaginationContent>
                   </Pagination>
                   <div className="text-center text-sm text-muted-foreground">
-                    Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, totalCount)} of {totalCount} users
+                    Showing {formatNumber(((page - 1) * pageSize) + 1)} to {formatNumber(Math.min(page * pageSize, totalCount))} of {formatNumber(totalCount)} users
                   </div>
                 </div>
               )}

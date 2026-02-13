@@ -56,11 +56,31 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Orders() {
+  // Build current month default range for order list date filters.
+  const getCurrentMonthDateRange = () => {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    const formatAsDateInputValue = (date: Date) => {
+      const year = date.getFullYear();
+      const month = `${date.getMonth() + 1}`.padStart(2, "0");
+      const day = `${date.getDate()}`.padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    return {
+      start: formatAsDateInputValue(firstDay),
+      end: formatAsDateInputValue(now),
+    };
+  };
+
+  const defaultOrderDateRange = getCurrentMonthDateRange();
   const [searchTerm, setSearchTerm] = useState("");
   const [fulfillmentFilter, setFulfillmentFilter] = useState<string | null>(null); // null = all, "unfulfilled" = unfulfilled, "partial" = partial
   const [warehouseFilter, setWarehouseFilter] = useState<string | null>(null); // null = all, "na" = N/A, "cn" = China, "us" = US, "mixed" = CN+US
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
+  const [startDate, setStartDate] = useState<string>(defaultOrderDateRange.end); // Committed value used in API/query.
+  const [endDate, setEndDate] = useState<string>(defaultOrderDateRange.end); // Committed value used in API/query.
+  const [draftStartDate, setDraftStartDate] = useState<string>(defaultOrderDateRange.end); // Draft input value while picker is open.
+  const [draftEndDate, setDraftEndDate] = useState<string>(defaultOrderDateRange.end); // Draft input value while picker is open.
   const [page, setPage] = useState(1);
   const [pageSize] = useState(50);
   const [swellOrderCount, setSwellOrderCount] = useState<number | null>(null);
@@ -455,6 +475,11 @@ export default function Orders() {
     }).format(amount);
   };
 
+  // Format numeric values using English locale.
+  const formatNumber = (value: number) => {
+    return new Intl.NumberFormat("en-US").format(value);
+  };
+
   // Get payment status colors
   const getPaymentStatus = (payment: string | null) => {
     if (!payment) {
@@ -726,10 +751,9 @@ export default function Orders() {
                   type="date"
                   placeholder="Start Date"
                   className="pl-9"
-                  value={startDate}
+                  value={draftStartDate}
                   onChange={(e) => {
-                    setStartDate(e.target.value);
-                    setPage(1);
+                    setDraftStartDate(e.target.value);
                   }}
                 />
               </div>
@@ -739,13 +763,29 @@ export default function Orders() {
                   type="date"
                   placeholder="End Date"
                   className="pl-9"
-                  value={endDate}
+                  value={draftEndDate}
                   onChange={(e) => {
-                    setEndDate(e.target.value);
-                    setPage(1);
+                    setDraftEndDate(e.target.value);
                   }}
                 />
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const hasChanges = startDate !== draftStartDate || endDate !== draftEndDate;
+                  if (!hasChanges) {
+                    return;
+                  }
+
+                  setStartDate(draftStartDate);
+                  setEndDate(draftEndDate);
+                  setPage(1);
+                }}
+                disabled={startDate === draftStartDate && endDate === draftEndDate}
+              >
+                Apply
+              </Button>
               {(startDate || endDate) && (
                 <Button
                   variant="ghost"
@@ -753,6 +793,8 @@ export default function Orders() {
                   onClick={() => {
                     setStartDate("");
                     setEndDate("");
+                    setDraftStartDate("");
+                    setDraftEndDate("");
                     setPage(1);
                   }}
                 >
@@ -767,7 +809,7 @@ export default function Orders() {
       {/* Orders Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Order List ({totalCount} total)</CardTitle>
+          <CardTitle>Order List ({formatNumber(totalCount)} total)</CardTitle>
         </CardHeader>
         <CardContent>
           {isOrdersLoading ? (
@@ -941,7 +983,7 @@ export default function Orders() {
                               isActive={page === pageNum}
                               className="cursor-pointer"
                             >
-                              {pageNum}
+                              {formatNumber(pageNum)}
                             </PaginationLink>
                           </PaginationItem>
                         );
@@ -956,7 +998,7 @@ export default function Orders() {
                     </PaginationContent>
                   </Pagination>
                   <div className="text-center text-sm text-muted-foreground mt-2">
-                    Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, totalCount)} of {totalCount} orders
+                    Showing {formatNumber(((page - 1) * pageSize) + 1)} to {formatNumber(Math.min(page * pageSize, totalCount))} of {formatNumber(totalCount)} orders
                   </div>
                 </div>
               )}
@@ -994,21 +1036,21 @@ export default function Orders() {
                       )}
                       {swellOrderCount !== null && (
                         <p className="text-sm text-muted-foreground">
-                          Syncing <strong>{swellOrderCount}</strong> orders from Swell. Please wait...
+                          Syncing <strong>{formatNumber(swellOrderCount)}</strong> orders from Swell. Please wait...
                         </p>
                       )}
                       {latestSyncProgress && (
                         <div className="mt-2 space-y-1 text-sm text-muted-foreground">
                           <p>
                             Batch <strong>{latestSyncProgress.batchNumber}</strong> •{" "}
-                            Processed <strong>{latestSyncProgress.processedOrders}</strong> /{" "}
-                            <strong>{latestSyncProgress.totalOrders}</strong> orders
+                            Processed <strong>{formatNumber(latestSyncProgress.processedOrders)}</strong> /{" "}
+                            <strong>{formatNumber(latestSyncProgress.totalOrders)}</strong> orders
                           </p>
                           <p>
-                            Created: <strong>{latestSyncProgress.createdCount}</strong>, Updated:{" "}
-                            <strong>{latestSyncProgress.updatedCount}</strong>, Failed:{" "}
+                            Created: <strong>{formatNumber(latestSyncProgress.createdCount)}</strong>, Updated:{" "}
+                            <strong>{formatNumber(latestSyncProgress.updatedCount)}</strong>, Failed:{" "}
                             <strong className={latestSyncProgress.failedCount > 0 ? "text-red-600" : ""}>
-                              {latestSyncProgress.failedCount}
+                              {formatNumber(latestSyncProgress.failedCount)}
                             </strong>
                           </p>
                           <p>
@@ -1052,7 +1094,7 @@ export default function Orders() {
                     <div className="space-y-4 mt-4">
                       <div className="space-y-2">
                         <p>
-                          Found <strong>{swellOrderCount}</strong> orders in Swell.
+                          Found <strong>{formatNumber(swellOrderCount)}</strong> orders in Swell.
                         </p>
                         <p>
                           This will sync orders from Swell. New orders will be created and existing orders will be updated.
@@ -1306,27 +1348,27 @@ export default function Orders() {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="bg-muted rounded-md p-3 border">
                         <div className="text-sm text-muted-foreground">Total Rows</div>
-                        <div className="text-2xl font-bold mt-1">{importResult.totalRows}</div>
+                        <div className="text-2xl font-bold mt-1">{formatNumber(importResult.totalRows)}</div>
                       </div>
                       <div className="bg-muted rounded-md p-3 border">
                         <div className="text-sm text-muted-foreground">Errors</div>
-                        <div className="text-2xl font-bold mt-1 text-red-600">{importResult.errors}</div>
+                        <div className="text-2xl font-bold mt-1 text-red-600">{formatNumber(importResult.errors)}</div>
                       </div>
                       <div className="bg-muted rounded-md p-3 border">
                         <div className="text-sm text-muted-foreground">Orders Created</div>
-                        <div className="text-2xl font-bold mt-1 text-green-600">{importResult.ordersCreated}</div>
+                        <div className="text-2xl font-bold mt-1 text-green-600">{formatNumber(importResult.ordersCreated)}</div>
                       </div>
                       <div className="bg-muted rounded-md p-3 border">
                         <div className="text-sm text-muted-foreground">Orders Updated</div>
-                        <div className="text-2xl font-bold mt-1 text-blue-600">{importResult.ordersUpdated}</div>
+                        <div className="text-2xl font-bold mt-1 text-blue-600">{formatNumber(importResult.ordersUpdated)}</div>
                       </div>
                       <div className="bg-muted rounded-md p-3 border">
                         <div className="text-sm text-muted-foreground">Items Created</div>
-                        <div className="text-2xl font-bold mt-1 text-green-600">{importResult.orderItemsCreated}</div>
+                        <div className="text-2xl font-bold mt-1 text-green-600">{formatNumber(importResult.orderItemsCreated)}</div>
                       </div>
                       <div className="bg-muted rounded-md p-3 border">
                         <div className="text-sm text-muted-foreground">Items Updated</div>
-                        <div className="text-2xl font-bold mt-1 text-blue-600">{importResult.orderItemsUpdated}</div>
+                        <div className="text-2xl font-bold mt-1 text-blue-600">{formatNumber(importResult.orderItemsUpdated)}</div>
                       </div>
                     </div>
 
@@ -1341,7 +1383,7 @@ export default function Orders() {
                           </div>
                           <div className="flex-1">
                             <p className="font-medium text-red-900 dark:text-red-100 mb-2">
-                              Errors ({importResult.errorMessages.length})
+                              Errors ({formatNumber(importResult.errorMessages.length)})
                             </p>
                             <div className="space-y-1 max-h-40 overflow-y-auto">
                               {importResult.errorMessages.map((error, index) => (

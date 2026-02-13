@@ -39,6 +39,11 @@ export default function StockAlerts() {
   const hasPreviousPage = data?.hasPreviousPage || false;
   const hasNextPage = data?.hasNextPage || false;
 
+  // Format numeric values using English locale.
+  const formatNumber = (value: number) => {
+    return new Intl.NumberFormat("en-US").format(value);
+  };
+
   // Handle SKU filter updates
   const handleSkuChange = (value: string) => {
     setSkuFilter(value);
@@ -101,7 +106,7 @@ export default function StockAlerts() {
                     <TableCell>{item.variantSku || "—"}</TableCell>
                     <TableCell>{item.name}</TableCell>
                     <TableCell>{item.variantName || "—"}</TableCell>
-                    <TableCell className="text-right">{item.currentStock}</TableCell>
+                    <TableCell className="text-right">{formatNumber(item.currentStock)}</TableCell>
                     <TableCell>{item.warehouse}</TableCell>
                     <TableCell>
                       <Badge variant={item.status === "critical" ? "destructive" : "secondary"}>
@@ -143,7 +148,7 @@ export default function StockAlerts() {
                             isActive={page === pageNum}
                             className="cursor-pointer"
                           >
-                            {pageNum}
+                            {formatNumber(pageNum)}
                           </PaginationLink>
                         </PaginationItem>
                       );
@@ -158,7 +163,7 @@ export default function StockAlerts() {
                   </PaginationContent>
                 </Pagination>
                 <div className="text-center text-sm text-muted-foreground mt-2">
-                  Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, totalCount)} of {totalCount} alerts
+                  Showing {formatNumber(((page - 1) * pageSize) + 1)} to {formatNumber(Math.min(page * pageSize, totalCount))} of {formatNumber(totalCount)} alerts
                 </div>
               </div>
             )}

@@ -105,6 +105,11 @@ export default function Inventory() {
   const totalValue = "$1,245,890";
   const totalItems = inventory.reduce((sum, item) => sum + item.available, 0);
 
+  // Format numeric values using English locale.
+  const formatNumber = (value: number) => {
+    return new Intl.NumberFormat("en-US").format(value);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -129,7 +134,7 @@ export default function Inventory() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalItems.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{formatNumber(totalItems)}</div>
             <p className="text-xs text-muted-foreground mt-1">units</p>
           </CardContent>
         </Card>
@@ -152,7 +157,7 @@ export default function Inventory() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-yellow-700">{lowItems}</div>
+            <div className="text-2xl font-bold text-yellow-700">{formatNumber(lowItems)}</div>
             <p className="text-xs text-yellow-600 mt-1">items need reorder</p>
           </CardContent>
         </Card>
@@ -164,7 +169,7 @@ export default function Inventory() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-700">{criticalItems}</div>
+            <div className="text-2xl font-bold text-red-700">{formatNumber(criticalItems)}</div>
             <p className="text-xs text-red-600 mt-1">urgent action required</p>
           </CardContent>
         </Card>
@@ -194,7 +199,7 @@ export default function Inventory() {
       {/* Inventory Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Inventory List ({filteredInventory.length})</CardTitle>
+          <CardTitle>Inventory List ({formatNumber(filteredInventory.length)})</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
@@ -229,13 +234,13 @@ export default function Inventory() {
                           : ""
                       }
                     >
-                      {item.available}
+                      {formatNumber(item.available)}
                     </span>
                   </TableCell>
-                  <TableCell className="text-right text-muted-foreground">{item.reserved}</TableCell>
+                  <TableCell className="text-right text-muted-foreground">{formatNumber(item.reserved)}</TableCell>
                   <TableCell className="text-right">
                     {item.inTransit > 0 ? (
-                      <span className="text-primary">{item.inTransit}</span>
+                      <span className="text-primary">{formatNumber(item.inTransit)}</span>
                     ) : (
                       <span className="text-muted-foreground">-</span>
                     )}
@@ -243,7 +248,7 @@ export default function Inventory() {
                   <TableCell className="text-right font-medium">
                     {item.weeksOnHand.toFixed(1)}
                   </TableCell>
-                  <TableCell className="text-right text-muted-foreground">{item.reorderPoint}</TableCell>
+                  <TableCell className="text-right text-muted-foreground">{formatNumber(item.reorderPoint)}</TableCell>
                   <TableCell>{getStatusBadge(item.status)}</TableCell>
                 </TableRow>
               ))}

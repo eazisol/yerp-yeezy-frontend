@@ -549,12 +549,12 @@ export default function Reports() {
                                 )}
                               </div>
                               <div className="text-sm">
-                                <span>Total Qty: {order.quantity}</span>
+                                <span>Total Qty: {formatNumber(order.quantity)}</span>
                                 {order.quantityFulfilled > 0 && (
-                                  <span className="text-green-600 ml-2">✓ Fulfilled: {order.quantityFulfilled}</span>
+                                  <span className="text-green-600 ml-2">✓ Fulfilled: {formatNumber(order.quantityFulfilled)}</span>
                                 )}
                                 {order.quantityNotFulfilled > 0 && (
-                                  <span className="text-orange-600 ml-2">Pending: {order.quantityNotFulfilled}</span>
+                                  <span className="text-orange-600 ml-2">Pending: {formatNumber(order.quantityNotFulfilled)}</span>
                                 )}
                               </div>
                             </div>
@@ -572,9 +572,9 @@ export default function Reports() {
                   {ordersReport.totalPages > 1 && (
                     <div className="flex items-center justify-between mt-4">
                       <div className="text-sm text-muted-foreground">
-                        Showing {((ordersReport.pageNumber - 1) * ordersReport.pageSize) + 1} to{" "}
-                        {Math.min(ordersReport.pageNumber * ordersReport.pageSize, ordersReport.totalCount)} of{" "}
-                        {ordersReport.totalCount} orders
+                        Showing {formatNumber(((ordersReport.pageNumber - 1) * ordersReport.pageSize) + 1)} to{" "}
+                        {formatNumber(Math.min(ordersReport.pageNumber * ordersReport.pageSize, ordersReport.totalCount))} of{" "}
+                        {formatNumber(ordersReport.totalCount)} orders
                       </div>
                       <div className="flex items-center gap-2">
                         <Button
@@ -591,7 +591,7 @@ export default function Reports() {
                           Previous
                         </Button>
                         <div className="text-sm">
-                          Page {ordersReport.pageNumber} of {ordersReport.totalPages}
+                          Page {formatNumber(ordersReport.pageNumber)} of {formatNumber(ordersReport.totalPages)}
                         </div>
                         <Button
                           variant="outline"
@@ -1225,13 +1225,13 @@ export default function Reports() {
                 <div className="flex items-center justify-between mt-4">
                   <div className="text-sm text-muted-foreground">
                     Showing{" "}
-                    {((variantsReport.pageNumber - 1) * variantsReport.pageSize) + 1}{" "}
+                    {formatNumber(((variantsReport.pageNumber - 1) * variantsReport.pageSize) + 1)}{" "}
                     to{" "}
-                    {Math.min(
+                    {formatNumber(Math.min(
                       variantsReport.pageNumber * variantsReport.pageSize,
                       variantsReport.totalCount
-                    )}{" "}
-                    of {variantsReport.totalCount} variants
+                    ))}{" "}
+                    of {formatNumber(variantsReport.totalCount)} variants
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
@@ -1248,7 +1248,7 @@ export default function Reports() {
                       Previous
                     </Button>
                     <div className="text-sm">
-                      Page {variantsReport.pageNumber} of {variantsReport.totalPages}
+                      Page {formatNumber(variantsReport.pageNumber)} of {formatNumber(variantsReport.totalPages)}
                     </div>
                     <Button
                       variant="outline"

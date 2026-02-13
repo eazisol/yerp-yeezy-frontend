@@ -230,7 +230,13 @@ export default function Warehouses() {
   };
 
   const warehouses = warehousesData?.data || [];
+  const totalCount = warehousesData?.totalCount || 0;
   const totalPages = warehousesData?.totalPages || 1;
+
+  // Format numeric values using English locale.
+  const formatNumber = (value: number) => {
+    return new Intl.NumberFormat("en-US").format(value);
+  };
 
   return (
     <div className="space-y-6">
@@ -291,7 +297,7 @@ export default function Warehouses() {
       <Card>
         <CardHeader>
           <CardTitle>
-            Warehouse List ({warehousesData?.totalCount || 0})
+            Warehouse List ({formatNumber(totalCount)})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -406,7 +412,7 @@ export default function Warehouses() {
                             isActive={page === pageNum}
                             className="cursor-pointer"
                           >
-                            {pageNum}
+                            {formatNumber(pageNum)}
                           </PaginationLink>
                         </PaginationItem>
                       ))}

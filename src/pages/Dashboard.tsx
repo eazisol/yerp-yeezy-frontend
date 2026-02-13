@@ -40,39 +40,52 @@ export default function Dashboard() {
     queryKey: ["dashboard-metrics-summary"],
     queryFn: () => dashboardService.getDashboardSummaryMetrics(),
     enabled: canAccess("DASHBOARD"),
-    refetchInterval: 60000,
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
   });
-
-  // Fetch inventory-heavy metrics after summary
+console.log("dashboard summery ",dashboardSummaryMetrics) 
+  // Fetch inventory-heavy metrics after summary (disabled: not called on dashboard)
   const { data: dashboardInventoryMetrics, isLoading: loadingInventoryMetrics } = useQuery({
     queryKey: ["dashboard-metrics-inventory"],
     queryFn: () => dashboardService.getDashboardInventoryMetrics(),
-    enabled: canAccess("DASHBOARD") && !!dashboardSummaryMetrics,
-    refetchInterval: 60000,
+    enabled: false,
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
   });
 
-  // Fetch finance/PO metrics after summary
+  // Fetch finance/PO metrics after summary (disabled: not called on dashboard)
   const { data: dashboardFinanceMetrics, isLoading: loadingFinanceMetrics } = useQuery({
     queryKey: ["dashboard-metrics-finance"],
     queryFn: () => dashboardService.getDashboardFinanceMetrics(),
-    enabled: canAccess("DASHBOARD") && !!dashboardSummaryMetrics,
-    refetchInterval: 60000,
+    enabled: false,
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
   });
 
-  const dashboardMetrics: DashboardMetrics | undefined = {
-    ...(dashboardSummaryMetrics || {}),
-    ...(dashboardInventoryMetrics || {}),
-    ...(dashboardFinanceMetrics || {}),
-  } as DashboardMetrics;
+  // Use only summary metrics (inventory/finance API calls disabled)
+  const dashboardMetrics: DashboardMetrics | undefined = (dashboardSummaryMetrics || undefined) as DashboardMetrics | undefined;
 
-  const loadingMetrics = loadingSummaryMetrics || loadingInventoryMetrics || loadingFinanceMetrics;
+  const loadingMetrics = loadingSummaryMetrics;
 
   // Fetch missing variant SKUs (top 5)
   const { data: missingVariantSkusData, isLoading: loadingMissingVariantSkus } = useQuery({
     queryKey: ["missing-variant-skus", 1, 5],
     queryFn: () => dashboardService.getMissingVariantSkus(1, 5),
     enabled: canAccess("DASHBOARD"),
-    refetchInterval: 60000, // Refetch every 60 seconds for real-time updates
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchOnMount: false,
   });
 
   // Use real data if available, otherwise use empty defaults
@@ -175,15 +188,20 @@ export default function Dashboard() {
   const lowStockCount = dashboardMetrics?.stockAlertsLowCount
     ?? stockAlerts.filter(item => item.status === "low").length;
 
-  const missingVariantSkus = missingVariantSkusData?.data || [];
-  const missingVariantSkusTotal = missingVariantSkusData?.totalCount || 0;
+  // API returns array directly; support both array and paged { data, totalCount } shape
+  const missingVariantSkus = Array.isArray(missingVariantSkusData)
+    ? missingVariantSkusData
+    : (missingVariantSkusData?.data || []);
+  const missingVariantSkusTotal = Array.isArray(missingVariantSkusData)
+    ? missingVariantSkusData.length
+    : (missingVariantSkusData?.totalCount || 0);
 
-  // Order status breakdown for pie chart
-  const orderStatusChartData = [
-    { name: "Fulfilled", value: orderStatusBreakdown.fulfilled, color: "hsl(var(--success))" },
-    { name: "Pending", value: orderStatusBreakdown.pending, color: "hsl(var(--warning))" },
-    { name: "Partially Shipped", value: orderStatusBreakdown.partiallyShipped, color: "hsl(var(--primary))" },
-  ];
+  // // Order status breakdown for pie chart
+  // const orderStatusChartData = [
+  //   { name: "Fulfilled", value: orderStatusBreakdown.fulfilled, color: "hsl(var(--success))" },
+  //   { name: "Pending", value: orderStatusBreakdown.pending, color: "hsl(var(--warning))" },
+  //   { name: "Partially Shipped", value: orderStatusBreakdown.partiallyShipped, color: "hsl(var(--primary))" },
+  // ];
 
   // PO Aging chart data
   const poAgingChartData = [
@@ -314,7 +332,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-foreground">
-                  {orderStatusBreakdown.fulfilled}
+                  {formatNumber(orderStatusBreakdown.fulfilled)}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {((orderStatusBreakdown.fulfilled / orderStatusBreakdown.total) * 100).toFixed(1)}% of total
@@ -332,7 +350,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-foreground">
-                  {orderStatusBreakdown.pending}
+                  {formatNumber(orderStatusBreakdown.pending)}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {((orderStatusBreakdown.pending / orderStatusBreakdown.total) * 100).toFixed(1)}% of total
@@ -353,7 +371,7 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-foreground">
-                  {orderStatusBreakdown.partiallyShipped}
+                  {formatNumber(orderStatusBreakdown.partiallyShipped)}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {((orderStatusBreakdown.partiallyShipped / orderStatusBreakdown.total) * 100).toFixed(1)}% of total
@@ -407,11 +425,11 @@ export default function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-foreground">
-                  {dailyShipments.totalShipments}
+                  {formatNumber(dailyShipments.totalShipments)}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
+                {/* <p className="text-xs text-muted-foreground mt-1">
                   CN: {dailyShipments.cnShipments} | US: {dailyShipments.usShipments}
-                </p>
+                </p> */}
               </CardContent>
             </Card>
           </div>
@@ -615,7 +633,7 @@ export default function Dashboard() {
                           {item.sku}
                         </span>
                         <Badge variant="secondary" className="text-xs">
-                          {item.totalUses} uses
+                          {formatNumber(item.totalUses)} uses
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
@@ -846,7 +864,7 @@ export default function Dashboard() {
                     {poAgingChartData.map((item) => (
                       <div key={item.name} className="flex justify-between">
                         <span className="text-muted-foreground">{item.name}:</span>
-                        <span className="font-medium">{item.count} POs</span>
+                        <span className="font-medium">{formatNumber(item.count)} POs</span>
                       </div>
                     ))}
                   </div>

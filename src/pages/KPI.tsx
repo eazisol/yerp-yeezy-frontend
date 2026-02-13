@@ -69,7 +69,6 @@ export default function KPI() {
     queryKey: ["kpi-metrics"],
     queryFn: () => kpiService.getKpiMetrics(),
     enabled: canAccess("DASHBOARD"),
-    refetchInterval: 60000,
   });
 
   // Role-based visibility helpers
@@ -295,6 +294,13 @@ export default function KPI() {
     return new Intl.NumberFormat("en-US").format(value);
   };
 
+  const formatDecimal = (value: number, maximumFractionDigits: number = 2) => {
+    return new Intl.NumberFormat("en-US", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits,
+    }).format(value);
+  };
+
   return (
     <div className="space-y-6 p-6">
       {/* Page Header */}
@@ -336,33 +342,33 @@ export default function KPI() {
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Gross Margin % (MTD)</p>
-              <p className="text-2xl font-bold">{executiveStrip.grossMarginMTD}%</p>
+              <p className="text-2xl font-bold">{formatDecimal(executiveStrip.grossMarginMTD, 1)}%</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Contribution Margin %</p>
-              <p className="text-2xl font-bold">{executiveStrip.contributionMarginMTD}%</p>
+              <p className="text-2xl font-bold">{formatDecimal(executiveStrip.contributionMarginMTD, 1)}%</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Orders Shipped vs Received</p>
               <p className="text-2xl font-bold">
-                {executiveStrip.ordersShippedToday} / {executiveStrip.ordersReceivedToday}
+                {formatNumber(executiveStrip.ordersShippedToday)} / {formatNumber(executiveStrip.ordersReceivedToday)}
               </p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Open Order Backlog</p>
               <p className="text-lg font-bold">{formatCurrency(executiveStrip.openOrderBacklog.value)}</p>
-              <p className="text-sm">{executiveStrip.openOrderBacklog.units} units</p>
+              <p className="text-sm">{formatNumber(executiveStrip.openOrderBacklog.units)} units</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Inventory Weeks on Hand</p>
-              <p className="text-2xl font-bold">{executiveStrip.inventoryWeeksOnHand}</p>
+              <p className="text-2xl font-bold">{formatDecimal(executiveStrip.inventoryWeeksOnHand, 1)}</p>
             </div>
           </div>
           <div className="mt-4 pt-4 border-t">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Fulfillment SLA Hit Rate (7-day rolling)</span>
               <Badge variant={executiveStrip.fulfillmentSLARate >= 95 ? "default" : "secondary"}>
-                {executiveStrip.fulfillmentSLARate}%
+                {formatDecimal(executiveStrip.fulfillmentSLARate, 1)}%
               </Badge>
             </div>
           </div>
@@ -391,7 +397,7 @@ export default function KPI() {
               <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Total Paid Orders</p>
-                  <p className="text-2xl font-bold">{dailySales.totalPaidOrders}</p>
+                  <p className="text-2xl font-bold">{formatNumber(dailySales.totalPaidOrders)}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Net Revenue</p>
@@ -407,7 +413,7 @@ export default function KPI() {
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Gross Margin %</p>
-                  <p className="text-2xl font-bold">{dailySales.grossMarginPercent}%</p>
+                  <p className="text-2xl font-bold">{formatDecimal(dailySales.grossMarginPercent, 1)}%</p>
                 </div>
               </div>
             </TabsContent>
@@ -432,26 +438,26 @@ export default function KPI() {
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">Gross Margin %</p>
-                  <p className="text-2xl font-bold">{mtdSales.grossMarginPercent}%</p>
+                  <p className="text-2xl font-bold">{formatDecimal(mtdSales.grossMarginPercent, 1)}%</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">MTD vs Forecast</p>
                   <div className="flex items-center gap-2">
-                    <p className="text-2xl font-bold">{mtdSales.vsForecast}%</p>
+                    <p className="text-2xl font-bold">{formatDecimal(mtdSales.vsForecast, 1)}%</p>
                     <TrendingUp className="h-4 w-4 text-green-600" />
                   </div>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">MTD vs Prior Month</p>
                   <div className="flex items-center gap-2">
-                    <p className="text-2xl font-bold">{mtdSales.vsPriorMonth}%</p>
+                    <p className="text-2xl font-bold">{formatDecimal(mtdSales.vsPriorMonth, 1)}%</p>
                     <TrendingUp className="h-4 w-4 text-green-600" />
                   </div>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm text-muted-foreground">MTD vs Same Month LY</p>
                   <div className="flex items-center gap-2">
-                    <p className="text-2xl font-bold">{mtdSales.vsSameMonthLY}%</p>
+                    <p className="text-2xl font-bold">{formatDecimal(mtdSales.vsSameMonthLY, 1)}%</p>
                     <TrendingDown className="h-4 w-4 text-red-600" />
                   </div>
                 </div>
@@ -586,7 +592,7 @@ export default function KPI() {
                           <TableCell className="text-right">{formatNumber(item.backlogUnits)}</TableCell>
                           <TableCell className="text-right">
                             <Badge variant={item.weeksOnHand < 3 ? "destructive" : "secondary"}>
-                              {item.weeksOnHand} weeks
+                              {formatDecimal(item.weeksOnHand, 1)} weeks
                             </Badge>
                           </TableCell>
                         </TableRow>
@@ -614,15 +620,15 @@ export default function KPI() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Open Orders Ready to Ship</p>
-              <p className="text-2xl font-bold">{shippingKPIs.openOrdersReadyToShip}</p>
+              <p className="text-2xl font-bold">{formatNumber(shippingKPIs.openOrdersReadyToShip)}</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Orders Fulfilled Today</p>
-              <p className="text-2xl font-bold">{shippingKPIs.ordersFulfilledToday}</p>
+              <p className="text-2xl font-bold">{formatNumber(shippingKPIs.ordersFulfilledToday)}</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Orders Received Today</p>
-              <p className="text-2xl font-bold">{shippingKPIs.ordersReceivedToday}</p>
+              <p className="text-2xl font-bold">{formatNumber(shippingKPIs.ordersReceivedToday)}</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Orders Fulfilled MTD</p>
@@ -631,23 +637,23 @@ export default function KPI() {
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Backlog Growth Rate</p>
               <div className="flex items-center gap-2">
-                <p className="text-2xl font-bold">{shippingKPIs.backlogGrowthRate}%</p>
+                <p className="text-2xl font-bold">{formatDecimal(shippingKPIs.backlogGrowthRate, 1)}%</p>
                 <TrendingUp className="h-4 w-4 text-red-600" />
               </div>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Average Time to Ship</p>
-              <p className="text-2xl font-bold">{shippingKPIs.averageTimeToShip} hrs</p>
+              <p className="text-2xl font-bold">{formatDecimal(shippingKPIs.averageTimeToShip, 1)} hrs</p>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Orders Breaching SLA</p>
               <Badge variant="destructive" className="text-lg px-3 py-1">
-                {shippingKPIs.ordersBreachingSLA}
+                {formatNumber(shippingKPIs.ordersBreachingSLA)}
               </Badge>
             </div>
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Oldest Unshipped Order</p>
-              <p className="text-2xl font-bold">{shippingKPIs.oldestUnshippedOrder} hrs</p>
+              <p className="text-2xl font-bold">{formatDecimal(shippingKPIs.oldestUnshippedOrder, 1)} hrs</p>
             </div>
           </div>
         </CardContent>

@@ -29,11 +29,12 @@ export default function MissingVariantSkus() {
     queryFn: () => dashboardService.getMissingVariantSkus(page, pageSize),
   });
 
-  const items = data?.data || [];
-  const totalCount = data?.totalCount || 0;
-  const totalPages = data?.totalPages || 1;
-  const hasPreviousPage = data?.hasPreviousPage || false;
-  const hasNextPage = data?.hasNextPage || false;
+  // API may return array directly or paged { data, totalCount, ... }; handle both
+  const items = Array.isArray(data) ? data : (data?.data || []);
+  const totalCount = Array.isArray(data) ? data.length : (data?.totalCount || 0);
+  const totalPages = Array.isArray(data) ? 1 : (data?.totalPages || 1);
+  const hasPreviousPage = Array.isArray(data) ? false : (data?.hasPreviousPage || false);
+  const hasNextPage = Array.isArray(data) ? false : (data?.hasNextPage || false);
 
   // Format ISO date to short string
   const formatDate = (value?: string) => {

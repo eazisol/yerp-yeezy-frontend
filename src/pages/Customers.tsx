@@ -143,6 +143,11 @@ export default function Customers() {
     }).format(amount);
   };
 
+  // Format numeric values using English locale.
+  const formatNumber = (value: number) => {
+    return new Intl.NumberFormat("en-US").format(value);
+  };
+
   // Get customer name for display
   const getCustomerName = (customer: Customer) => {
     if (customer.name) return customer.name;
@@ -171,7 +176,7 @@ export default function Customers() {
                 {countMutation.isPending
                   ? "Checking..."
                   : swellCustomerCount !== null
-                  ? `${swellCustomerCount} Customers in Swell`
+                  ? `${formatNumber(swellCustomerCount)} Customers in Swell`
                   : "Check Swell Customers"}
               </Button>
             </>
@@ -195,11 +200,11 @@ export default function Customers() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {loadingCustomers ? "..." : totalCount}
+              {loadingCustomers ? "..." : formatNumber(totalCount)}
             </div>
           </CardContent>
         </Card>
-        <Card>
+        {/* <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               Total Orders
@@ -207,7 +212,7 @@ export default function Customers() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {loadingCustomers ? "..." : customers.reduce((sum, c) => sum + c.orderCount, 0)}
+              {loadingCustomers ? "..." : formatNumber(customers.reduce((sum, c) => sum + c.orderCount, 0))}
             </div>
           </CardContent>
         </Card>
@@ -231,10 +236,10 @@ export default function Customers() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {loadingCustomers ? "..." : customers.filter(c => c.emailOptIn).length}
+              {loadingCustomers ? "..." : formatNumber(customers.filter(c => c.emailOptIn).length)}
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
 
       {/* Filters */}
@@ -264,7 +269,7 @@ export default function Customers() {
       {/* Customers Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Customer List ({totalCount} total)</CardTitle>
+          <CardTitle>Customer List ({formatNumber(totalCount)} total)</CardTitle>
         </CardHeader>
         <CardContent>
           {loadingCustomers ? (
@@ -314,7 +319,7 @@ export default function Customers() {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <span className="font-medium">{customer.orderCount}</span>
+                          <span className="font-medium">{formatNumber(customer.orderCount)}</span>
                         </TableCell>
                         <TableCell className="text-right font-medium">
                           {formatCurrency(customer.orderValue, customer.currency || "USD")}
@@ -374,7 +379,7 @@ export default function Customers() {
                               isActive={page === pageNum}
                               className="cursor-pointer"
                             >
-                              {pageNum}
+                              {formatNumber(pageNum)}
                             </PaginationLink>
                           </PaginationItem>
                         );
@@ -389,7 +394,7 @@ export default function Customers() {
                     </PaginationContent>
                   </Pagination>
                   <div className="text-center text-sm text-muted-foreground mt-2">
-                    Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, totalCount)} of {totalCount} customers
+                    Showing {formatNumber(((page - 1) * pageSize) + 1)} to {formatNumber(Math.min(page * pageSize, totalCount))} of {formatNumber(totalCount)} customers
                   </div>
                 </div>
               )}
@@ -452,7 +457,7 @@ export default function Customers() {
                     <div className="space-y-4 mt-4">
                       <div className="space-y-2">
                         <p>
-                          Found <strong>{swellCustomerCount}</strong> customers in Swell.
+                          Found <strong>{formatNumber(swellCustomerCount)}</strong> customers in Swell.
                         </p>
                         <p>
                           This will sync customers from Swell. New customers will be created and existing customers will be updated.

@@ -243,7 +243,13 @@ export default function Vendors() {
   };
 
   const vendors = vendorsData?.data || [];
+  const totalCount = vendorsData?.totalCount || 0;
   const totalPages = vendorsData?.totalPages || 1;
+
+  // Format numeric values using English locale.
+  const formatNumber = (value: number) => {
+    return new Intl.NumberFormat("en-US").format(value);
+  };
 
   return (
     <div className="space-y-6">
@@ -304,7 +310,7 @@ export default function Vendors() {
       <Card>
         <CardHeader>
           <CardTitle>
-            Vendor List ({vendorsData?.totalCount || 0})
+            Vendor List ({formatNumber(totalCount)})
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -410,7 +416,7 @@ export default function Vendors() {
                             isActive={page === pageNum}
                             className="cursor-pointer"
                           >
-                            {pageNum}
+                            {formatNumber(pageNum)}
                           </PaginationLink>
                         </PaginationItem>
                       ))}

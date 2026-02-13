@@ -42,7 +42,17 @@ import StockAlerts from "./pages/StockAlerts";
 import MissingVariantSkus from "./pages/MissingVariantSkus";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: Infinity,
+      gcTime: Infinity,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      refetchOnMount: false,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

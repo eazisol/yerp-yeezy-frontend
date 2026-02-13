@@ -15,7 +15,8 @@ import {
   X,
   LogOut,
   Lock,
-  BarChart3
+  BarChart3,
+  MoreHorizontal
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { menuService, Menu as MenuType } from "@/services/menus";
@@ -275,38 +282,53 @@ export default function Layout() {
           </nav>
 
           {/* User section - Fixed at bottom */}
-          <div className="border-t p-4 space-y-3 flex-shrink-0">
-            <div className="flex items-center space-x-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground font-medium text-sm">
-                {user?.email?.charAt(0).toUpperCase() || "U"}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">
-                  {user?.fullName || user?.email}
-                </p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {user?.roles?.[0] || "User"}
-                </p>
+          <div className="border-t p-3 flex-shrink-0">
+            <div className="rounded-2xl border bg-background p-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-medium text-sm">
+                  {user?.email?.charAt(0).toUpperCase() || "U"}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-foreground">
+                    {user?.fullName || user?.email}
+                  </p>
+                  <p className="truncate text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {user?.roles?.[0] || "User"}
+                  </p>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+                    >
+                      <MoreHorizontal className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent
+                    align="end"
+                    side="top"
+                    className="w-56 rounded-2xl p-3 space-y-2"
+                  >
+                    <DropdownMenuItem
+                      className="w-full rounded-xl border px-3 py-2.5 font-medium"
+                      onClick={() => navigate("/change-password")}
+                    >
+                      <Lock className="h-4 w-4 mr-2" />
+                      Change Password
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="w-full rounded-xl border px-3 py-2.5 font-medium"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={() => navigate("/change-password")}
-            >
-              <Lock className="h-4 w-4 mr-2" />
-              Change Password
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={handleLogout}
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
           </div>
         </div>
       </aside>

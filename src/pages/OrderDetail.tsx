@@ -97,7 +97,7 @@ export default function OrderDetail() {
     allImages?: string[];
   } | null>(null);
 
-  // Real-time data fetching with auto-refresh every 5 seconds
+  // Order detail fetching (manual refresh button available)
   const {
     data: order,
     isLoading,
@@ -112,8 +112,6 @@ export default function OrderDetail() {
       return await orderService.getOrderById(orderId);
     },
     enabled: !!id,
-    refetchInterval: 5000, // Auto-refresh every 5 seconds for real-time updates
-    refetchIntervalInBackground: true, // Continue refreshing even when tab is in background
     retry: 2,
   });
 

@@ -95,6 +95,11 @@ export default function Products() {
     }).format(amount);
   };
 
+  // Format numeric values using English locale.
+  const formatNumber = (value: number) => {
+    return new Intl.NumberFormat("en-US").format(value);
+  };
+
   // Calculate total stock - use totalStock if available, otherwise calculate from cnStock + usStock
   const getTotalStock = (product: Product) => {
     // Use totalStock if available (from Inventory table)
@@ -462,7 +467,7 @@ export default function Products() {
       {/* Products Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Product List ({totalCount} total)</CardTitle>
+          <CardTitle>Product List ({formatNumber(totalCount)} total)</CardTitle>
         </CardHeader>
         <CardContent>
           {loadingProducts ? (
@@ -513,7 +518,7 @@ export default function Products() {
                         </TableCell>
                         <TableCell className="p-2 w-[10%]">
                           <span className="text-muted-foreground">
-                            {product.variantCount ?? product.variants?.length ?? 0}
+                            {formatNumber(product.variantCount ?? product.variants?.length ?? 0)}
                           </span>
                         </TableCell>
                         <TableCell className="p-2 w-[15%]">
@@ -526,7 +531,7 @@ export default function Products() {
                                 : "text-muted-foreground"
                             }`}
                           >
-                            {totalStock}
+                            {formatNumber(totalStock)}
                           </span>
                         </TableCell>
                         <TableCell className="p-2 font-medium w-[15%]">
@@ -630,7 +635,7 @@ export default function Products() {
                               isActive={page === pageNum}
                               className="cursor-pointer"
                             >
-                              {pageNum}
+                              {formatNumber(pageNum)}
                             </PaginationLink>
                           </PaginationItem>
                         );
@@ -645,7 +650,7 @@ export default function Products() {
                     </PaginationContent>
                   </Pagination>
                   <div className="text-center text-sm text-muted-foreground mt-2">
-                    Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, totalCount)} of {totalCount} products
+                    Showing {formatNumber(((page - 1) * pageSize) + 1)} to {formatNumber(Math.min(page * pageSize, totalCount))} of {formatNumber(totalCount)} products
                   </div>
                 </div>
               )}
@@ -704,7 +709,7 @@ export default function Products() {
                       )}
                       {swellProductCount !== null && (
                         <p className="text-sm text-muted-foreground">
-                          Syncing <strong>{swellProductCount}</strong> products from Swell. Please wait...
+                          Syncing <strong>{formatNumber(swellProductCount)}</strong> products from Swell. Please wait...
                         </p>
                       )}
                     </div>
@@ -728,7 +733,7 @@ export default function Products() {
                   swellProductCount !== null && (
                     <div className="space-y-2 mt-4">
                       <p>
-                        Found <strong>{swellProductCount}</strong> products in Swell.
+                        Found <strong>{formatNumber(swellProductCount)}</strong> products in Swell.
                       </p>
                       <p>
                         This will sync all products from Swell. New products will be created and existing products will be updated.
@@ -811,31 +816,31 @@ export default function Products() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 bg-muted rounded-lg">
                   <div className="text-sm text-muted-foreground">Total Rows</div>
-                  <div className="text-2xl font-bold">{importResult.totalRows}</div>
+                  <div className="text-2xl font-bold">{formatNumber(importResult.totalRows)}</div>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
                   <div className="text-sm text-muted-foreground">Total Variants in File</div>
-                  <div className="text-2xl font-bold text-purple-600">{importResult.totalVariantsInFile || importResult.totalRows}</div>
+                  <div className="text-2xl font-bold text-purple-600">{formatNumber(importResult.totalVariantsInFile || importResult.totalRows)}</div>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
                   <div className="text-sm text-muted-foreground">Products Created</div>
-                  <div className="text-2xl font-bold text-green-600">{importResult.productsCreated}</div>
+                  <div className="text-2xl font-bold text-green-600">{formatNumber(importResult.productsCreated)}</div>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
                   <div className="text-sm text-muted-foreground">Products Updated</div>
-                  <div className="text-2xl font-bold text-blue-600">{importResult.productsUpdated}</div>
+                  <div className="text-2xl font-bold text-blue-600">{formatNumber(importResult.productsUpdated)}</div>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
                   <div className="text-sm text-muted-foreground">Variants Created</div>
-                  <div className="text-2xl font-bold text-green-600">{importResult.variantsCreated}</div>
+                  <div className="text-2xl font-bold text-green-600">{formatNumber(importResult.variantsCreated)}</div>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
                   <div className="text-sm text-muted-foreground">Variants Updated</div>
-                  <div className="text-2xl font-bold text-blue-600">{importResult.variantsUpdated}</div>
+                  <div className="text-2xl font-bold text-blue-600">{formatNumber(importResult.variantsUpdated)}</div>
                 </div>
                 <div className="p-4 bg-muted rounded-lg">
                   <div className="text-sm text-muted-foreground">Errors</div>
-                  <div className="text-2xl font-bold text-red-600">{importResult.errors}</div>
+                  <div className="text-2xl font-bold text-red-600">{formatNumber(importResult.errors)}</div>
                 </div>
               </div>
 

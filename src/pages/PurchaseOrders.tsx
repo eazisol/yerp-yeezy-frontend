@@ -146,6 +146,10 @@ export default function PurchaseOrders() {
     }).format(value);
   };
 
+  const formatNumber = (value: number) => {
+    return new Intl.NumberFormat("en-US").format(value);
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
   };
@@ -212,7 +216,7 @@ export default function PurchaseOrders() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
+            <div className="text-2xl font-bold">{formatNumber(stats.total)}</div>
           </CardContent>
         </Card>
         <Card>
@@ -222,7 +226,7 @@ export default function PurchaseOrders() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.pendingApproval}</div>
+            <div className="text-2xl font-bold">{formatNumber(stats.pendingApproval)}</div>
           </CardContent>
         </Card>
         <Card>
@@ -232,7 +236,7 @@ export default function PurchaseOrders() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.inProgress}</div>
+            <div className="text-2xl font-bold">{formatNumber(stats.inProgress)}</div>
           </CardContent>
         </Card>
         <Card>
@@ -271,7 +275,7 @@ export default function PurchaseOrders() {
       {/* PO Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Purchase Order List ({filteredPOs.length})</CardTitle>
+          <CardTitle>Purchase Order List ({formatNumber(filteredPOs.length)})</CardTitle>
         </CardHeader>
         <CardContent>
           {filteredPOs.length === 0 ? (
@@ -303,7 +307,7 @@ export default function PurchaseOrders() {
                   >
                     <TableCell className="font-medium">{po.poNumber}</TableCell>
                     <TableCell>{po.vendorName || "N/A"}</TableCell>
-                    <TableCell>{po.lineItems?.length || 0} items</TableCell>
+                    <TableCell>{formatNumber(po.lineItems?.length || 0)} items</TableCell>
                     <TableCell className="text-right font-medium">
                       {formatCurrency(po.totalValue)}
                     </TableCell>
@@ -336,11 +340,11 @@ export default function PurchaseOrders() {
                       {po.approvals && po.approvals.length > 0 ? (
                         <div className="flex flex-col gap-1">
                           <Badge variant="outline" className="text-xs">
-                            {po.approvals.filter(a => a.status === "Approved").length}/{po.approvals.length} Approved
+                            {formatNumber(po.approvals.filter(a => a.status === "Approved").length)}/{formatNumber(po.approvals.length)} Approved
                           </Badge>
                           {po.approvals.some(a => a.status === "Rejected") && (
                             <Badge variant="destructive" className="text-xs">
-                              {po.approvals.filter(a => a.status === "Rejected").length} Rejected
+                              {formatNumber(po.approvals.filter(a => a.status === "Rejected").length)} Rejected
                             </Badge>
                           )}
                         </div>
