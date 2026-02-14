@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -92,6 +91,8 @@ export default function Orders() {
   const [importResult, setImportResult] = useState<OrderImportResult | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [showBulkResyncConfirm, setShowBulkResyncConfirm] = useState(false);
+  const [bulkResyncFromDate, setBulkResyncFromDate] = useState<string>(""); // From date for bulk resync China
+  const [bulkResyncToDate, setBulkResyncToDate] = useState<string>(""); // To date for bulk resync China
   const [showResyncConfirm, setShowResyncConfirm] = useState(false);
   const [resyncOrderId, setResyncOrderId] = useState<number | null>(null);
   const [isWarehouseCheckDone, setIsWarehouseCheckDone] = useState(false);
@@ -100,7 +101,6 @@ export default function Orders() {
   const [currentSyncRunId, setCurrentSyncRunId] = useState<string | null>(null); // Current logical sync run identifier
   const [latestSyncProgress, setLatestSyncProgress] = useState<OrderSyncProgress | null>(null); // Latest batch progress snapshot
   const progressPollingRef = useRef<number | null>(null); // Interval id for sync progress polling
-  const navigate = useNavigate();
   const { canRead, canModify } = usePermissions();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -126,7 +126,8 @@ export default function Orders() {
   });
 
   const resyncChinaMutation = useMutation({
-    mutationFn: () => orderService.resyncChinaOrders(),
+    mutationFn: ({ fromDate, endDate }: { fromDate?: string; endDate?: string }) =>
+      orderService.resyncChinaOrders(fromDate, endDate),
     onSuccess: (data) => {
       toast({
         title: "Bulk resync triggered",
@@ -661,7 +662,7 @@ export default function Orders() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {loadingStats ? "..." : stats?.totalOrders || 0}
+              {loadingStats ? "..." : formatNumber(stats?.totalOrders ?? 0)}
             </div>
           </CardContent>
         </Card>
@@ -673,7 +674,7 @@ export default function Orders() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {loadingStats ? "..." : stats?.unfulfilledOrders || 0}
+              {loadingStats ? "..." : formatNumber(stats?.unfulfilledOrders ?? 0)}
             </div>
           </CardContent>
         </Card>
@@ -685,7 +686,7 @@ export default function Orders() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">
-              {loadingStats ? "..." : stats?.partiallyFulfilledOrders || 0}
+              {loadingStats ? "..." : formatNumber(stats?.partiallyFulfilledOrders ?? 0)}
             </div>
           </CardContent>
         </Card>
@@ -925,7 +926,10 @@ export default function Orders() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => navigate(`/orders/${order.orderId}`)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(`/orders/${order.orderId}`, '_blank', 'noopener,noreferrer');
+                              }}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
@@ -1198,9 +1202,29 @@ export default function Orders() {
               {resyncChinaMutation.isPending ? "Resyncing..." : "Bulk Resync China Orders"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This will resend all China-bound orders that have not been synced yet.
+              This will resend all China-bound orders that have not been synced yet. Optionally set a date range (leave empty for backend default: current month).
               <div className="text-sm text-muted-foreground mt-2">
                 Eligible orders on this page: <strong>{resyncEligibleCount}</strong>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1">From date</label>
+                  <Input
+                    type="date"
+                    className="h-9"
+                    value={bulkResyncFromDate}
+                    onChange={(e) => setBulkResyncFromDate(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1">To date</label>
+                  <Input
+                    type="date"
+                    className="h-9"
+                    value={bulkResyncToDate}
+                    onChange={(e) => setBulkResyncToDate(e.target.value)}
+                  />
+                </div>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1218,7 +1242,10 @@ export default function Orders() {
             <AlertDialogAction
               onClick={(e) => {
                 e.preventDefault();
-                resyncChinaMutation.mutate();
+                resyncChinaMutation.mutate({
+                  fromDate: bulkResyncFromDate || undefined,
+                  endDate: bulkResyncToDate || undefined,
+                });
               }}
               className="bg-primary text-primary-foreground hover:bg-primary/90"
             >

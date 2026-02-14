@@ -129,8 +129,14 @@ class OrderService {
     return apiClient.post(`/api/Orders/${orderId}/create-shipment`);
   }
 
-  async resyncChinaOrders(): Promise<{ message: string; totalOrders: number }> {
-    return apiClient.post("/api/Orders/resync-china");
+  // Bulk resync China orders; optional fromDate/endDate (yyyy-MM-dd). Backend defaults to current month if omitted.
+  async resyncChinaOrders(fromDate?: string, endDate?: string): Promise<{ message: string; totalOrders: number }> {
+    const params = new URLSearchParams();
+    if (fromDate) params.append("fromDate", fromDate);
+    if (endDate) params.append("endDate", endDate);
+    const queryString = params.toString();
+    const url = queryString ? `/api/Orders/resync-china?${queryString}` : "/api/Orders/resync-china";
+    return apiClient.post(url);
   }
 
   // Assign warehouses for order items missing WarehouseId (VariantId only)
