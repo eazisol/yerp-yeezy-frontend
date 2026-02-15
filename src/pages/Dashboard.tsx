@@ -114,29 +114,12 @@ console.log("dashboard summery ",dashboardSummaryMetrics)
 
   const warehouseInventory = dashboardMetrics?.warehouseInventory || [];
 
-  const stockAlerts = dashboardMetrics?.stockAlerts || [];
-
-  const grnStatus = dashboardMetrics?.grnStatus || {
-    pending: 0,
-    completed: 0,
-    total: 0,
-    recentGrns: [],
-  };
-
-  const poAging = dashboardMetrics?.poAging || {
-    age0To30: { count: 0, value: 0 },
-    age31To60: { count: 0, value: 0 },
-    age61To90: { count: 0, value: 0 },
-    age90Plus: { count: 0, value: 0 },
-  };
 
   const vendorBalanceSummary = dashboardMetrics?.vendorBalanceSummary || {
     pendingAmount: 0,
     paidAmount: 0,
     totalBalance: 0,
   };
-
-  const recentOrders = dashboardMetrics?.recentOrders || [];
 
   const cnWarehouse = warehouseInventory.find((warehouse) => warehouse.warehouse === "CN");
   const usWarehouse = warehouseInventory.find((warehouse) => warehouse.warehouse === "US");
@@ -152,23 +135,6 @@ console.log("dashboard summery ",dashboardSummaryMetrics)
     }).format(value);
   };
 
-  const normalizeGrnStatus = (status?: string | null) => {
-    return (status || "").toLowerCase();
-  };
-
-  const formatGrnStatus = (status?: string | null) => {
-    switch (normalizeGrnStatus(status)) {
-      case "completed":
-        return "Fully Received";
-      case "partial":
-        return "Partially Received";
-      case "pending":
-        return "Pending";
-      default:
-        return status || "N/A";
-    }
-  };
-
   // Format number with commas
   const formatNumber = (value: number) => {
     return new Intl.NumberFormat('en-US').format(value);
@@ -181,12 +147,6 @@ console.log("dashboard summery ",dashboardSummaryMetrics)
     if (Number.isNaN(parsed.getTime())) return "N/A";
     return parsed.toLocaleDateString("en-US");
   };
-
-  // Calculate critical vs low stock counts (use totals from API when available)
-  const criticalStockCount = dashboardMetrics?.stockAlertsCriticalCount
-    ?? stockAlerts.filter(item => item.status === "critical").length;
-  const lowStockCount = dashboardMetrics?.stockAlertsLowCount
-    ?? stockAlerts.filter(item => item.status === "low").length;
 
   // API returns array directly; support both array and paged { data, totalCount } shape
   const missingVariantSkus = Array.isArray(missingVariantSkusData)
@@ -202,14 +162,6 @@ console.log("dashboard summery ",dashboardSummaryMetrics)
   //   { name: "Pending", value: orderStatusBreakdown.pending, color: "hsl(var(--warning))" },
   //   { name: "Partially Shipped", value: orderStatusBreakdown.partiallyShipped, color: "hsl(var(--primary))" },
   // ];
-
-  // PO Aging chart data
-  const poAgingChartData = [
-    { name: "0-30 Days", value: poAging.age0To30.value, count: poAging.age0To30.count },
-    { name: "31-60 Days", value: poAging.age31To60.value, count: poAging.age31To60.count },
-    { name: "61-90 Days", value: poAging.age61To90.value, count: poAging.age61To90.count },
-    { name: "90+ Days", value: poAging.age90Plus.value, count: poAging.age90Plus.count },
-  ];
 
   // Vendor performance chart data
   const vendorPerformanceData = (dashboardMetrics?.vendorPerformance || []).map(v => ({
@@ -480,117 +432,6 @@ console.log("dashboard summery ",dashboardSummaryMetrics)
         </div>
       )}
 
-      {/* Stock Alerts & GRN Status */}
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Stock Alerts */}
-        {canRead("INVENTORY") && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-lg">Stock Alerts</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Critical: {criticalStockCount} | Low: {lowStockCount}
-                </p>
-              </div>
-              {canRead("INVENTORY") && (
-                <Button variant="outline" size="sm" onClick={() => navigate("/stock-alerts")}>
-                  <Eye className="h-4 w-4 mr-2" />
-                  View All
-                </Button>
-              )}
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {stockAlerts.length === 0 ? (
-                  <div className="text-center py-4 text-sm text-muted-foreground">
-                    No stock alerts found
-                  </div>
-                ) : (
-                  stockAlerts.slice(0, 5).map((item, index) => (
-                    <div
-                      key={`${item.sku}-${item.variantSku || 'product'}-${item.warehouse}-${index}`}
-                      className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-smooth cursor-pointer"
-                    >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-foreground">
-                          {item.variantSku || item.sku}
-                        </span>
-                        <Badge
-                          variant={item.status === "critical" ? "destructive" : "secondary"}
-                          className="text-xs"
-                        >
-                          {item.status}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {item.name}
-                        {item.variantName && (
-                          <span className="ml-1 text-muted-foreground/80">
-                            - {item.variantName}
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-foreground">{item.currentStock} units</p>
-                      <p className="text-xs text-muted-foreground">{item.warehouse}</p>
-                    </div>
-                  </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* GRN Status */}
-        {canRead("GRN") && (
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="text-lg">GRN Status</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Pending: {grnStatus.pending} | Fully Received: {grnStatus.completed}
-                </p>
-              </div>
-              {canRead("GRN") && (
-                <Button variant="outline" size="sm" onClick={() => navigate("/grn")}>
-                  <Eye className="h-4 w-4 mr-2" />
-                  View All
-                </Button>
-              )}
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {grnStatus.recentGrns.map((grn) => (
-                  <div
-                    key={grn.id}
-                    className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-smooth cursor-pointer"
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-foreground">{grn.grnNumber}</span>
-                        <Badge
-                          variant={normalizeGrnStatus(grn.status) === "completed" ? "default" : "secondary"}
-                          className="text-xs"
-                        >
-                          {formatGrnStatus(grn.status)}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">PO: {grn.poNumber}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-muted-foreground">{grn.date}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
       {/* Missing Variant SKUs */}
       {canRead("ORDERS") && (
         <Card>
@@ -822,94 +663,43 @@ console.log("dashboard summery ",dashboardSummaryMetrics)
             </div>
           )}
 
-          {/* PO Aging & Total Inventory Value */}
-          <div className="grid gap-6 md:grid-cols-2">
-            {/* PO Aging Report */}
-            {canRead("PURCHASE_ORDERS") && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">PO Aging Report</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[250px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={poAgingChartData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis
-                          dataKey="name"
-                          stroke="hsl(var(--muted-foreground))"
-                          fontSize={12}
-                        />
-                        <YAxis
-                          stroke="hsl(var(--muted-foreground))"
-                          fontSize={12}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "hsl(var(--card))",
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "8px",
-                          }}
-                          formatter={(value: number) => formatCurrency(value)}
-                        />
-                        <Bar
-                          dataKey="value"
-                          fill="hsl(var(--primary))"
-                          name="Value"
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
+          {/* Total Inventory Value */}
+          {canRead("INVENTORY") && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Total Inventory Value</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Value</p>
+                    <p className="text-3xl font-bold text-foreground">
+                      {formatCurrency(totalInventoryValue)}
+                    </p>
                   </div>
-                  <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-                    {poAgingChartData.map((item) => (
-                      <div key={item.name} className="flex justify-between">
-                        <span className="text-muted-foreground">{item.name}:</span>
-                        <span className="font-medium">{formatNumber(item.count)} POs</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Total Inventory Value */}
-            {canRead("INVENTORY") && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Total Inventory Value</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <p className="text-sm text-muted-foreground">Total Value</p>
-                      <p className="text-3xl font-bold text-foreground">
-                        {formatCurrency(totalInventoryValue)}
+                      <p className="text-sm text-muted-foreground">CN Warehouse</p>
+                      <p className="text-xl font-semibold text-foreground">
+                        {formatCurrency(cnWarehouse?.totalValue || 0)}
                       </p>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm text-muted-foreground">CN Warehouse</p>
-                        <p className="text-xl font-semibold text-foreground">
-                          {formatCurrency(cnWarehouse?.totalValue || 0)}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">US Warehouse</p>
-                        <p className="text-xl font-semibold text-foreground">
-                          {formatCurrency(usWarehouse?.totalValue || 0)}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="pt-2 border-t">
-                      <p className="text-xs text-muted-foreground">
-                        Live warehouse totals
+                    <div>
+                      <p className="text-sm text-muted-foreground">US Warehouse</p>
+                      <p className="text-xl font-semibold text-foreground">
+                        {formatCurrency(usWarehouse?.totalValue || 0)}
                       </p>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
+                  <div className="pt-2 border-t">
+                    <p className="text-xs text-muted-foreground">
+                      Live warehouse totals
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       )}
 
@@ -961,69 +751,6 @@ console.log("dashboard summery ",dashboardSummaryMetrics)
           </div>
         </CardContent>
       </Card> */}
-
-      {/* Recent Orders */}
-      {canRead("ORDERS") && (
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="text-lg">Recent Orders</CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">Latest customer orders</p>
-            </div>
-            {canRead("ORDERS") && (
-              <Button variant="outline" size="sm" onClick={() => navigate("/orders")}>
-                <Eye className="h-4 w-4 mr-2" />
-                View All
-              </Button>
-            )}
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {recentOrders.map((order) => (
-                <div
-                  key={order.orderId}
-                  className="flex items-center justify-between p-3 rounded-lg bg-secondary/50 hover:bg-secondary transition-smooth cursor-pointer"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-foreground">
-                        {order.orderNumber || `#${order.orderId}`}
-                      </span>
-                      {order.route && (
-                        <Badge variant="outline" className="text-xs">
-                          {order.route}
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {order.customerName || "N/A"}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-foreground">
-                      {formatCurrency(order.total, order.currency || "USD")}
-                    </p>
-                    <Badge
-                      variant={
-                        order.status === "fulfilled"
-                          ? "default"
-                          : order.status === "processing"
-                            ? "secondary"
-                            : order.status === "partiallyShipped"
-                              ? "outline"
-                              : "outline"
-                      }
-                      className="text-xs mt-1"
-                    >
-                      {order.status === "partiallyShipped" ? "Partially Shipped" : order.status}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Quick Actions */}
       <Card>

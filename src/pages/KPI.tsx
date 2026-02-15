@@ -50,8 +50,7 @@ const getViewFromRoles = (roles: string[]): KPIViewType => {
 
 export default function KPI() {
   const { user } = useAuth();
-  const { roles, isAdmin } = usePermissions();
-  const { canAccess } = usePermissions();
+  const { roles, isAdmin, canAccess, canRead } = usePermissions();
   
   // Auto-detect view based on user role, but allow manual override
   const userView = getViewFromRoles(roles || []);
@@ -77,6 +76,13 @@ export default function KPI() {
     queryKey: ["dashboard-metrics-kpi"],
     queryFn: () => dashboardService.getDashboardMetrics(),
     enabled: canAccess("DASHBOARD") && kpiCore !== undefined,
+  });
+
+  // Summary metrics include stock alerts, GRN status, and PO aging used by moved dashboard cards.
+  const { data: dashboardSummaryMetrics } = useQuery({
+    queryKey: ["dashboard-metrics-summary-kpi"],
+    queryFn: () => dashboardService.getDashboardSummaryMetrics(),
+    enabled: canAccess("DASHBOARD"),
   });
 
   // Role-based visibility helpers
@@ -274,6 +280,32 @@ export default function KPI() {
   // Purchase Orders Data (from backend)
   const poKPIs = dashboardMetrics?.poKpis;
   const poAgingByVendor = dashboardMetrics?.poAgingByVendor || [];
+  const opsMetrics = dashboardSummaryMetrics || dashboardMetrics;
+  const poAging = opsMetrics?.poAging || {
+    age0To30: { count: 0, value: 0 },
+    age31To60: { count: 0, value: 0 },
+    age61To90: { count: 0, value: 0 },
+    age90Plus: { count: 0, value: 0 },
+  };
+  const poAgingBuckets = [
+    { name: "0-30 Days", count: poAging.age0To30.count, value: poAging.age0To30.value },
+    { name: "31-60 Days", count: poAging.age31To60.count, value: poAging.age31To60.value },
+    { name: "61-90 Days", count: poAging.age61To90.count, value: poAging.age61To90.value },
+    { name: "90+ Days", count: poAging.age90Plus.count, value: poAging.age90Plus.value },
+  ];
+  const stockAlerts = opsMetrics?.stockAlerts || [];
+  const stockAlertsCriticalCount =
+    opsMetrics?.stockAlertsCriticalCount ??
+    stockAlerts.filter((item) => item.status === "critical").length;
+  const stockAlertsLowCount =
+    opsMetrics?.stockAlertsLowCount ??
+    stockAlerts.filter((item) => item.status === "low").length;
+  const grnStatus = opsMetrics?.grnStatus || {
+    pending: 0,
+    completed: 0,
+    total: 0,
+    recentGrns: [],
+  };
 
   // Profitability Data
   const profitability = {
@@ -312,6 +344,20 @@ export default function KPI() {
       minimumFractionDigits: 0,
       maximumFractionDigits,
     }).format(value);
+  };
+
+  const normalizeGrnStatus = (status?: string | null) => (status || "").toLowerCase();
+  const formatGrnStatus = (status?: string | null) => {
+    switch (normalizeGrnStatus(status)) {
+      case "completed":
+        return "Fully Received";
+      case "partial":
+        return "Partially Received";
+      case "pending":
+        return "Pending";
+      default:
+        return status || "N/A";
+    }
   };
 
   return (
@@ -932,6 +978,105 @@ export default function KPI() {
           </div>
         </CardContent>
       </Card>
+      )}
+
+      {/* OPERATIONS SNAPSHOT (moved from Dashboard) */}
+      {(canRead("INVENTORY") || canRead("GRN") || canRead("PURCHASE_ORDERS")) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Operations Snapshot
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+              {canRead("INVENTORY") && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Stock Alerts</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Critical: {formatNumber(stockAlertsCriticalCount)} | Low: {formatNumber(stockAlertsLowCount)}
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {stockAlerts.length === 0 ? (
+                        <div className="text-sm text-muted-foreground">No stock alerts found</div>
+                      ) : (
+                        stockAlerts.slice(0, 5).map((item, index) => (
+                          <div key={`${item.sku}-${item.variantSku || "product"}-${item.warehouse}-${index}`} className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium">{item.variantSku || item.sku}</p>
+                              <p className="text-xs text-muted-foreground">{item.name}</p>
+                            </div>
+                            <div className="text-right">
+                              <Badge variant={item.status === "critical" ? "destructive" : "secondary"}>
+                                {item.status}
+                              </Badge>
+                              <p className="text-xs text-muted-foreground mt-1">{item.currentStock} units</p>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {canRead("GRN") && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">GRN Status</CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Pending: {formatNumber(grnStatus.pending)} | Fully Received: {formatNumber(grnStatus.completed)}
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {grnStatus.recentGrns.length === 0 ? (
+                        <div className="text-sm text-muted-foreground">No GRN records found</div>
+                      ) : (
+                        grnStatus.recentGrns.slice(0, 5).map((grn) => (
+                          <div key={grn.id} className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium">{grn.grnNumber}</p>
+                              <p className="text-xs text-muted-foreground">PO: {grn.poNumber}</p>
+                            </div>
+                            <Badge variant={normalizeGrnStatus(grn.status) === "completed" ? "default" : "secondary"}>
+                              {formatGrnStatus(grn.status)}
+                            </Badge>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {canRead("PURCHASE_ORDERS") && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">PO Aging Report</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2">
+                      {poAgingBuckets.map((bucket) => (
+                        <div key={bucket.name} className="flex items-center justify-between border-b pb-2 last:border-b-0">
+                          <div>
+                            <p className="text-sm font-medium">{bucket.name}</p>
+                            <p className="text-xs text-muted-foreground">{formatNumber(bucket.count)} POs</p>
+                          </div>
+                          <p className="text-sm font-semibold">{formatCurrency(bucket.value)}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* PROFITABILITY */}
