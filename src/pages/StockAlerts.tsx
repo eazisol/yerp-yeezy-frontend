@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import {
   Pagination,
   PaginationContent,
@@ -27,6 +29,8 @@ export default function StockAlerts() {
   const [page, setPage] = useState(1);
   const [pageSize] = useState(20);
   const [skuFilter, setSkuFilter] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
+  const { toast } = useToast();
 
   const { data, isLoading } = useQuery({
     queryKey: ["stock-alerts", page, pageSize, skuFilter],
@@ -48,6 +52,35 @@ export default function StockAlerts() {
   const handleSkuChange = (value: string) => {
     setSkuFilter(value);
     setPage(1);
+  };
+
+  // Export all filtered stock alerts from backend as CSV.
+  const handleExportToCsv = async () => {
+    try {
+      setIsExporting(true);
+      const blob = await dashboardService.exportStockAlertsToCsv(skuFilter || undefined);
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `stock_alerts_export_${new Date().toISOString().split("T")[0]}.csv`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(anchor);
+
+      toast({
+        title: "Export Successful",
+        description: "Stock alerts exported to CSV successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Export Failed",
+        description: error.message || "Failed to export stock alerts",
+        variant: "destructive",
+      });
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -73,6 +106,10 @@ export default function StockAlerts() {
             disabled={!skuFilter}
           >
             Clear
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportToCsv} disabled={isExporting}>
+            <Download className="h-4 w-4 mr-2" />
+            {isExporting ? "Exporting..." : "Export CSV"}
           </Button>
         </div>
       </CardHeader>

@@ -265,13 +265,23 @@ export default function POPreview() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {/* Generate PDF Button - Always visible */}
+          {/* Generate PDF: open server PDF if pdfPath exists, else generate from frontend */}
           <Button
             size="sm"
             variant="outline"
             onClick={async () => {
-              if (po) {
-                try {
+              if (!po) return;
+              try {
+                if (po.pdfPath?.trim()) {
+                  const url = fileUploadService.getPOPDFUrl(po.pdfPath);
+                  const token = localStorage.getItem("auth_token");
+                  const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+                  if (!res.ok) throw new Error("Failed to load PDF");
+                  const blob = await res.blob();
+                  const objectUrl = URL.createObjectURL(blob);
+                  window.open(objectUrl, "_blank");
+                  setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+                } else {
                   await generateAndSavePOPDF(
                     po,
                     warehouse ? {
@@ -294,16 +304,16 @@ export default function POPreview() {
                       phone: vendor.phone || undefined,
                       contactPerson: vendor.contactPerson || vendor.attention || undefined,
                     } : undefined,
-                    approvals // Pass approvals explicitly
+                    approvals
                   );
-                } catch (error) {
-                  console.error("Error generating PDF:", error);
-                  toast({
-                    title: "Error",
-                    description: "Failed to generate PDF. Please try again.",
-                    variant: "destructive",
-                  });
                 }
+              } catch (error) {
+                console.error("Error with PDF:", error);
+                toast({
+                  title: "Error",
+                  description: "Failed to open/generate PDF. Please try again.",
+                  variant: "destructive",
+                });
               }
             }}
           >

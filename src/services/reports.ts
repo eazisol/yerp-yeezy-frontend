@@ -2,7 +2,7 @@ import { apiClient, API_URL } from "./api";
 
 // Filter DTO
 export interface ReportFilter {
-  dateRangeType: "Days" | "Weekly" | "Monthly" | "Yearly" | "Custom";
+  dateRangeType: "Today" | "Weekly" | "Monthly" | "Yearly" | "Custom";
   startDate?: string;
   endDate?: string;
   warehouse?: string;
@@ -12,6 +12,8 @@ export interface ReportFilter {
   variantId?: number;
   pageNumber?: number;
   pageSize?: number;
+  /** Used only to force refetch when Apply is clicked; not sent to API. */
+  appliedAt?: number;
 }
 
 // Orders Report
@@ -227,6 +229,25 @@ export interface VariantsReport {
   totalPages: number;
 }
 
+// Order Projections (YEEZY ORDER PROJECTIONS)
+export interface OrderProjectionRow {
+  item: string;
+  totalSold: number;
+  totalInventory: number;
+  salesPerDay: number;
+  openToSell: number;
+  weeksOnHand: number | null;
+  suggestedOrder: number;
+  actualOrder: number;
+  factory?: string;
+  price: number;
+  totalCost: number;
+}
+
+export interface OrderProjectionsResponse {
+  items: OrderProjectionRow[];
+}
+
 class ReportsService {
   async getOrdersReport(filter: ReportFilter): Promise<OrdersReport> {
     return apiClient.post<OrdersReport>("/api/Reports/orders", filter);
@@ -254,6 +275,10 @@ class ReportsService {
 
   async getVariantsReport(filter: ReportFilter): Promise<VariantsReport> {
     return apiClient.post<VariantsReport>("/api/Reports/variants", filter);
+  }
+
+  async getOrderProjections(filter: ReportFilter): Promise<OrderProjectionsResponse> {
+    return apiClient.post<OrderProjectionsResponse>("/api/Reports/order-projections", filter);
   }
 
   async exportReport(

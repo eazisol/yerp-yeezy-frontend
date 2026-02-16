@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { LineChart, Line, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAuth } from "@/contexts/AuthContext";
@@ -29,11 +30,26 @@ import {
   orderTrendData,
   monthlyOrderTrendData,
 } from "@/data/mockDashboardData";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+export type MetricsPeriod = "daily" | "weekly" | "yearly" | "custom";
+
+// Default custom range: today
+function getTodayYyyyMmDd() {
+  return new Date().toISOString().slice(0, 10);
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const { canRead, canModify, canAccess } = usePermissions();
   const { user } = useAuth();
+  const [metricsPeriod, setMetricsPeriod] = useState<MetricsPeriod>("daily");
+  const today = getTodayYyyyMmDd();
+  const [customStartDate, setCustomStartDate] = useState(today);
+  const [customEndDate, setCustomEndDate] = useState(today);
+  // Applied range (used for API) — updated when user clicks Apply
+  const [appliedCustomStart, setAppliedCustomStart] = useState(today);
+  const [appliedCustomEnd, setAppliedCustomEnd] = useState(today);
 
   // Fetch dashboard summary first (fast path)
   const { data: dashboardSummaryMetrics, isLoading: loadingSummaryMetrics } = useQuery({
@@ -46,7 +62,6 @@ export default function Dashboard() {
     refetchOnReconnect: false,
     refetchOnMount: false,
   });
-console.log("dashboard summery ",dashboardSummaryMetrics) 
   // Fetch inventory-heavy metrics after summary (disabled: not called on dashboard)
   const { data: dashboardInventoryMetrics, isLoading: loadingInventoryMetrics } = useQuery({
     queryKey: ["dashboard-metrics-inventory"],
@@ -88,6 +103,25 @@ console.log("dashboard summery ",dashboardSummaryMetrics)
     refetchOnMount: false,
   });
 
+  // Period metrics for the 10 combined cards (daily, weekly, yearly, or custom). Custom uses applied range (set by Apply).
+  const appliedRangeValid = metricsPeriod !== "custom" || (appliedCustomStart && appliedCustomEnd && appliedCustomStart <= appliedCustomEnd);
+  const { data: periodMetrics, isLoading: loadingPeriodMetrics } = useQuery({
+    queryKey: ["dashboard-period-metrics", metricsPeriod, metricsPeriod === "custom" ? appliedCustomStart : "", metricsPeriod === "custom" ? appliedCustomEnd : ""],
+    queryFn: () =>
+      metricsPeriod === "custom"
+        ? dashboardService.getPeriodMetrics("custom", appliedCustomStart, appliedCustomEnd)
+        : dashboardService.getPeriodMetrics(metricsPeriod),
+    enabled: canAccess("DASHBOARD") && canRead("ORDERS") && (metricsPeriod !== "custom" || appliedRangeValid),
+    staleTime: 60 * 1000,
+  });
+
+  const handleApplyCustomRange = () => {
+    if (customStartDate && customEndDate && customStartDate <= customEndDate) {
+      setAppliedCustomStart(customStartDate);
+      setAppliedCustomEnd(customEndDate);
+    }
+  };
+
   // Use real data if available, otherwise use empty defaults
   const dailyOrderMetrics = dashboardMetrics?.dailyOrderMetrics || {
     totalOrders: 0,
@@ -113,13 +147,6 @@ console.log("dashboard summery ",dashboardSummaryMetrics)
   };
 
   const warehouseInventory = dashboardMetrics?.warehouseInventory || [];
-
-
-  const vendorBalanceSummary = dashboardMetrics?.vendorBalanceSummary || {
-    pendingAmount: 0,
-    paidAmount: 0,
-    totalBalance: 0,
-  };
 
   const cnWarehouse = warehouseInventory.find((warehouse) => warehouse.warehouse === "CN");
   const usWarehouse = warehouseInventory.find((warehouse) => warehouse.warehouse === "US");
@@ -162,13 +189,6 @@ console.log("dashboard summery ",dashboardSummaryMetrics)
   //   { name: "Pending", value: orderStatusBreakdown.pending, color: "hsl(var(--warning))" },
   //   { name: "Partially Shipped", value: orderStatusBreakdown.partiallyShipped, color: "hsl(var(--primary))" },
   // ];
-
-  // Vendor performance chart data
-  const vendorPerformanceData = (dashboardMetrics?.vendorPerformance || []).map(v => ({
-    name: v.vendorName.split(' ')[0], // First word only for chart
-    performance: v.onTimePercentage,
-    deliveries: v.totalDeliveries,
-  }));
 
   // Check if user has any dashboard-related permissions
   const hasOrdersPermission = canRead("ORDERS");
@@ -219,172 +239,234 @@ console.log("dashboard summery ",dashboardSummaryMetrics)
         </div>
       </div>
 
-      {/* Daily Metrics - Row 1 */}
+      {/* Order & Sales Metrics — 10 combined cards with Daily / Weekly filter */}
       {canRead("ORDERS") && (
         <div>
-          <h2 className="text-xl font-semibold mb-4">Daily Metrics</h2>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {/* Total Orders */}
-            <Card className="card-hover">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Orders (Today)
-                </CardTitle>
-                <Package className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-foreground">
-                  {formatNumber(dailyOrderMetrics.totalOrders)}
-                </div>
-                {/* <p className={`text-xs mt-1 flex items-center gap-1 ${dailyOrderMetrics.changePercentage >= 0 ? "text-success" : "text-destructive"
-                  }`}>
-                  {dailyOrderMetrics.changePercentage >= 0 ? (
-                    <TrendingUp className="h-3 w-3" />
-                  ) : (
-                    <TrendingDown className="h-3 w-3" />
-                  )}
-                  {dailyOrderMetrics.changePercentage >= 0 ? "+" : ""}
-                  {dailyOrderMetrics.changePercentage.toFixed(1)}% from yesterday
-                </p> */}
-              </CardContent>
-            </Card>
-
-            {/* Total Order Value */}
-            <Card className="card-hover">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Order Value (Today)
-                </CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-foreground">
-                  {formatCurrency(dailyOrderMetrics.totalOrderValue)}
-                </div>
-                {/* <p className={`text-xs mt-1 flex items-center gap-1 ${dailyOrderMetrics.valueChangePercentage >= 0 ? "text-success" : "text-destructive"
-                  }`}>
-                  {dailyOrderMetrics.valueChangePercentage >= 0 ? (
-                    <TrendingUp className="h-3 w-3" />
-                  ) : (
-                    <TrendingDown className="h-3 w-3" />
-                  )}
-                  {dailyOrderMetrics.valueChangePercentage >= 0 ? "+" : ""}
-                  {dailyOrderMetrics.valueChangePercentage.toFixed(1)}% from yesterday
-                </p> */}
-              </CardContent>
-            </Card>
-
-            {/* Orders Fulfilled */}
-            <Card className="card-hover">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Orders Fulfilled
-                </CardTitle>
-                <CheckCircle className="h-4 w-4 text-success" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-foreground">
-                  {formatNumber(orderStatusBreakdown.fulfilled)}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {((orderStatusBreakdown.fulfilled / orderStatusBreakdown.total) * 100).toFixed(1)}% of total
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Orders Pending */}
-            <Card className="card-hover">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Orders Pending
-                </CardTitle>
-                <Clock className="h-4 w-4 text-warning" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-foreground">
-                  {formatNumber(orderStatusBreakdown.pending)}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {((orderStatusBreakdown.pending / orderStatusBreakdown.total) * 100).toFixed(1)}% of total
-                </p>
-              </CardContent>
-            </Card>
+          <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+            <h2 className="text-xl font-semibold">
+              {metricsPeriod === "daily" ? "Daily Metrics" : metricsPeriod === "weekly" ? "Week's Metrics" : metricsPeriod === "yearly" ? "Year's Metrics" : "Custom Range"}
+            </h2>
+            <Tabs value={metricsPeriod} onValueChange={(v) => setMetricsPeriod(v as MetricsPeriod)}>
+              <TabsList>
+                <TabsTrigger value="daily">Daily</TabsTrigger>
+                <TabsTrigger value="weekly">Weekly</TabsTrigger>
+                <TabsTrigger value="yearly">Yearly</TabsTrigger>
+                <TabsTrigger value="custom">Custom</TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
-
-          {/* Daily Metrics - Row 2 */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mt-2">
-            {/* Partially Shipped */}
-            <Card className="card-hover">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Partially Shipped
-                </CardTitle>
-                <Truck className="h-4 w-4 text-primary" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-foreground">
-                  {formatNumber(orderStatusBreakdown.partiallyShipped)}
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {((orderStatusBreakdown.partiallyShipped / orderStatusBreakdown.total) * 100).toFixed(1)}% of total
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* CN Shipments */}
-            {/* <Card className="card-hover">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              CN Shipments (Today)
-            </CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">
-              {dailyShipments.cnShipments}
+          {metricsPeriod === "custom" && (
+            <div className="flex flex-wrap items-center gap-4 mb-4 p-3 rounded-lg bg-muted/50">
+              <label className="text-sm font-medium text-muted-foreground">Start date</label>
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+              />
+              <label className="text-sm font-medium text-muted-foreground">End date</label>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm"
+              />
+              <Button
+                type="button"
+                onClick={handleApplyCustomRange}
+                disabled={!customStartDate || !customEndDate || customStartDate > customEndDate}
+              >
+                Apply
+              </Button>
+              {customStartDate && customEndDate && customStartDate > customEndDate && (
+                <span className="text-sm text-destructive">Start must be before end</span>
+              )}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {((dailyShipments.cnShipments / dailyShipments.totalShipments) * 100).toFixed(1)}% of total
-            </p>
-          </CardContent>
-        </Card> */}
-
-            {/* US Shipments */}
-            {/* <Card className="card-hover">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              US Shipments (Today)
-            </CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">
-              {dailyShipments.usShipments}
-                </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {((dailyShipments.usShipments / dailyShipments.totalShipments) * 100).toFixed(1)}% of total
-            </p>
-          </CardContent>
-        </Card> */}
-
-            {/* Total Shipments */}
-            <Card className="card-hover">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Shipments (Today)
-                </CardTitle>
-                <Truck className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-foreground">
-                  {formatNumber(dailyShipments.totalShipments)}
-                </div>
-                {/* <p className="text-xs text-muted-foreground mt-1">
-                  CN: {dailyShipments.cnShipments} | US: {dailyShipments.usShipments}
-                </p> */}
-              </CardContent>
-            </Card>
-          </div>
+          )}
+          {metricsPeriod === "custom" && !appliedRangeValid ? (
+            <div className="text-center py-8 text-muted-foreground">Select a valid date range and click Apply.</div>
+          ) : loadingPeriodMetrics ? (
+            <div className="text-center py-8 text-muted-foreground">Loading metrics...</div>
+          ) : (
+            <>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                {/* 1. Total Orders */}
+                <Card className="card-hover">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Total Orders
+                    </CardTitle>
+                    <Package className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-foreground">
+                      {formatNumber(periodMetrics?.totalOrders ?? 0)}
+                    </div>
+                  </CardContent>
+                </Card>
+                {/* 2. Total Order Value */}
+                <Card className="card-hover">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Total Order Value
+                    </CardTitle>
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-foreground">
+                      {formatCurrency(periodMetrics?.totalOrderValue ?? 0)}
+                    </div>
+                  </CardContent>
+                </Card>
+                {/* 3. Shipping Collected */}
+                <Card className="card-hover">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Shipping $ Collected
+                    </CardTitle>
+                    <CheckCircle className="h-4 w-4 text-success" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-foreground">
+                      {formatCurrency(periodMetrics?.shippingCollected ?? 0)}
+                    </div>
+                  </CardContent>
+                </Card>
+                {/* 4. Tax Collected */}
+                <Card className="card-hover">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Tax $ Collected
+                    </CardTitle>
+                    <Clock className="h-4 w-4 text-warning" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-foreground">
+                      {formatCurrency(periodMetrics?.taxCollected ?? 0)}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {(periodMetrics?.taxPercentOfTotal ?? 0).toFixed(1)}% of total
+                    </p>
+                  </CardContent>
+                </Card>
+                {/* 5. Refunds */}
+                <Card className="card-hover">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Refunds $ 
+                    </CardTitle>
+                    <Truck className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-foreground">
+                      {periodMetrics?.refunds != null && periodMetrics.refunds > 0
+                        ? formatCurrency(periodMetrics.refunds)
+                        : "–"}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {(periodMetrics?.refundsPercentOfTotal ?? 0).toFixed(1)}% of total
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5 mt-4">
+                {/* 6. Net Sales */}
+                <Card className="card-hover">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Net Sales
+                    </CardTitle>
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-foreground">
+                      {periodMetrics?.netSales != null && periodMetrics.netSales > 0
+                        ? formatCurrency(periodMetrics.netSales)
+                        : "–"}
+                    </div>
+                    <p className={`text-xs mt-1 ${typeof periodMetrics?.netSalesVsPriorPercent === "number" ? (periodMetrics.netSalesVsPriorPercent >= 0 ? "text-green-600" : "text-red-600") : "text-muted-foreground"}`}>
+                      {metricsPeriod === "daily" ? "Vs yesterday " : metricsPeriod === "yearly" ? "Vs prior yr " : metricsPeriod === "custom" ? "Vs prior period " : "Vs prior wk "}
+                      {typeof periodMetrics?.netSalesVsPriorPercent === "number"
+                        ? (periodMetrics.netSalesVsPriorPercent >= 0 ? "+" : "") + periodMetrics.netSalesVsPriorPercent.toFixed(1) + "%"
+                        : "No prior data"}
+                    </p>
+                  </CardContent>
+                </Card>
+                {/* 7. Total Orders Marked Fulfilled */}
+                <Card className="card-hover">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Total Orders Marked Fulfilled
+                    </CardTitle>
+                    <CheckCircle className="h-4 w-4 text-success" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-foreground">
+                      {formatNumber(periodMetrics?.totalOrdersFulfilled ?? 0)}
+                    </div>
+                    {(metricsPeriod === "weekly" || metricsPeriod === "yearly" || metricsPeriod === "custom") && (
+                      <p className={`text-xs mt-1 ${typeof periodMetrics?.totalOrdersFulfilledVsPriorPercent === "number" ? "text-red-600" : "text-muted-foreground"}`}>
+                        {metricsPeriod === "yearly" ? "Vs prior yr " : metricsPeriod === "custom" ? "Vs prior period " : "Vs prior wk "}
+                        {typeof periodMetrics?.totalOrdersFulfilledVsPriorPercent === "number"
+                          ? (periodMetrics.totalOrdersFulfilledVsPriorPercent >= 0 ? "+" : "") + periodMetrics.totalOrdersFulfilledVsPriorPercent.toFixed(1) + "%"
+                          : "No prior data"}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+                {/* 8. Total Orders Partially Shipped */}
+                <Card className="card-hover">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Total Orders Partially Shipped
+                    </CardTitle>
+                    <Truck className="h-4 w-4 text-primary" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-foreground">
+                      {formatNumber(periodMetrics?.totalOrdersPartiallyShipped ?? 0)}
+                    </div>
+                    {(metricsPeriod === "weekly" || metricsPeriod === "yearly" || metricsPeriod === "custom") && (
+                      <p className={`text-xs mt-1 ${typeof periodMetrics?.totalOrdersPartiallyShippedVsPriorPercent === "number" ? "text-red-600" : "text-muted-foreground"}`}>
+                        {metricsPeriod === "yearly" ? "Vs prior yr " : metricsPeriod === "custom" ? "Vs prior period " : "Vs prior wk "}
+                        {typeof periodMetrics?.totalOrdersPartiallyShippedVsPriorPercent === "number"
+                          ? (periodMetrics.totalOrdersPartiallyShippedVsPriorPercent >= 0 ? "+" : "") + periodMetrics.totalOrdersPartiallyShippedVsPriorPercent.toFixed(1) + "%"
+                          : "No prior data"}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+                {/* 9. Average Days to Ship */}
+                <Card className="card-hover">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Average Days to Ship
+                    </CardTitle>
+                    <Truck className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-foreground">
+                      {(periodMetrics?.averageDaysToShip ?? 0).toFixed(1)}
+                    </div>
+                  </CardContent>
+                </Card>
+                {/* 10. Order Backlog Weekly Average */}
+                <Card className="card-hover">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Order Backlog
+                    </CardTitle>
+                    <Package className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-foreground">
+                      {formatNumber(periodMetrics?.orderBacklogWeeklyAverage ?? 0)}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -392,7 +474,43 @@ console.log("dashboard summery ",dashboardSummaryMetrics)
       {canRead("INVENTORY") && (
         <div>
           <h2 className="text-xl font-semibold mb-4">Warehouse Inventory Levels</h2>
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {/* Total Inventory Value - combined across warehouses */}
+            <Card className="card-hover">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Warehouse className="h-5 w-5 text-primary" />
+                  <CardTitle className="text-lg">Total Inventory Value</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total Value</p>
+                    <p className="text-3xl font-bold text-foreground">
+                      {formatCurrency(totalInventoryValue)}
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">CN Warehouse</p>
+                      <p className="text-xl font-semibold text-foreground">
+                        {formatCurrency(cnWarehouse?.totalValue || 0)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">US Warehouse</p>
+                      <p className="text-xl font-semibold text-foreground">
+                        {formatCurrency(usWarehouse?.totalValue || 0)}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="pt-2 border-t">
+                    <p className="text-xs text-muted-foreground">Live warehouse totals</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
             {warehouseInventory.map((warehouse) => (
               <Card key={warehouse.warehouse} className="card-hover">
                 <CardHeader className="flex flex-row items-center justify-between">
@@ -577,131 +695,6 @@ console.log("dashboard summery ",dashboardSummaryMetrics)
           </Card> */}
       {/* </div>
       </div> */}
-
-      {/* Monthly/Strategic Metrics */}
-      {(canRead("VENDORS") || canRead("PURCHASE_ORDERS") || canRead("INVENTORY")) && (
-        <div>
-          <h2 className="text-xl font-semibold mb-4">Monthly / Strategic Metrics</h2>
-
-          {/* Vendor Balance & Performance */}
-          {canRead("VENDORS") && (
-            <div className="grid gap-6 md:grid-cols-2 mb-6">
-              {/* Vendor Balance Summary */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Vendor Balance Summary</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">Pending vs Paid </p>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total Pending</p>
-                      <p className="text-2xl font-bold text-warning">
-                        {formatCurrency(vendorBalanceSummary.pendingAmount)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total Paid</p>
-                      <p className="text-2xl font-bold text-success">
-                        {formatCurrency(vendorBalanceSummary.paidAmount)}
-                      </p>
-                    </div>
-                    <div className="pt-2 border-t">
-                      <p className="text-sm text-muted-foreground">Total Balance</p>
-                      <p className="text-xl font-semibold text-foreground">
-                        {formatCurrency(vendorBalanceSummary.totalBalance)}
-                      </p>
-                    </div>
-                    {/* {canRead("VENDORS") && (
-                      <Button variant="outline" size="sm" className="w-full" onClick={() => navigate("/vendors")}>
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Vendor Details
-                      </Button>
-                    )} */}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Vendor Performance */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Vendor On-Time Performance</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[250px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={vendorPerformanceData}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis
-                          dataKey="name"
-                          stroke="hsl(var(--muted-foreground))"
-                          fontSize={12}
-                        />
-                        <YAxis
-                          stroke="hsl(var(--muted-foreground))"
-                          fontSize={12}
-                          domain={[0, 100]}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: "hsl(var(--card))",
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "8px",
-                          }}
-                          formatter={(value: number) => `${value.toFixed(1)}%`}
-                        />
-                        <Bar
-                          dataKey="performance"
-                          fill="hsl(var(--primary))"
-                          name="On-Time %"
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          {/* Total Inventory Value */}
-          {canRead("INVENTORY") && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Total Inventory Value</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total Value</p>
-                    <p className="text-3xl font-bold text-foreground">
-                      {formatCurrency(totalInventoryValue)}
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">CN Warehouse</p>
-                      <p className="text-xl font-semibold text-foreground">
-                        {formatCurrency(cnWarehouse?.totalValue || 0)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">US Warehouse</p>
-                      <p className="text-xl font-semibold text-foreground">
-                        {formatCurrency(usWarehouse?.totalValue || 0)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="pt-2 border-t">
-                    <p className="text-xs text-muted-foreground">
-                      Live warehouse totals
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
 
       {/* Monthly Orders Trend */}
       {/* <Card>

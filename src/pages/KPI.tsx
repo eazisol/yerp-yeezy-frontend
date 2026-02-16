@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -23,7 +25,9 @@ import {
   Warehouse,
   FileText,
   BarChart3,
+  Eye,
 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
 import { kpiService } from "@/services/kpi";
@@ -49,6 +53,7 @@ const getViewFromRoles = (roles: string[]): KPIViewType => {
 };
 
 export default function KPI() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { roles, isAdmin, canAccess, canRead } = usePermissions();
   
@@ -280,6 +285,19 @@ export default function KPI() {
   // Purchase Orders Data (from backend)
   const poKPIs = dashboardMetrics?.poKpis;
   const poAgingByVendor = dashboardMetrics?.poAgingByVendor || [];
+  // Vendor balance & performance (moved from Dashboard; data from full or summary metrics)
+  const vendorBalanceSummary =
+    dashboardMetrics?.vendorBalanceSummary ??
+    dashboardSummaryMetrics?.vendorBalanceSummary ?? {
+      pendingAmount: 0,
+      paidAmount: 0,
+      totalBalance: 0,
+    };
+  const vendorPerformanceData = (dashboardMetrics?.vendorPerformance ?? []).map((v) => ({
+    name: v.vendorName.split(" ")[0],
+    performance: v.onTimePercentage,
+    deliveries: v.totalDeliveries,
+  }));
   const opsMetrics = dashboardSummaryMetrics || dashboardMetrics;
   const poAging = opsMetrics?.poAging || {
     age0To30: { count: 0, value: 0 },
@@ -474,6 +492,77 @@ export default function KPI() {
           </div>
         </CardContent>
       </Card>
+      )}
+
+      {/* Vendor Balance Summary & Vendor On-Time Performance (moved from Dashboard) */}
+      {canRead("VENDORS") && (
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Vendor Balance Summary</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">Pending vs Paid</p>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Pending</p>
+                  <p className="text-2xl font-bold text-amber-600 dark:text-amber-500">
+                    {formatCurrency(vendorBalanceSummary.pendingAmount)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Paid</p>
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-500">
+                    {formatCurrency(vendorBalanceSummary.paidAmount)}
+                  </p>
+                </div>
+                <div className="pt-2 border-t">
+                  <p className="text-sm text-muted-foreground">Total Balance</p>
+                  <p className="text-xl font-semibold text-foreground">
+                    {formatCurrency(vendorBalanceSummary.totalBalance)}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Vendor On-Time Performance</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-[250px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={vendorPerformanceData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis
+                      dataKey="name"
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={12}
+                    />
+                    <YAxis
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={12}
+                      domain={[0, 100]}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                      }}
+                      formatter={(value: number) => `${value.toFixed(1)}%`}
+                    />
+                    <Bar
+                      dataKey="performance"
+                      fill="hsl(var(--primary))"
+                      name="On-Time %"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* SALES PERFORMANCE */}
@@ -994,10 +1083,18 @@ export default function KPI() {
               {canRead("INVENTORY") && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Stock Alerts</CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Critical: {formatNumber(stockAlertsCriticalCount)} | Low: {formatNumber(stockAlertsLowCount)}
-                    </p>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <CardTitle className="text-lg">Stock Alerts</CardTitle>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Critical: {formatNumber(stockAlertsCriticalCount)} | Low: {formatNumber(stockAlertsLowCount)}
+                        </p>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => navigate("/stock-alerts")}>
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Details
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
@@ -1027,10 +1124,18 @@ export default function KPI() {
               {canRead("GRN") && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">GRN Status</CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Pending: {formatNumber(grnStatus.pending)} | Fully Received: {formatNumber(grnStatus.completed)}
-                    </p>
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <CardTitle className="text-lg">GRN Status</CardTitle>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Pending: {formatNumber(grnStatus.pending)} | Fully Received: {formatNumber(grnStatus.completed)}
+                        </p>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => navigate("/grn")}>
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Details
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
@@ -1057,7 +1162,13 @@ export default function KPI() {
               {canRead("PURCHASE_ORDERS") && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">PO Aging Report</CardTitle>
+                    <div className="flex items-start justify-between gap-2">
+                      <CardTitle className="text-lg">PO Aging Report</CardTitle>
+                      <Button variant="outline" size="sm" onClick={() => navigate("/purchase-orders")}>
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Details
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2">

@@ -237,6 +237,26 @@ export interface TopSkuBacklogRisk {
   weeksOnHand: number; // Approximate weeks on hand based on MTD sales velocity
 }
 
+// Period metrics for Dashboard (daily, weekly, yearly, or custom) — same 10 cards, values vary by period
+export interface DashboardPeriodMetrics {
+  period: "daily" | "weekly" | "yearly" | "custom";
+  totalOrders: number;
+  totalOrderValue: number;
+  shippingCollected: number;
+  taxCollected: number;
+  taxPercentOfTotal: number;
+  refunds: number;
+  refundsPercentOfTotal: number;
+  netSales: number;
+  netSalesVsPriorPercent: number | null;
+  totalOrdersFulfilled: number;
+  totalOrdersFulfilledVsPriorPercent: number | null;
+  totalOrdersPartiallyShipped: number;
+  totalOrdersPartiallyShippedVsPriorPercent: number | null;
+  averageDaysToShip: number;
+  orderBacklogWeeklyAverage: number;
+}
+
 class DashboardService {
   async getDashboardMetrics(): Promise<DashboardMetrics> {
     return apiClient.get<DashboardMetrics>("/api/Dashboard/metrics");
@@ -245,6 +265,20 @@ class DashboardService {
   // Fetch fast summary metrics for first paint
   async getDashboardSummaryMetrics(): Promise<DashboardMetrics> {
     return apiClient.get<DashboardMetrics>("/api/Dashboard/metrics/summary");
+  }
+
+  // Fetch period metrics (daily, weekly, yearly, or custom) for the 10 combined cards. For custom, pass startDate and endDate (yyyy-MM-dd).
+  async getPeriodMetrics(
+    period: "daily" | "weekly" | "yearly" | "custom",
+    startDate?: string,
+    endDate?: string
+  ): Promise<DashboardPeriodMetrics> {
+    const params = new URLSearchParams({ period });
+    if (period === "custom" && startDate && endDate) {
+      params.append("startDate", startDate);
+      params.append("endDate", endDate);
+    }
+    return apiClient.get<DashboardPeriodMetrics>(`/api/Dashboard/metrics/period?${params.toString()}`);
   }
 
   // Fetch inventory-heavy dashboard metrics
@@ -270,6 +304,27 @@ class DashboardService {
     if (sku) params.append("sku", sku);
 
     return apiClient.get<StockAlertsResponse>(`/api/Dashboard/stock-alerts?${params.toString()}`);
+  }
+
+  // Export all filtered stock alerts as CSV from backend
+  async exportStockAlertsToCsv(sku?: string): Promise<Blob> {
+    const params = new URLSearchParams();
+    if (sku) params.append("sku", sku);
+
+    const token = localStorage.getItem("auth_token");
+    const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:5234";
+    const response = await fetch(`${baseUrl}/api/Dashboard/stock-alerts/export-csv?${params.toString()}`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to export stock alerts");
+    }
+
+    return response.blob();
   }
 
   // Fetch paged missing variant SKUs from orders

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,7 @@ import {
   CreditCard,
   Users,
   Boxes,
+  TrendingUp,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -70,17 +71,64 @@ const MUTED = "hsl(var(--muted))";
 const INFO = "hsl(var(--chart-5, var(--primary)))";
 const COLORS = [PRIMARY, SECONDARY, ACCENT, MUTED, INFO];
 
+// Format date as YYYY-MM-DD in local timezone (input[type="date"] expects this).
+function toLocalYMD(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+// Return start/end dates (YYYY-MM-DD) for preset date range types.
+function getDateRangeForType(dateRangeType: string): { startDate: string; endDate: string } {
+  const today = new Date();
+  if (dateRangeType === "Today") {
+    const d = toLocalYMD(today);
+    return { startDate: d, endDate: d };
+  }
+  if (dateRangeType === "Weekly") {
+    const start = new Date(today);
+    start.setDate(start.getDate() - 7);
+    return { startDate: toLocalYMD(start), endDate: toLocalYMD(today) };
+  }
+  if (dateRangeType === "Monthly") {
+    const start = new Date(today.getFullYear(), today.getMonth(), 1);
+    const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    return { startDate: toLocalYMD(start), endDate: toLocalYMD(end) };
+  }
+  if (dateRangeType === "Yearly") {
+    const start = new Date(today.getFullYear(), 0, 1);
+    const end = new Date(today.getFullYear(), 11, 31);
+    return { startDate: toLocalYMD(start), endDate: toLocalYMD(end) };
+  }
+  return { startDate: "", endDate: "" };
+}
+
+const defaultFilterBase: ReportFilter = {
+  dateRangeType: "Today",
+  warehouse: "All",
+  pageNumber: 1,
+  pageSize: 50,
+};
+const initialDates = getDateRangeForType("Today");
+
 export default function Reports() {
   const { toast } = useToast();
   const navigate = useNavigate();
-  
-  // Filter state
+
+  // Draft filter (what user edits in UI); applied filter (what we send to API).
   const [filter, setFilter] = useState<ReportFilter>({
-    dateRangeType: "Days",
-    warehouse: "All",
-    pageNumber: 1,
-    pageSize: 50,
+    ...defaultFilterBase,
+    startDate: initialDates.startDate,
+    endDate: initialDates.endDate,
   });
+  // Initial load: Today is already applied so first fetch uses today's range.
+  const [appliedFilter, setAppliedFilter] = useState<ReportFilter>(() => ({
+    ...defaultFilterBase,
+    startDate: initialDates.startDate,
+    endDate: initialDates.endDate,
+    appliedAt: 0,
+  }));
   const [activeTab, setActiveTab] = useState("orders");
 
   // Fetch vendors for filter dropdown
@@ -95,56 +143,73 @@ export default function Reports() {
     queryFn: () => productService.getProducts(1, 1000, ""),
   });
 
-  // Fetch reports based on active tab
+  // Fetch reports based on active tab (use applied filter, not draft).
   const { data: ordersReport, isLoading: loadingOrders } = useQuery({
-    queryKey: ["orders-report", filter],
-    queryFn: () => reportsService.getOrdersReport(filter),
+    queryKey: ["orders-report", appliedFilter],
+    queryFn: () => reportsService.getOrdersReport(appliedFilter),
     enabled: activeTab === "orders",
   });
 
   const { data: revenueReport, isLoading: loadingRevenue } = useQuery({
-    queryKey: ["revenue-report", filter],
-    queryFn: () => reportsService.getRevenueReport(filter),
+    queryKey: ["revenue-report", appliedFilter],
+    queryFn: () => reportsService.getRevenueReport(appliedFilter),
     enabled: activeTab === "revenue",
   });
 
   const { data: poReport, isLoading: loadingPO } = useQuery({
-    queryKey: ["po-report", filter],
-    queryFn: () => reportsService.getPurchaseOrdersReport(filter),
+    queryKey: ["po-report", appliedFilter],
+    queryFn: () => reportsService.getPurchaseOrdersReport(appliedFilter),
     enabled: activeTab === "purchase-orders",
   });
 
   const { data: inventoryReport, isLoading: loadingInventory } = useQuery({
-    queryKey: ["inventory-report", filter],
-    queryFn: () => reportsService.getInventoryReport(filter),
+    queryKey: ["inventory-report", appliedFilter],
+    queryFn: () => reportsService.getInventoryReport(appliedFilter),
     enabled: activeTab === "inventory",
   });
 
   const { data: paymentsReport, isLoading: loadingPayments } = useQuery({
-    queryKey: ["payments-report", filter],
-    queryFn: () => reportsService.getPaymentsReport(filter),
+    queryKey: ["payments-report", appliedFilter],
+    queryFn: () => reportsService.getPaymentsReport(appliedFilter),
     enabled: activeTab === "payments",
   });
 
   const { data: vendorsReport, isLoading: loadingVendors } = useQuery({
-    queryKey: ["vendors-report", filter],
-    queryFn: () => reportsService.getVendorsReport(filter),
+    queryKey: ["vendors-report", appliedFilter],
+    queryFn: () => reportsService.getVendorsReport(appliedFilter),
     enabled: activeTab === "vendors",
   });
 
   const { data: variantsReport, isLoading: loadingVariants } = useQuery({
-    queryKey: ["variants-report", filter],
-    queryFn: () => reportsService.getVariantsReport(filter),
+    queryKey: ["variants-report", appliedFilter],
+    queryFn: () => reportsService.getVariantsReport(appliedFilter),
     enabled: activeTab === "variants",
   });
 
-  const handleFilterChange = (updated: Partial<ReportFilter>) => {
-    setFilter({
-      ...filter,
-      ...updated,
-      pageNumber: 1, // reset to first page on any filter change
+  // Auto-fill start/end dates when date range type changes (preset) or on mount.
+  useEffect(() => {
+    const type = filter.dateRangeType;
+    if (type === "Today" || type === "Weekly" || type === "Monthly" || type === "Yearly") {
+      const { startDate, endDate } = getDateRangeForType(type);
+      setFilter((prev) => ({ ...prev, startDate, endDate }));
+    }
+  }, [filter.dateRangeType]);
+
+  const handleFilterChange = useCallback((updated: Partial<ReportFilter>) => {
+    setFilter((prev) => {
+      const next = { ...prev, ...updated };
+      if ("startDate" in updated || "endDate" in updated) next.dateRangeType = "Custom";
+      return next;
     });
-  };
+  }, []);
+
+  const handleApplyFilter = useCallback(() => {
+    setAppliedFilter((prev) => ({
+      ...filter,
+      pageNumber: 1,
+      appliedAt: Date.now(),
+    }));
+  }, [filter]);
 
   // Transform revenue data for pie chart
   const warehouseRevenueData =
@@ -155,7 +220,7 @@ export default function Reports() {
 
   const handleExport = async (format: "pdf" | "excel" | "csv") => {
     try {
-      const blob = await reportsService.exportReport(activeTab, format, filter);
+      const blob = await reportsService.exportReport(activeTab, format, appliedFilter);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -200,7 +265,13 @@ export default function Reports() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Reports</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold">Reports</h1>
+          <Button variant="outline" size="sm" onClick={() => navigate("/order-projections")}>
+            <TrendingUp className="mr-2 h-4 w-4" />
+            Order Projections
+          </Button>
+        </div>
         {/* <div className="flex gap-2">
           <Button
             variant="outline"
@@ -235,7 +306,7 @@ export default function Reports() {
           <CardTitle>Filters</CardTitle>
         </CardHeader> */}
         <CardHeader>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
             <div>
               <label className="text-sm font-medium mb-2 block">Date Range</label>
               <Select
@@ -248,7 +319,7 @@ export default function Reports() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Days">Days</SelectItem>
+                  <SelectItem value="Today">Today</SelectItem>
                   <SelectItem value="Weekly">Weekly</SelectItem>
                   <SelectItem value="Monthly">Monthly</SelectItem>
                   <SelectItem value="Yearly">Yearly</SelectItem>
@@ -257,30 +328,22 @@ export default function Reports() {
               </Select>
             </div>
 
-            {(filter.dateRangeType === "Days" || filter.dateRangeType === "Custom") && (
-              <>
-                <div>
-                  <label className="text-sm font-medium mb-2 block">Start Date</label>
-                  <Input
-                    type="date"
-                    value={filter.startDate || ""}
-                onChange={(e) =>
-                  handleFilterChange({ startDate: e.target.value })
-                }
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium mb-2 block">End Date</label>
-                  <Input
-                    type="date"
-                    value={filter.endDate || ""}
-                onChange={(e) =>
-                  handleFilterChange({ endDate: e.target.value })
-                }
-                  />
-                </div>
-              </>
-            )}
+            <div>
+              <label className="text-sm font-medium mb-2 block">Start Date</label>
+              <Input
+                type="date"
+                value={filter.startDate || ""}
+                onChange={(e) => handleFilterChange({ startDate: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-2 block">End Date</label>
+              <Input
+                type="date"
+                value={filter.endDate || ""}
+                onChange={(e) => handleFilterChange({ endDate: e.target.value })}
+              />
+            </div>
 
             <div>
               <label className="text-sm font-medium mb-2 block">Warehouse</label>
@@ -339,6 +402,9 @@ export default function Reports() {
                 />
               </div>
             )}
+            <div>
+              <Button onClick={handleApplyFilter}>Apply</Button>
+            </div>
           </div>
         </CardHeader>
       </Card>
@@ -581,12 +647,12 @@ export default function Reports() {
                           variant="outline"
                           size="sm"
                           onClick={() =>
-                            setFilter((prev) => ({
+                            setAppliedFilter((prev) => ({
                               ...prev,
                               pageNumber: Math.max((prev.pageNumber || 1) - 1, 1),
                             }))
                           }
-                          disabled={(filter.pageNumber || 1) <= 1 || loadingOrders}
+                          disabled={(appliedFilter.pageNumber || 1) <= 1 || loadingOrders}
                         >
                           Previous
                         </Button>
@@ -597,12 +663,12 @@ export default function Reports() {
                           variant="outline"
                           size="sm"
                           onClick={() =>
-                            setFilter((prev) => ({
+                            setAppliedFilter((prev) => ({
                               ...prev,
                               pageNumber: Math.min((prev.pageNumber || 1) + 1, ordersReport.totalPages),
                             }))
                           }
-                          disabled={(filter.pageNumber || 1) >= ordersReport.totalPages || loadingOrders}
+                          disabled={(appliedFilter.pageNumber || 1) >= ordersReport.totalPages || loadingOrders}
                         >
                           Next
                         </Button>
@@ -1238,12 +1304,12 @@ export default function Reports() {
                       variant="outline"
                       size="sm"
                       onClick={() =>
-                        setFilter((prev) => ({
+                        setAppliedFilter((prev) => ({
                           ...prev,
                           pageNumber: Math.max((prev.pageNumber || 1) - 1, 1),
                         }))
                       }
-                      disabled={(filter.pageNumber || 1) <= 1 || loadingVariants}
+                      disabled={(appliedFilter.pageNumber || 1) <= 1 || loadingVariants}
                     >
                       Previous
                     </Button>
@@ -1254,14 +1320,14 @@ export default function Reports() {
                       variant="outline"
                       size="sm"
                       onClick={() =>
-                        setFilter((prev) => ({
+                        setAppliedFilter((prev) => ({
                           ...prev,
                           pageNumber: (prev.pageNumber || 1) + 1,
                         }))
                       }
                       disabled={
-                        !filter.pageNumber ||
-                        filter.pageNumber >= variantsReport.totalPages ||
+                        !appliedFilter.pageNumber ||
+                        appliedFilter.pageNumber >= variantsReport.totalPages ||
                         loadingVariants
                       }
                     >

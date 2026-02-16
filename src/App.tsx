@@ -38,6 +38,7 @@ import Roles from "./pages/Roles";
 import RolePermissions from "./pages/RolePermissions";
 import KPI from "./pages/KPI";
 import Reports from "./pages/Reports";
+import OrderProjections from "./pages/OrderProjections";
 import StockAlerts from "./pages/StockAlerts";
 import MissingVariantSkus from "./pages/MissingVariantSkus";
 import NotFound from "./pages/NotFound";
@@ -269,6 +270,7 @@ const App = () => (
               <Route path="/settings" element={<Settings />} />
               <Route path="/kpi" element={<KPI />} />
               <Route path="/reports" element={<Reports />} />
+              <Route path="/order-projections" element={<OrderProjections />} />
               <Route path="/stock-alerts" element={<StockAlerts />} />
               <Route path="/missing-variant-skus" element={<MissingVariantSkus />} />
             </Route>

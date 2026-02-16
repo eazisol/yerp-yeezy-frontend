@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, Eye, Download, RefreshCw } from "lucide-react";
+import { Search, Eye, Download, RefreshCw, ArrowUp, ArrowDown } from "lucide-react";
 import { usePermissions } from "@/hooks/usePermissions";
 import {
   Table,
@@ -43,6 +43,7 @@ export default function Customers() {
   const [showSyncConfirm, setShowSyncConfirm] = useState(false);
   const [syncProgress, setSyncProgress] = useState<string>("");
   const [maxCustomers, setMaxCustomers] = useState<number | undefined>(undefined);
+  const [ordersSortDirection, setOrdersSortDirection] = useState<"asc" | "desc">("desc");
   const navigate = useNavigate();
   const { canRead, canModify } = usePermissions();
   const { toast } = useToast();
@@ -50,8 +51,16 @@ export default function Customers() {
 
   // Fetch customers with pagination
   const { data: customersData, isLoading: loadingCustomers } = useQuery({
-    queryKey: ["customers", page, pageSize, searchTerm],
-    queryFn: () => customerService.getCustomers(page, pageSize, searchTerm || undefined),
+    queryKey: ["customers", page, pageSize, searchTerm, ordersSortDirection],
+    queryFn: () =>
+      customerService.getCustomers(
+        page,
+        pageSize,
+        searchTerm || undefined,
+        undefined,
+        "orderCount",
+        ordersSortDirection
+      ),
   });
 
   // Get Swell customer count mutation
@@ -155,6 +164,12 @@ export default function Customers() {
       return `${customer.firstName || ""} ${customer.lastName || ""}`.trim();
     }
     return "N/A";
+  };
+
+  // Toggle server-side sorting for Orders column.
+  const toggleOrdersSort = () => {
+    setOrdersSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+    setPage(1);
   };
 
   return (
@@ -284,7 +299,31 @@ export default function Customers() {
                     <TableHead>Customer</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Type</TableHead>
-                    <TableHead>Orders</TableHead>
+                    <TableHead>
+                      <button
+                        type="button"
+                        onClick={toggleOrdersSort}
+                        className="inline-flex items-center gap-1.5 hover:text-foreground"
+                      >
+                        <span className="font-medium">Orders</span>
+                        <span className="inline-flex flex-col leading-none">
+                          <ArrowUp
+                            className={`h-3 w-3 ${
+                              ordersSortDirection === "asc"
+                                ? "text-primary"
+                                : "text-muted-foreground/40"
+                            }`}
+                          />
+                          <ArrowDown
+                            className={`-mt-0.5 h-3 w-3 ${
+                              ordersSortDirection === "desc"
+                                ? "text-primary"
+                                : "text-muted-foreground/40"
+                            }`}
+                          />
+                        </span>
+                      </button>
+                    </TableHead>
                     <TableHead className="text-right">Order Value</TableHead>
                     <TableHead>First Order</TableHead>
                     <TableHead>Last Order</TableHead>

@@ -34,7 +34,9 @@ class CustomerService {
     page: number = 1,
     pageSize: number = 50,
     search?: string,
-    type?: string
+    type?: string,
+    sortBy?: string,
+    sortDirection?: "asc" | "desc"
   ): Promise<CustomersResponse> {
     const params = new URLSearchParams({
       page: page.toString(),
@@ -42,6 +44,8 @@ class CustomerService {
     });
     if (search) params.append("search", search);
     if (type) params.append("type", type);
+    if (sortBy) params.append("sortBy", sortBy);
+    if (sortDirection) params.append("sortDirection", sortDirection);
 
     return apiClient.get<CustomersResponse>(`/api/Customers?${params.toString()}`);
   }
