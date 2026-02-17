@@ -537,48 +537,62 @@ Packing List:
     }
   };
 
-  // Shift index-keyed state when inserting at 0: old 0→1, 1→2, etc.; new data at 0.
-  const shiftStateForInsertAt0 = (newVariants: ProductVariant[], newProduct?: Product) => {
+  // Shift index-keyed state when inserting at given index: indices >= insertIndex move by +1; new data at insertIndex.
+  const shiftStateForInsertAt = (insertIndex: number, newVariants: ProductVariant[], newProduct?: Product) => {
     setLineItemVariants((prev) => {
-      const next: Record<number, ProductVariant[]> = { 0: newVariants };
+      const next: Record<number, ProductVariant[]> = {};
       Object.entries(prev).forEach(([k, v]) => {
-        next[Number(k) + 1] = v;
+        const idx = Number(k);
+        if (idx >= insertIndex) next[idx + 1] = v;
+        else next[idx] = v;
       });
+      next[insertIndex] = newVariants;
       return next;
     });
     setLineItemProducts((prev) => {
       const next: Record<number, Product> = {};
-      if (newProduct) next[0] = newProduct;
       Object.entries(prev).forEach(([k, v]) => {
-        next[Number(k) + 1] = v;
+        const idx = Number(k);
+        if (idx >= insertIndex) next[idx + 1] = v;
+        else next[idx] = v;
       });
+      if (newProduct) next[insertIndex] = newProduct;
       return next;
     });
   };
 
+  // Add a new line item at the end of the list (bottom).
   const addLineItem = () => {
-    insert(0, {
+    const newIndex = fields.length;
+    append({
       productId: 0,
       productVariantId: undefined,
       orderedQuantity: 1,
       unitPrice: 0,
       notes: "",
     });
-    shiftStateForInsertAt0([]);
+    setLineItemVariants((prev) => ({ ...prev, [newIndex]: [] }));
   };
 
-  // Add a new variant row at start (same productId); keeps group in one card.
+  // Add a new variant row at the end of the product's group (bottom of that card).
   const addVariantToProduct = async (productId: number) => {
+    const lineItemsCurrent = form.getValues("lineItems") || [];
+    const group = lineItemsCurrent.reduce<{ lastIndex: number } | null>((acc, item, index) => {
+      if (item?.productId === productId) return { lastIndex: index };
+      return acc;
+    }, null);
+    const insertAt = group ? group.lastIndex + 1 : lineItemsCurrent.length;
+
     const productDetail = await getProductDetailCached(productId);
     const defaultPrice = productDetail.price ?? 0;
-    insert(0, {
+    insert(insertAt, {
       productId,
       productVariantId: undefined,
       orderedQuantity: 1,
       unitPrice: defaultPrice,
       notes: "",
     });
-    shiftStateForInsertAt0(productDetail.variants || [], mapProductDetailToProduct(productDetail));
+    shiftStateForInsertAt(insertAt, productDetail.variants || [], mapProductDetailToProduct(productDetail));
   };
 
   const addPayment = () => {
@@ -1004,15 +1018,7 @@ Packing List:
           {/* Line Items */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Line Items</CardTitle>
-                </div>
-                <Button type="button" onClick={addLineItem} variant="outline" size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Item
-                </Button>
-              </div>
+              <CardTitle>Line Items</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {lineItemGroups.map((group) => {
@@ -1178,14 +1184,10 @@ Packing List:
 
                 return (
                   <Card key={`product-${group.productId}-${firstIndex}`} className="p-4">
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="mb-4">
                       <h4 className="font-medium text-foreground">
                         {productName} {productSku ? `(${productSku})` : ""}
                       </h4>
-                      <Button type="button" variant="outline" size="sm" onClick={() => addVariantToProduct(group.productId)}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add variant
-                      </Button>
                     </div>
                     <div className="space-y-3">
                       {group.indices.map((index) => {
@@ -1298,24 +1300,34 @@ Packing List:
                         );
                       })}
                     </div>
+                    <div className="flex justify-end pt-3 mt-3 border-t">
+                      <Button type="button" variant="outline" size="sm" onClick={() => addVariantToProduct(group.productId)}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add variant
+                      </Button>
+                    </div>
                   </Card>
                 );
               })}
 
               {fields.length === 0 && (
                 <div className="text-center py-8 text-muted-foreground">
-                  No line items added. Click "Add Item" to add products.
+                  No line items added. Click "Add Item" below to add products.
                 </div>
               )}
 
-              {fields.length > 0 && (
-                <div className="flex justify-end pt-4 border-t">
+              <div className="flex justify-between items-center pt-4 border-t">
+                <Button type="button" onClick={addLineItem} variant="outline" size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Item
+                </Button>
+                {fields.length > 0 && (
                   <div className="text-right">
                     <p className="text-sm text-muted-foreground">Total Value</p>
                     <p className="text-2xl font-bold">${calculateTotal().toFixed(2)}</p>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </CardContent>
           </Card>
 

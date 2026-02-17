@@ -384,12 +384,14 @@ export default function Dashboard() {
                         ? formatCurrency(periodMetrics.netSales)
                         : "–"}
                     </div>
-                    <p className={`text-xs mt-1 ${typeof periodMetrics?.netSalesVsPriorPercent === "number" ? (periodMetrics.netSalesVsPriorPercent >= 0 ? "text-green-600" : "text-red-600") : "text-muted-foreground"}`}>
-                      {metricsPeriod === "daily" ? "Vs yesterday " : metricsPeriod === "yearly" ? "Vs prior yr " : metricsPeriod === "custom" ? "Vs prior period " : "Vs prior wk "}
-                      {typeof periodMetrics?.netSalesVsPriorPercent === "number"
-                        ? (periodMetrics.netSalesVsPriorPercent >= 0 ? "+" : "") + periodMetrics.netSalesVsPriorPercent.toFixed(1) + "%"
-                        : "No prior data"}
-                    </p>
+                    {metricsPeriod !== "daily" && (
+                      <p className={`text-xs mt-1 ${typeof periodMetrics?.netSalesVsPriorPercent === "number" ? (periodMetrics.netSalesVsPriorPercent >= 0 ? "text-green-600" : "text-red-600") : "text-muted-foreground"}`}>
+                        {metricsPeriod === "yearly" ? "Vs prior yr " : metricsPeriod === "custom" ? "Vs prior period " : "Vs prior wk "}
+                        {typeof periodMetrics?.netSalesVsPriorPercent === "number"
+                          ? (periodMetrics.netSalesVsPriorPercent >= 0 ? "+" : "") + periodMetrics.netSalesVsPriorPercent.toFixed(1) + "%"
+                          : "No prior data"}
+                      </p>
+                    )}
                   </CardContent>
                 </Card>
                 {/* 7. Total Orders Marked Fulfilled */}
