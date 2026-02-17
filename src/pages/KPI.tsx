@@ -866,118 +866,119 @@ export default function KPI() {
 
       {/* INVENTORY SECTION */}
       {showInventory && (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Warehouse className="h-5 w-5" />
-            Inventory
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Warehouse Details */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {warehouses.map((warehouse) => (
-              <Card key={warehouse.name}>
-                <CardHeader>
-                  <CardTitle className="text-lg">{warehouse.name}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Total SKUs</span>
-                    <span className="font-medium">{formatNumber(warehouse.totalSKUs)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Total Units</span>
-                    <span className="font-medium">{formatNumber(warehouse.totalUnits)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Total Value</span>
-                    <span className="font-medium">{formatCurrency(warehouse.totalValue)}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+        <></>
+      // <Card>
+      //   <CardHeader>
+      //     <CardTitle className="flex items-center gap-2">
+      //       <Warehouse className="h-5 w-5" />
+      //       Inventory
+      //     </CardTitle>
+      //   </CardHeader>
+      //   <CardContent className="space-y-6">
+      //     {/* Warehouse Details */}
+      //     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      //       {warehouses.map((warehouse) => (
+      //         <Card key={warehouse.name}>
+      //           <CardHeader>
+      //             <CardTitle className="text-lg">{warehouse.name}</CardTitle>
+      //           </CardHeader>
+      //           <CardContent className="space-y-2">
+      //             <div className="flex justify-between">
+      //               <span className="text-sm text-muted-foreground">Total SKUs</span>
+      //               <span className="font-medium">{formatNumber(warehouse.totalSKUs)}</span>
+      //             </div>
+      //             <div className="flex justify-between">
+      //               <span className="text-sm text-muted-foreground">Total Units</span>
+      //               <span className="font-medium">{formatNumber(warehouse.totalUnits)}</span>
+      //             </div>
+      //             <div className="flex justify-between">
+      //               <span className="text-sm text-muted-foreground">Total Value</span>
+      //               <span className="font-medium">{formatCurrency(warehouse.totalValue)}</span>
+      //             </div>
+      //           </CardContent>
+      //         </Card>
+      //       ))}
+      //     </div>
 
-          {/* Global Inventory KPIs */}
-          <div className="pt-4 border-t">
-            <h3 className="text-lg font-semibold mb-4">
-              {selectedRole === "merch" ? "Inventory Performance & Sell-Through" : "Global Inventory KPIs"}
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Total Inventory Value</p>
-                <p className="text-2xl font-bold">{formatCurrency(globalInventory.totalValue)}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Weeks on Hand</p>
-                <p className="text-2xl font-bold">{globalInventory.weeksOnHand}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Inventory Turns (TTM)</p>
-                <p className="text-2xl font-bold">{globalInventory.inventoryTurnsTTM}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Inventory Turns (MTD)</p>
-                <p className="text-2xl font-bold">{globalInventory.inventoryTurnsMTD}</p>
-              </div>
-              {selectedRole === "merch" && (
-                <>
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">30-Day Sell-Through %</p>
-                    <p className="text-2xl font-bold">65.2%</p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm text-muted-foreground">60-Day Sell-Through %</p>
-                    <p className="text-2xl font-bold">78.5%</p>
-                  </div>
-                </>
-              )}
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Dead Stock Value</p>
-                <p className="text-2xl font-bold text-red-600">{formatCurrency(globalInventory.deadStockValue)}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Low Velocity (30 days)</p>
-                <p className="text-2xl font-bold">{formatCurrency(globalInventory.lowVelocity30Days)}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Low Velocity (60 days)</p>
-                <p className="text-2xl font-bold">{formatCurrency(globalInventory.lowVelocity60Days)}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Low Velocity (90 days)</p>
-                <p className="text-2xl font-bold">{formatCurrency(globalInventory.lowVelocity90Days)}</p>
-              </div>
-            </div>
-          </div>
+      //     {/* Global Inventory KPIs */}
+      //     <div className="pt-4 border-t">
+      //       <h3 className="text-lg font-semibold mb-4">
+      //         {selectedRole === "merch" ? "Inventory Performance & Sell-Through" : "Global Inventory KPIs"}
+      //       </h3>
+      //       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      //         <div className="space-y-1">
+      //           <p className="text-sm text-muted-foreground">Total Inventory Value</p>
+      //           <p className="text-2xl font-bold">{formatCurrency(globalInventory.totalValue)}</p>
+      //         </div>
+      //         <div className="space-y-1">
+      //           <p className="text-sm text-muted-foreground">Weeks on Hand</p>
+      //           <p className="text-2xl font-bold">{globalInventory.weeksOnHand}</p>
+      //         </div>
+      //         <div className="space-y-1">
+      //           <p className="text-sm text-muted-foreground">Inventory Turns (TTM)</p>
+      //           <p className="text-2xl font-bold">{globalInventory.inventoryTurnsTTM}</p>
+      //         </div>
+      //         <div className="space-y-1">
+      //           <p className="text-sm text-muted-foreground">Inventory Turns (MTD)</p>
+      //           <p className="text-2xl font-bold">{globalInventory.inventoryTurnsMTD}</p>
+      //         </div>
+      //         {selectedRole === "merch" && (
+      //           <>
+      //             <div className="space-y-1">
+      //               <p className="text-sm text-muted-foreground">30-Day Sell-Through %</p>
+      //               <p className="text-2xl font-bold">65.2%</p>
+      //             </div>
+      //             <div className="space-y-1">
+      //               <p className="text-sm text-muted-foreground">60-Day Sell-Through %</p>
+      //               <p className="text-2xl font-bold">78.5%</p>
+      //             </div>
+      //           </>
+      //         )}
+      //         <div className="space-y-1">
+      //           <p className="text-sm text-muted-foreground">Dead Stock Value</p>
+      //           <p className="text-2xl font-bold text-red-600">{formatCurrency(globalInventory.deadStockValue)}</p>
+      //         </div>
+      //         <div className="space-y-1">
+      //           <p className="text-sm text-muted-foreground">Low Velocity (30 days)</p>
+      //           <p className="text-2xl font-bold">{formatCurrency(globalInventory.lowVelocity30Days)}</p>
+      //         </div>
+      //         <div className="space-y-1">
+      //           <p className="text-sm text-muted-foreground">Low Velocity (60 days)</p>
+      //           <p className="text-2xl font-bold">{formatCurrency(globalInventory.lowVelocity60Days)}</p>
+      //         </div>
+      //         <div className="space-y-1">
+      //           <p className="text-sm text-muted-foreground">Low Velocity (90 days)</p>
+      //           <p className="text-2xl font-bold">{formatCurrency(globalInventory.lowVelocity90Days)}</p>
+      //         </div>
+      //       </div>
+      //     </div>
 
-          {/* Top SKUs by Inventory Value */}
-          <div className="pt-4 border-t">
-            <h3 className="text-lg font-semibold mb-4">Top 20 SKUs by Inventory Value</h3>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>SKU</TableHead>
-                  <TableHead>Product Name</TableHead>
-                  <TableHead className="text-right">Units</TableHead>
-                  <TableHead className="text-right">Value</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {topSKUsByInventoryValue.map((item) => (
-                  <TableRow key={item.sku}>
-                    <TableCell className="font-medium">{item.sku}</TableCell>
-                    <TableCell>{item.name}</TableCell>
-                    <TableCell className="text-right">{formatNumber(item.units)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(item.value)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+      //     {/* Top SKUs by Inventory Value */}
+      //     <div className="pt-4 border-t">
+      //       <h3 className="text-lg font-semibold mb-4">Top 20 SKUs by Inventory Value</h3>
+      //       <Table>
+      //         <TableHeader>
+      //           <TableRow>
+      //             <TableHead>SKU</TableHead>
+      //             <TableHead>Product Name</TableHead>
+      //             <TableHead className="text-right">Units</TableHead>
+      //             <TableHead className="text-right">Value</TableHead>
+      //           </TableRow>
+      //         </TableHeader>
+      //         <TableBody>
+      //           {topSKUsByInventoryValue.map((item) => (
+      //             <TableRow key={item.sku}>
+      //               <TableCell className="font-medium">{item.sku}</TableCell>
+      //               <TableCell>{item.name}</TableCell>
+      //               <TableCell className="text-right">{formatNumber(item.units)}</TableCell>
+      //               <TableCell className="text-right">{formatCurrency(item.value)}</TableCell>
+      //             </TableRow>
+      //           ))}
+      //         </TableBody>
+      //       </Table>
+      //     </div>
+      //   </CardContent>
+      // </Card>
       )}
 
       {/* PURCHASE ORDERS & SUPPLY CHAIN */}
