@@ -460,6 +460,9 @@ export const generatePOPDF = async (
     
     // Note: Left and right borders will be drawn after all rows to get correct bottom position
     
+    // Track product IDs for which we already showed image — show only for first variant of each product
+    const productIdsWithImageShown = new Set<number>();
+    
     for (let index = 0; index < po.lineItems.length; index++) {
       const item = po.lineItems[index];
       
@@ -489,16 +492,21 @@ export const generatePOPDF = async (
 
       tableX = margin;
       
-      // Get image and color from variant attributes
+      // Get image and color from variant attributes; show image only for first occurrence of each product
       let itemImage: string | null = null;
       let itemColor: string = "";
+      const productId = item.productId ?? 0;
+      const alreadyShownImageForProduct = productId > 0 && productIdsWithImageShown.has(productId);
       if (item.productVariantAttributes) {
         const variantAttributes = parseAttributes(item.productVariantAttributes);
-        const variantImages = getImagesFromAttributes(variantAttributes);
-        if (variantImages.length > 0) {
-          itemImage = await loadImage(variantImages[0]);
-        }
         itemColor = getColorFromAttributes(variantAttributes);
+        if (!alreadyShownImageForProduct) {
+          const variantImages = getImagesFromAttributes(variantAttributes);
+          if (variantImages.length > 0) {
+            itemImage = await loadImage(variantImages[0]);
+            if (itemImage && productId > 0) productIdsWithImageShown.add(productId);
+          }
+        }
       }
 
       const rowData = [

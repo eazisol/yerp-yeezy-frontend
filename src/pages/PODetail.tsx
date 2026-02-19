@@ -18,6 +18,7 @@ import { getPOApprovals, approvePO, POApproval } from "@/services/poApprovals";
 import POApprovalModal from "@/components/POApprovalModal";
 import { fileUploadService } from "@/services/fileUpload";
 import { useToast } from "@/hooks/use-toast";
+import { usePOPdfUpload } from "@/contexts/POPdfUploadContext";
 import { generateAndSavePOPDF } from "@/utils/generatePOPDF";
 import { warehouseService, Warehouse } from "@/services/warehouses";
 import { vendorService, Vendor } from "@/services/vendors";
@@ -41,6 +42,7 @@ export default function PODetail() {
   const { canModify } = usePermissions();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { pdfUploadPoId } = usePOPdfUpload();
   const [po, setPO] = useState<PurchaseOrder | null>(null);
   const [approvals, setApprovals] = useState<POApproval[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +51,7 @@ export default function PODetail() {
   const [imagePreview, setImagePreview] = useState<{ url: string; variantName: string; allImages: string[] } | null>(null);
   const [warehouse, setWarehouse] = useState<Warehouse | null>(null);
   const [vendor, setVendor] = useState<Vendor | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   useEffect(() => {
     const fetchPO = async () => {
@@ -367,23 +370,36 @@ export default function PODetail() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {/* Generate PDF: open server PDF if pdfPath exists, else generate from frontend */}
+          {/* Generate PDF: use server PDF if path exists and file found; else generate new (including when path exists but file missing) */}
           <Button
             size="sm"
             variant="outline"
-            onClick={async () => {
+            disabled={pdfLoading || (pdfUploadPoId != null && pdfUploadPoId === po?.purchaseOrderId)}
+            onClick={() => {
               if (!po) return;
-              try {
-                if (po.pdfPath?.trim()) {
-                  const url = fileUploadService.getPOPDFUrl(po.pdfPath);
-                  const token = localStorage.getItem("auth_token");
-                  const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-                  if (!res.ok) throw new Error("Failed to load PDF");
-                  const blob = await res.blob();
-                  const objectUrl = URL.createObjectURL(blob);
-                  window.open(objectUrl, "_blank");
-                  setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
-                } else {
+              setPdfLoading(true);
+              // Defer heavy work so the loader can paint first
+              setTimeout(async () => {
+                try {
+                  let openedExisting = false;
+                  if (po.pdfPath?.trim()) {
+                  try {
+                    const url = fileUploadService.getPOPDFUrl(po.pdfPath);
+                    const token = localStorage.getItem("auth_token");
+                    const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+                    const contentType = (res.headers.get("Content-Type") || "").toLowerCase();
+                    if (res.ok && contentType.includes("application/pdf")) {
+                      const blob = await res.blob();
+                      const objectUrl = URL.createObjectURL(blob);
+                      window.open(objectUrl, "_blank");
+                      setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+                      openedExisting = true;
+                    }
+                  } catch {
+                    // 404, CORS, or network error: treat as file missing, fall through to generate new
+                  }
+                }
+                if (!openedExisting) {
                   await generateAndSavePOPDF(
                     po,
                     warehouse ? {
@@ -416,13 +432,20 @@ export default function PODetail() {
                   description: "Failed to open/generate PDF. Please try again.",
                   variant: "destructive",
                 });
-              }
+                } finally {
+                  setPdfLoading(false);
+                }
+              }, 0);
             }}
           >
-            <Download className="h-4 w-4 mr-2" />
-            Generate PDF
+            {(pdfLoading || (pdfUploadPoId != null && pdfUploadPoId === po?.purchaseOrderId)) ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Download className="h-4 w-4 mr-2" />
+            )}
+            {(pdfLoading || (pdfUploadPoId != null && pdfUploadPoId === po?.purchaseOrderId)) ? "Generating..." : "Generate PDF"}
           </Button>
-          <Badge variant="default">{formatStatus(po.status)}</Badge>
+          
           {canEdit && (
             <Button
               size="sm"
@@ -543,7 +566,9 @@ export default function PODetail() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Status</CardTitle>
+            <CardTitle className="text-lg">Status
+              <Badge variant="default" style={{ float: 'inline-end' }}>{formatStatus(po.status)}</Badge>
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex justify-between">

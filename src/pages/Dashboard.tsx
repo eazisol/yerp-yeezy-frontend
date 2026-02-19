@@ -32,7 +32,7 @@ import {
 } from "@/data/mockDashboardData";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export type MetricsPeriod = "daily" | "weekly" | "yearly" | "custom";
+export type MetricsPeriod = "daily" | "weekly" | "monthly" | "yearly" | "custom";
 
 // Default custom range: today
 function getTodayYyyyMmDd() {
@@ -244,12 +244,13 @@ export default function Dashboard() {
         <div>
           <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
             <h2 className="text-xl font-semibold">
-              {metricsPeriod === "daily" ? "Daily Metrics" : metricsPeriod === "weekly" ? "Week's Metrics" : metricsPeriod === "yearly" ? "Year's Metrics" : "Custom Range"}
+              {metricsPeriod === "daily" ? "Daily Metrics" : metricsPeriod === "weekly" ? "Week's Metrics" : metricsPeriod === "monthly" ? "Month's Metrics" : metricsPeriod === "yearly" ? "Year's Metrics" : "Custom Range"}
             </h2>
             <Tabs value={metricsPeriod} onValueChange={(v) => setMetricsPeriod(v as MetricsPeriod)}>
               <TabsList>
                 <TabsTrigger value="daily">Daily</TabsTrigger>
                 <TabsTrigger value="weekly">Weekly</TabsTrigger>
+                <TabsTrigger value="monthly">Monthly</TabsTrigger>
                 <TabsTrigger value="yearly">Yearly</TabsTrigger>
                 <TabsTrigger value="custom">Custom</TabsTrigger>
               </TabsList>
@@ -386,7 +387,7 @@ export default function Dashboard() {
                     </div>
                     {metricsPeriod !== "daily" && (
                       <p className={`text-xs mt-1 ${typeof periodMetrics?.netSalesVsPriorPercent === "number" ? (periodMetrics.netSalesVsPriorPercent >= 0 ? "text-green-600" : "text-red-600") : "text-muted-foreground"}`}>
-                        {metricsPeriod === "yearly" ? "Vs prior yr " : metricsPeriod === "custom" ? "Vs prior period " : "Vs prior wk "}
+                        {metricsPeriod === "yearly" ? "Vs prior yr " : metricsPeriod === "monthly" ? "Vs prior mo " : metricsPeriod === "custom" ? "Vs prior period " : "Vs prior wk "}
                         {typeof periodMetrics?.netSalesVsPriorPercent === "number"
                           ? (periodMetrics.netSalesVsPriorPercent >= 0 ? "+" : "") + periodMetrics.netSalesVsPriorPercent.toFixed(1) + "%"
                           : "No prior data"}
@@ -406,9 +407,9 @@ export default function Dashboard() {
                     <div className="text-2xl font-bold text-foreground">
                       {formatNumber(periodMetrics?.totalOrdersFulfilled ?? 0)}
                     </div>
-                    {(metricsPeriod === "weekly" || metricsPeriod === "yearly" || metricsPeriod === "custom") && (
+                    {(metricsPeriod === "weekly" || metricsPeriod === "monthly" || metricsPeriod === "yearly" || metricsPeriod === "custom") && (
                       <p className={`text-xs mt-1 ${typeof periodMetrics?.totalOrdersFulfilledVsPriorPercent === "number" ? "text-red-600" : "text-muted-foreground"}`}>
-                        {metricsPeriod === "yearly" ? "Vs prior yr " : metricsPeriod === "custom" ? "Vs prior period " : "Vs prior wk "}
+                        {metricsPeriod === "yearly" ? "Vs prior yr " : metricsPeriod === "monthly" ? "Vs prior mo " : metricsPeriod === "custom" ? "Vs prior period " : "Vs prior wk "}
                         {typeof periodMetrics?.totalOrdersFulfilledVsPriorPercent === "number"
                           ? (periodMetrics.totalOrdersFulfilledVsPriorPercent >= 0 ? "+" : "") + periodMetrics.totalOrdersFulfilledVsPriorPercent.toFixed(1) + "%"
                           : "No prior data"}
@@ -428,9 +429,9 @@ export default function Dashboard() {
                     <div className="text-2xl font-bold text-foreground">
                       {formatNumber(periodMetrics?.totalOrdersPartiallyShipped ?? 0)}
                     </div>
-                    {(metricsPeriod === "weekly" || metricsPeriod === "yearly" || metricsPeriod === "custom") && (
+                    {(metricsPeriod === "weekly" || metricsPeriod === "monthly" || metricsPeriod === "yearly" || metricsPeriod === "custom") && (
                       <p className={`text-xs mt-1 ${typeof periodMetrics?.totalOrdersPartiallyShippedVsPriorPercent === "number" ? "text-red-600" : "text-muted-foreground"}`}>
-                        {metricsPeriod === "yearly" ? "Vs prior yr " : metricsPeriod === "custom" ? "Vs prior period " : "Vs prior wk "}
+                        {metricsPeriod === "yearly" ? "Vs prior yr " : metricsPeriod === "monthly" ? "Vs prior mo " : metricsPeriod === "custom" ? "Vs prior period " : "Vs prior wk "}
                         {typeof periodMetrics?.totalOrdersPartiallyShippedVsPriorPercent === "number"
                           ? (periodMetrics.totalOrdersPartiallyShippedVsPriorPercent >= 0 ? "+" : "") + periodMetrics.totalOrdersPartiallyShippedVsPriorPercent.toFixed(1) + "%"
                           : "No prior data"}

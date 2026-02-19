@@ -19,6 +19,19 @@ function getTodayYMD(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+// Date range preset: 30, 60, 90, 120 days or Custom
+type DateRangePreset = "30" | "60" | "90" | "120" | "Custom";
+
+function getFromToForPreset(preset: DateRangePreset): { from: string; to: string } {
+  const to = getTodayYMD();
+  if (preset === "Custom") return { from: to, to };
+  const n = parseInt(preset, 10);
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  const from = d.toISOString().slice(0, 10);
+  return { from, to };
+}
+
 // Sort key type for column sorting
 type SortKey =
   | "item"
@@ -31,18 +44,40 @@ type SortKey =
   | "actualOrder"
   | "factory"
   | "price"
-  | "totalCost";
+  | "totalCost"
+  | "openPoQuantity";
 
 export default function OrderProjections() {
   const today = getTodayYMD();
-  const [fromDate, setFromDate] = useState(today);
-  const [toDate, setToDate] = useState(today);
-  const [appliedFromDate, setAppliedFromDate] = useState(today);
-  const [appliedToDate, setAppliedToDate] = useState(today);
+  const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>("30");
+  const [fromDate, setFromDate] = useState(() => getFromToForPreset("30").from);
+  const [toDate, setToDate] = useState(() => getFromToForPreset("30").to);
+  const [appliedFromDate, setAppliedFromDate] = useState(() => getFromToForPreset("30").from);
+  const [appliedToDate, setAppliedToDate] = useState(() => getFromToForPreset("30").to);
   const [skuSearch, setSkuSearch] = useState("");
   const [skuFilterDebounced, setSkuFilterDebounced] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("totalSold");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  // When preset changes (30/60/90/120), set From/To
+  const handlePresetChange = useCallback((preset: DateRangePreset) => {
+    setDateRangePreset(preset);
+    if (preset !== "Custom") {
+      const { from, to } = getFromToForPreset(preset);
+      setFromDate(from);
+      setToDate(to);
+    }
+  }, []);
+
+  // When user manually changes From/To, switch to Custom
+  const handleFromChange = useCallback((value: string) => {
+    setFromDate(value);
+    setDateRangePreset("Custom");
+  }, []);
+  const handleToChange = useCallback((value: string) => {
+    setToDate(value);
+    setDateRangePreset("Custom");
+  }, []);
 
   // Debounce SKU search (frontend-only filter) – 300ms delay so not every keyup hits
   useEffect(() => {
@@ -134,6 +169,7 @@ export default function OrderProjections() {
       suggestedOrder: filteredRows.reduce((s, r) => s + r.suggestedOrder, 0),
       actualOrder: filteredRows.reduce((s, r) => s + r.actualOrder, 0),
       totalCost: filteredRows.reduce((s, r) => s + r.totalCost, 0),
+      openPoQuantity: filteredRows.reduce((s, r) => s + (r.openPoQuantity ?? 0), 0),
     };
   }, [filteredRows]);
 
@@ -152,6 +188,7 @@ export default function OrderProjections() {
       "TOTAL INVENTORY",
       "SALES PER DAY",
       "OPEN TO SELL",
+      "OPEN PO QTY",
       "WEEKS ON HAND",
       "SUGGESTED ORDER",
       "ACTUAL ORDER",
@@ -168,6 +205,7 @@ export default function OrderProjections() {
           row.totalInventory,
           row.salesPerDay,
           row.openToSell,
+          row.openPoQuantity ?? 0,
           row.weeksOnHand ?? "",
           row.suggestedOrder,
           row.actualOrder,
@@ -185,6 +223,7 @@ export default function OrderProjections() {
           totals.totalInventory,
           "",
           totals.openToSell,
+          totals.openPoQuantity,
           "",
           totals.suggestedOrder,
           totals.actualOrder,
@@ -241,7 +280,7 @@ export default function OrderProjections() {
         <h1 className="text-2xl font-bold text-foreground">ORDER PROJECTIONS</h1>
       </div>
 
-      {/* Filters: Search by SKU (first, frontend-only), From, To, Apply, Export CSV */}
+      {/* Filters: Search by SKU, Date range preset, From, To, Apply, Export CSV */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-wrap items-end gap-4">
@@ -253,12 +292,26 @@ export default function OrderProjections() {
                 onChange={(e) => setSkuSearch(e.target.value)}
               />
             </div>
+            <div className="min-w-[140px]">
+              <label className="text-sm font-medium mb-2 block">Date range</label>
+              <select
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                value={dateRangePreset}
+                onChange={(e) => handlePresetChange(e.target.value as DateRangePreset)}
+              >
+                <option value="30">Last 30 days</option>
+                <option value="60">Last 60 days</option>
+                <option value="90">Last 90 days</option>
+                <option value="120">Last 120 days</option>
+                <option value="Custom">Custom</option>
+              </select>
+            </div>
             <div>
               <label className="text-sm font-medium mb-2 block">From</label>
               <Input
                 type="date"
                 value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
+                onChange={(e) => handleFromChange(e.target.value)}
               />
             </div>
             <div>
@@ -266,7 +319,7 @@ export default function OrderProjections() {
               <Input
                 type="date"
                 value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
+                onChange={(e) => handleToChange(e.target.value)}
               />
             </div>
             <Button onClick={handleApplyDates} disabled={loading}>
@@ -292,6 +345,7 @@ export default function OrderProjections() {
                   <Th column="totalInventory" label="TOTAL INVENTORY" align="right" />
                   <Th column="salesPerDay" label="SALES PER DAY" align="right" />
                   <Th column="openToSell" label="OPEN TO SELL" align="right" />
+                  <Th column="openPoQuantity" label="OPEN PO QTY" align="right" />
                   <Th column="weeksOnHand" label="WEEKS ON HAND" align="right" />
                   <Th column="suggestedOrder" label="SUGGESTED ORDER" align="right" />
                   <Th column="actualOrder" label="ACTUAL ORDER" align="right" />
@@ -303,13 +357,13 @@ export default function OrderProjections() {
               <TableBody>
                 {loading && filteredRows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={12} className="text-center text-muted-foreground py-8">
                       Loading…
                     </TableCell>
                   </TableRow>
                 ) : filteredRows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={12} className="text-center text-muted-foreground py-8">
                       No data. Try a different SKU or clear search.
                     </TableCell>
                   </TableRow>
@@ -322,6 +376,7 @@ export default function OrderProjections() {
                         <TableCell className="text-right">{formatNumber(row.totalInventory)}</TableCell>
                         <TableCell className="text-right">{formatDecimal(row.salesPerDay)}</TableCell>
                         <TableCell className="text-right">{formatNumber(row.openToSell)}</TableCell>
+                        <TableCell className="text-right">{formatNumber(row.openPoQuantity ?? 0)}</TableCell>
                         <TableCell className="text-right">
                           {row.weeksOnHand != null ? formatDecimal(Number(row.weeksOnHand), 1) : ""}
                         </TableCell>
@@ -339,6 +394,7 @@ export default function OrderProjections() {
                         <TableCell className="text-right">{formatNumber(totals.totalInventory)}</TableCell>
                         <TableCell className="text-right">—</TableCell>
                         <TableCell className="text-right">{formatNumber(totals.openToSell)}</TableCell>
+                        <TableCell className="text-right">{formatNumber(totals.openPoQuantity)}</TableCell>
                         <TableCell className="text-right">—</TableCell>
                         <TableCell className="text-right">{formatNumber(totals.suggestedOrder)}</TableCell>
                         <TableCell className="text-right">{formatNumber(totals.actualOrder)}</TableCell>

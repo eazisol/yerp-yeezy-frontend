@@ -466,12 +466,12 @@ export default function KPI() {
               <p className="text-sm text-muted-foreground">Contribution Margin %</p>
               <p className="text-2xl font-bold">{formatDecimal(executiveStrip.contributionMarginMTD, 1)}%</p>
             </div>
-            <div className="space-y-1">
+            {/* <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Orders Shipped vs Received</p>
               <p className="text-2xl font-bold">
                 {formatNumber(executiveStrip.ordersShippedToday)} / {formatNumber(executiveStrip.ordersReceivedToday)}
               </p>
-            </div>
+            </div> */}
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground">Open Order Backlog</p>
               <p className="text-lg font-bold">{formatCurrency(executiveStrip.openOrderBacklog.value)}</p>
@@ -682,8 +682,7 @@ export default function KPI() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>SKU</TableHead>
-                        <TableHead>Product Name</TableHead>
+                        <TableHead>Product</TableHead>
                         <TableHead className="text-right">Units</TableHead>
                         <TableHead className="text-right">Revenue</TableHead>
                         <TableHead className="text-right">Gross Margin $</TableHead>
@@ -691,9 +690,8 @@ export default function KPI() {
                     </TableHeader>
                     <TableBody>
                       {topSellersByUnits.map((item) => (
-                        <TableRow key={item.sku}>
-                          <TableCell className="font-medium">{item.sku}</TableCell>
-                          <TableCell>{item.name}</TableCell>
+                        <TableRow key={item.sku || item.name}>
+                          <TableCell className="font-medium">{item.name || item.sku || "—"}</TableCell>
                           <TableCell className="text-right">{formatNumber(item.units)}</TableCell>
                           <TableCell className="text-right">{formatCurrency(item.revenue)}</TableCell>
                           <TableCell className="text-right">{formatCurrency(item.margin)}</TableCell>
@@ -707,8 +705,7 @@ export default function KPI() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>SKU</TableHead>
-                        <TableHead>Product Name</TableHead>
+                        <TableHead>Product</TableHead>
                         <TableHead className="text-right">Units</TableHead>
                         <TableHead className="text-right">Revenue</TableHead>
                         <TableHead className="text-right">Gross Margin $</TableHead>
@@ -716,9 +713,8 @@ export default function KPI() {
                     </TableHeader>
                     <TableBody>
                       {topSellersByRevenue.map((item) => (
-                        <TableRow key={item.sku}>
-                          <TableCell className="font-medium">{item.sku}</TableCell>
-                          <TableCell>{item.name}</TableCell>
+                        <TableRow key={item.sku || item.name}>
+                          <TableCell className="font-medium">{item.name || item.sku || "—"}</TableCell>
                           <TableCell className="text-right">{formatNumber(item.units)}</TableCell>
                           <TableCell className="text-right">{formatCurrency(item.revenue)}</TableCell>
                           <TableCell className="text-right">{formatCurrency(item.margin)}</TableCell>
@@ -732,8 +728,7 @@ export default function KPI() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>SKU</TableHead>
-                        <TableHead>Product Name</TableHead>
+                        <TableHead>Product</TableHead>
                         <TableHead className="text-right">Units</TableHead>
                         <TableHead className="text-right">Revenue</TableHead>
                         <TableHead className="text-right">Gross Margin $</TableHead>
@@ -741,9 +736,8 @@ export default function KPI() {
                     </TableHeader>
                     <TableBody>
                       {topSellersByMargin.map((item) => (
-                        <TableRow key={item.sku}>
-                          <TableCell className="font-medium">{item.sku}</TableCell>
-                          <TableCell>{item.name}</TableCell>
+                        <TableRow key={item.sku || item.name}>
+                          <TableCell className="font-medium">{item.name || item.sku || "—"}</TableCell>
                           <TableCell className="text-right">{formatNumber(item.units)}</TableCell>
                           <TableCell className="text-right">{formatCurrency(item.revenue)}</TableCell>
                           <TableCell className="text-right">{formatCurrency(item.margin)}</TableCell>
@@ -757,8 +751,7 @@ export default function KPI() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>SKU</TableHead>
-                        <TableHead>Product Name</TableHead>
+                        <TableHead>Product</TableHead>
                         <TableHead className="text-right">Units</TableHead>
                         <TableHead className="text-right">Revenue</TableHead>
                         <TableHead className="text-right">Gross Margin $</TableHead>
@@ -766,9 +759,8 @@ export default function KPI() {
                     </TableHeader>
                     <TableBody>
                       {bottomSKUsByMargin.map((item) => (
-                        <TableRow key={item.sku}>
-                          <TableCell className="font-medium">{item.sku}</TableCell>
-                          <TableCell>{item.name}</TableCell>
+                        <TableRow key={item.sku || item.name}>
+                          <TableCell className="font-medium">{item.name || item.sku || "—"}</TableCell>
                           <TableCell className="text-right">{formatNumber(item.units)}</TableCell>
                           <TableCell className="text-right">{formatCurrency(item.revenue)}</TableCell>
                           <TableCell className="text-right text-red-600">{formatCurrency(item.margin)}</TableCell>
@@ -782,17 +774,15 @@ export default function KPI() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>SKU</TableHead>
-                        <TableHead>Product Name</TableHead>
+                        <TableHead>Product</TableHead>
                         <TableHead className="text-right">Backlog Units</TableHead>
                         <TableHead className="text-right">Weeks on Hand</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {topSKUsBacklogRisk.map((item) => (
-                        <TableRow key={item.sku}>
-                          <TableCell className="font-medium">{item.sku}</TableCell>
-                          <TableCell>{item.name}</TableCell>
+                        <TableRow key={item.sku || item.name}>
+                          <TableCell className="font-medium">{item.name || item.sku || "—"}</TableCell>
                           <TableCell className="text-right">{formatNumber(item.backlogUnits)}</TableCell>
                           <TableCell className="text-right">
                             <Badge variant={item.weeksOnHand < 3 ? "destructive" : "secondary"}>

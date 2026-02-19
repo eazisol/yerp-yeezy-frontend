@@ -71,20 +71,12 @@ class FileUploadService {
 
   // Upload PO PDF
   async uploadPOPDF(file: File, purchaseOrderId: number): Promise<FileUploadResponse> {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/72465c75-c7de-4a12-980e-add15152ec70',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'fileUpload.ts:73',message:'uploadPOPDF entry',data:{fileName:file.name,fileSize:file.size,fileType:file.type,purchaseOrderId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
-    // #endregion
-
     const formData = new FormData();
     formData.append("file", file);
     formData.append("purchaseOrderId", purchaseOrderId.toString());
 
     const token = localStorage.getItem("auth_token");
     const baseUrl = import.meta.env.VITE_API_URL || "http://localhost:5234";
-
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/72465c75-c7de-4a12-980e-add15152ec70',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'fileUpload.ts:81',message:'Sending upload request',data:{url:`${baseUrl}/api/FileUpload/po-pdf`,hasToken:!!token,formDataKeys:['file','purchaseOrderId']},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
-    // #endregion
 
     const response = await fetch(`${baseUrl}/api/FileUpload/po-pdf`, {
       method: "POST",
@@ -94,22 +86,12 @@ class FileUploadService {
       body: formData,
     });
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/72465c75-c7de-4a12-980e-add15152ec70',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'fileUpload.ts:89',message:'Upload response received',data:{status:response.status,statusText:response.statusText,ok:response.ok},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
-    // #endregion
-
     if (!response.ok) {
       const error = await response.json();
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/72465c75-c7de-4a12-980e-add15152ec70',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'fileUpload.ts:92',message:'Upload error',data:{error,status:response.status},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'K'})}).catch(()=>{});
-      // #endregion
       throw new Error(error.message || "Failed to upload PO PDF");
     }
 
     const result = await response.json();
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/72465c75-c7de-4a12-980e-add15152ec70',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'fileUpload.ts:97',message:'Upload success',data:{result},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'L'})}).catch(()=>{});
-    // #endregion
     return result;
   }
 

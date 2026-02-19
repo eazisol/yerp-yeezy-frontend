@@ -242,6 +242,7 @@ export interface OrderProjectionRow {
   factory?: string;
   price: number;
   totalCost: number;
+  openPoQuantity: number;
 }
 
 export interface OrderProjectionsResponse {

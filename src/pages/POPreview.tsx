@@ -265,23 +265,32 @@ export default function POPreview() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          {/* Generate PDF: open server PDF if pdfPath exists, else generate from frontend */}
+          {/* Generate PDF: use server PDF if path exists and file found; else generate new (including when path exists but file missing) */}
           <Button
             size="sm"
             variant="outline"
             onClick={async () => {
               if (!po) return;
               try {
+                let openedExisting = false;
                 if (po.pdfPath?.trim()) {
-                  const url = fileUploadService.getPOPDFUrl(po.pdfPath);
-                  const token = localStorage.getItem("auth_token");
-                  const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-                  if (!res.ok) throw new Error("Failed to load PDF");
-                  const blob = await res.blob();
-                  const objectUrl = URL.createObjectURL(blob);
-                  window.open(objectUrl, "_blank");
-                  setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
-                } else {
+                  try {
+                    const url = fileUploadService.getPOPDFUrl(po.pdfPath);
+                    const token = localStorage.getItem("auth_token");
+                    const res = await fetch(url, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+                    const contentType = (res.headers.get("Content-Type") || "").toLowerCase();
+                    if (res.ok && contentType.includes("application/pdf")) {
+                      const blob = await res.blob();
+                      const objectUrl = URL.createObjectURL(blob);
+                      window.open(objectUrl, "_blank");
+                      setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+                      openedExisting = true;
+                    }
+                  } catch {
+                    // 404, CORS, or network error: treat as file missing, fall through to generate new
+                  }
+                }
+                if (!openedExisting) {
                   await generateAndSavePOPDF(
                     po,
                     warehouse ? {

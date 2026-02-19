@@ -36,6 +36,7 @@ import { warehouseService, Warehouse } from "@/services/warehouses";
 import { productService, Product, ProductVariant, ProductDetail } from "@/services/products";
 import { getTerms, Term } from "@/services/terms";
 import { useToast } from "@/hooks/use-toast";
+import { usePOPdfUpload } from "@/contexts/POPdfUploadContext";
 import { ProductCombobox } from "@/components/ProductCombobox";
 import { generatePOPDF } from "@/utils/generatePOPDF";
 import { fileUploadService } from "@/services/fileUpload";
@@ -52,6 +53,7 @@ export default function POFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { setPdfUploadPoId } = usePOPdfUpload();
   const isEdit = !!id && id !== "new";
   const poId = id && isEdit ? parseInt(id) : 0;
 
@@ -436,93 +438,66 @@ Packing List:
         });
       }
 
-      // Generate and upload PDF after PO create/update
+      // Run PDF generation and upload in background (no await) so Create/Update returns immediately and avoids timeout
       if (createdOrUpdatedPO) {
-        try {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/72465c75-c7de-4a12-980e-add15152ec70',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'POFormPage.tsx:413',message:'Starting PDF generation and upload',data:{poId:createdOrUpdatedPO.purchaseOrderId,poNumber:createdOrUpdatedPO.poNumber,hasWarehouse:!!createdOrUpdatedPO.warehouseId,hasVendor:!!createdOrUpdatedPO.vendorId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-          // #endregion
-
-          // Fetch warehouse and vendor data for PDF
-          const warehouse = warehouses.find(w => w.warehouseId === createdOrUpdatedPO.warehouseId);
-          const vendor = vendors.find(v => v.vendorId === createdOrUpdatedPO.vendorId);
-          
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/72465c75-c7de-4a12-980e-add15152ec70',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'POFormPage.tsx:418',message:'Warehouse and vendor data fetched',data:{warehouseFound:!!warehouse,vendorFound:!!vendor,warehouseId:createdOrUpdatedPO.warehouseId,vendorId:createdOrUpdatedPO.vendorId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-          // #endregion
-          
-          // Fetch approvals if available
-          const approvals = createdOrUpdatedPO.approvals || [];
-
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/72465c75-c7de-4a12-980e-add15152ec70',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'POFormPage.tsx:423',message:'Calling generatePOPDF',data:{poId:createdOrUpdatedPO.purchaseOrderId,approvalsCount:approvals.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-          // #endregion
-
-          // Generate PDF blob
-          const pdfBlob = await generatePOPDF(
-            createdOrUpdatedPO,
-            warehouse ? {
-              name: warehouse.name,
-              address: warehouse.address || undefined,
-              city: warehouse.city || undefined,
-              state: warehouse.state || undefined,
-              zipCode: warehouse.zipCode || undefined,
-              country: warehouse.country || undefined,
-              phone: warehouse.contactPhone1 || undefined,
-              contactPerson: warehouse.contactPerson1 || undefined,
-            } : undefined,
-            vendor ? {
-              name: vendor.name,
-              address: vendor.address || undefined,
-              city: vendor.city || undefined,
-              state: vendor.state || undefined,
-              zipCode: vendor.zipCode || undefined,
-              country: vendor.country || undefined,
-              phone: vendor.phone || undefined,
-              contactPerson: vendor.contactPerson || vendor.attention || undefined,
-            } : undefined,
-            approvals
-          );
-
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/72465c75-c7de-4a12-980e-add15152ec70',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'POFormPage.tsx:449',message:'PDF blob generated',data:{blobSize:pdfBlob.size,blobType:pdfBlob.type,poNumber:createdOrUpdatedPO.poNumber},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
-          // #endregion
-
-          // Convert blob to File
-          const pdfFile = new File([pdfBlob], `PO-${createdOrUpdatedPO.poNumber}.pdf`, { type: 'application/pdf' });
-
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/72465c75-c7de-4a12-980e-add15152ec70',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'POFormPage.tsx:452',message:'Calling uploadPOPDF',data:{fileName:pdfFile.name,fileSize:pdfFile.size,fileType:pdfFile.type,poId:createdOrUpdatedPO.purchaseOrderId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'E'})}).catch(()=>{});
-          // #endregion
-
-          // Upload PDF to backend
-          const uploadResult = await fileUploadService.uploadPOPDF(pdfFile, createdOrUpdatedPO.purchaseOrderId);
-          
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/72465c75-c7de-4a12-980e-add15152ec70',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'POFormPage.tsx:455',message:'PDF upload completed',data:{uploadResult,poId:createdOrUpdatedPO.purchaseOrderId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
-          // #endregion
-          
-          console.log("PO PDF generated and uploaded successfully", uploadResult);
-          // Open PDF in new tab
-          const pdfUrl = URL.createObjectURL(pdfBlob);
-          window.open(pdfUrl, "_blank");
-          setTimeout(() => URL.revokeObjectURL(pdfUrl), 60000);
-        } catch (pdfError) {
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/72465c75-c7de-4a12-980e-add15152ec70',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'POFormPage.tsx:457',message:'PDF generation/upload error',data:{error:String(pdfError),errorMessage:pdfError instanceof Error ? pdfError.message : 'Unknown error',poId:createdOrUpdatedPO.purchaseOrderId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
-          // #endregion
-          // Log error but don't block navigation
-          console.error("Error generating/uploading PO PDF:", pdfError);
-          toast({
-            title: "Warning",
-            description: `PO saved successfully, but PDF generation failed: ${pdfError instanceof Error ? pdfError.message : 'Unknown error'}`,
-            variant: "default",
-          });
-        }
+        const po = createdOrUpdatedPO;
+        const warehouse = warehouses.find(w => w.warehouseId === po.warehouseId);
+        const vendor = vendors.find(v => v.vendorId === po.vendorId);
+        const approvals = po.approvals || [];
+        toast({
+          title: "Info",
+          description: "PO saved. PDF is being generated and uploaded in the background.",
+          variant: "default",
+        });
+        setPdfUploadPoId(po.purchaseOrderId);
+        (async () => {
+          try {
+            const pdfBlob = await generatePOPDF(
+              po,
+              warehouse ? {
+                name: warehouse.name,
+                address: warehouse.address || undefined,
+                city: warehouse.city || undefined,
+                state: warehouse.state || undefined,
+                zipCode: warehouse.zipCode || undefined,
+                country: warehouse.country || undefined,
+                phone: warehouse.contactPhone1 || undefined,
+                contactPerson: warehouse.contactPerson1 || undefined,
+              } : undefined,
+              vendor ? {
+                name: vendor.name,
+                address: vendor.address || undefined,
+                city: vendor.city || undefined,
+                state: vendor.state || undefined,
+                zipCode: vendor.zipCode || undefined,
+                country: vendor.country || undefined,
+                phone: vendor.phone || undefined,
+                contactPerson: vendor.contactPerson || vendor.attention || undefined,
+              } : undefined,
+              approvals
+            );
+            const pdfFile = new File([pdfBlob], `PO-${po.poNumber}.pdf`, { type: 'application/pdf' });
+            await fileUploadService.uploadPOPDF(pdfFile, po.purchaseOrderId);
+            toast({
+              title: "PDF ready",
+              description: "PO PDF has been generated and uploaded.",
+              variant: "default",
+            });
+          } catch (pdfError) {
+            console.error("Background PO PDF error:", pdfError);
+            toast({
+              title: "PDF upload failed",
+              description: pdfError instanceof Error ? pdfError.message : "PO PDF could not be uploaded. You can generate it from the PO detail page.",
+              variant: "destructive",
+            });
+          } finally {
+            setPdfUploadPoId(null);
+          }
+        })();
       }
 
-      if (isEdit && createdOrUpdatedPO?.purchaseOrderId) {
-        navigate(`/po/preview/${createdOrUpdatedPO.purchaseOrderId}`);
+      if (createdOrUpdatedPO?.purchaseOrderId) {
+        navigate(`/purchase-orders/${createdOrUpdatedPO.purchaseOrderId}`);
       } else {
         navigate("/purchase-orders");
       }

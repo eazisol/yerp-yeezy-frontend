@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { POPdfUploadProvider } from "@/contexts/POPdfUploadContext";
 import Layout from "./components/common/Layout";
 import ProtectedRoute from "./components/common/ProtectedRoute";
 import PermissionRoute from "./components/common/PermissionRoute";
@@ -59,6 +60,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
+        <POPdfUploadProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
@@ -278,6 +280,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+        </POPdfUploadProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>

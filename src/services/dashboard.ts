@@ -239,7 +239,7 @@ export interface TopSkuBacklogRisk {
 
 // Period metrics for Dashboard (daily, weekly, yearly, or custom) — same 10 cards, values vary by period
 export interface DashboardPeriodMetrics {
-  period: "daily" | "weekly" | "yearly" | "custom";
+  period: "daily" | "weekly" | "monthly" | "yearly" | "custom";
   totalOrders: number;
   totalOrderValue: number;
   shippingCollected: number;
@@ -269,7 +269,7 @@ class DashboardService {
 
   // Fetch period metrics (daily, weekly, yearly, or custom) for the 10 combined cards. For custom, pass startDate and endDate (yyyy-MM-dd).
   async getPeriodMetrics(
-    period: "daily" | "weekly" | "yearly" | "custom",
+    period: "daily" | "weekly" | "monthly" | "yearly" | "custom",
     startDate?: string,
     endDate?: string
   ): Promise<DashboardPeriodMetrics> {
