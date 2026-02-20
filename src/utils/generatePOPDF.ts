@@ -118,6 +118,47 @@ const loadImage = async (url: string): Promise<string | null> => {
   }
 };
 
+// Resize and compress image for PDF to reduce file size (max dimensions + JPEG quality)
+const resizeAndCompressForPdf = (
+  dataUrl: string,
+  maxWidth: number = 200,
+  maxHeight: number = 200,
+  jpegQuality: number = 0.65
+): Promise<string | null> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      try {
+        let w = img.naturalWidth;
+        let h = img.naturalHeight;
+        if (w <= maxWidth && h <= maxHeight) {
+          w = img.naturalWidth;
+          h = img.naturalHeight;
+        } else {
+          const r = Math.min(maxWidth / w, maxHeight / h);
+          w = Math.round(w * r);
+          h = Math.round(h * r);
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(null);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", jpegQuality));
+      } catch {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = dataUrl;
+  });
+};
+
 // Helper function to split long text into multiple lines
 const splitText = (text: string, maxWidth: number, doc: jsPDF): string[] => {
   const words = text.split(" ");
@@ -460,11 +501,27 @@ export const generatePOPDF = async (
     
     // Note: Left and right borders will be drawn after all rows to get correct bottom position
     
-    // Track product IDs for which we already showed image — show only for first variant of each product
-    const productIdsWithImageShown = new Set<number>();
-    
-    for (let index = 0; index < po.lineItems.length; index++) {
-      const item = po.lineItems[index];
+    // Sort line items product-wise (by productId, then sku) so same product's variants appear together
+    const sortedLineItems = [...po.lineItems].sort((a, b) => {
+      if (a.productId !== b.productId) return a.productId - b.productId;
+      return (a.sku ?? "").localeCompare(b.sku ?? "");
+    });
+
+    // Per-product fallback: one image URL per productId from any variant (so every variant row can show an image)
+    const productFallbackImageUrls = new Map<number, string>();
+    for (const li of sortedLineItems) {
+      if (!li.productId || productFallbackImageUrls.has(li.productId)) continue;
+      if (li.productVariantAttributes) {
+        const imgs = getImagesFromAttributes(parseAttributes(li.productVariantAttributes));
+        if (imgs.length > 0) productFallbackImageUrls.set(li.productId, imgs[0]);
+      }
+    }
+
+    // Cache: productId -> loaded image data URL (so we load each product image once)
+    const productImageCache = new Map<number, string>();
+
+    for (let index = 0; index < sortedLineItems.length; index++) {
+      const item = sortedLineItems[index];
       
       if (currentY > pageHeight - 40) {
         // New page
@@ -473,7 +530,7 @@ export const generatePOPDF = async (
         // Redraw table borders on new page
         doc.setDrawColor(0, 0, 0);
         const newPageTableTopY = currentY - rowHeight;
-        const remainingRows = po.lineItems.length - index;
+        const remainingRows = sortedLineItems.length - index;
         const newPageTableBottomY = newPageTableTopY + (remainingRows * rowHeight);
         // Draw borders for new page
         doc.line(margin, newPageTableTopY, margin, newPageTableBottomY); // Left border
@@ -492,19 +549,26 @@ export const generatePOPDF = async (
 
       tableX = margin;
       
-      // Get image and color from variant attributes; show image only for first occurrence of each product
+      // Get image and color from variant attributes — show image for every variant row
       let itemImage: string | null = null;
       let itemColor: string = "";
-      const productId = item.productId ?? 0;
-      const alreadyShownImageForProduct = productId > 0 && productIdsWithImageShown.has(productId);
       if (item.productVariantAttributes) {
         const variantAttributes = parseAttributes(item.productVariantAttributes);
         itemColor = getColorFromAttributes(variantAttributes);
-        if (!alreadyShownImageForProduct) {
-          const variantImages = getImagesFromAttributes(variantAttributes);
-          if (variantImages.length > 0) {
-            itemImage = await loadImage(variantImages[0]);
-            if (itemImage && productId > 0) productIdsWithImageShown.add(productId);
+        const variantImages = getImagesFromAttributes(variantAttributes);
+        if (variantImages.length > 0) {
+          itemImage = await loadImage(variantImages[0]);
+          if (itemImage && item.productId) productImageCache.set(item.productId, itemImage);
+        }
+      }
+      // Fallback: if this variant had no image, use same product's image (load from any variant's URL once, then reuse)
+      if (!itemImage && item.productId) {
+        itemImage = productImageCache.get(item.productId) ?? null;
+        if (!itemImage) {
+          const fallbackUrl = productFallbackImageUrls.get(item.productId);
+          if (fallbackUrl) {
+            itemImage = await loadImage(fallbackUrl);
+            if (itemImage) productImageCache.set(item.productId, itemImage);
           }
         }
       }
@@ -528,22 +592,19 @@ export const generatePOPDF = async (
       doc.setDrawColor(0, 0, 0);
       doc.line(margin + colWidths[0], currentY - 6, margin + colWidths[0], currentY - 6 + rowHeight);
 
-      // Draw image in first column
+      // Draw image in first column — keep inside cell (row height 15mm, column width varies)
       const imageColWidth = colWidths[0];
-      const imageSize = 18; // Image size in mm (increased from 10)
+      const imageSize = Math.min(12, rowHeight - 2, imageColWidth - 2); // Fit inside cell with 1mm margin
       const imageX = tableX + (imageColWidth - imageSize) / 2;
-      const imageY = currentY - 8;
+      const imageY = currentY - 6 + (rowHeight - imageSize) / 2; // Vertically centered in row
       
       if (itemImage) {
         try {
-          // Detect image format from data URL
-          let imageFormat: string = 'JPEG';
-          if (itemImage.startsWith('data:image/png')) {
-            imageFormat = 'PNG';
-          } else if (itemImage.startsWith('data:image/jpeg') || itemImage.startsWith('data:image/jpg')) {
-            imageFormat = 'JPEG';
-          }
-          doc.addImage(itemImage, imageFormat, imageX, imageY, imageSize, imageSize);
+          // Resize and compress to JPEG to keep PDF size minimal (max 200x200px, quality 0.65)
+          const compressed = await resizeAndCompressForPdf(itemImage, 200, 200, 0.65);
+          const imageToAdd = compressed ?? itemImage;
+          const imageFormat = imageToAdd.startsWith("data:image/png") ? "PNG" : "JPEG";
+          doc.addImage(imageToAdd, imageFormat, imageX, imageY, imageSize, imageSize);
         } catch (error) {
           console.error("Error adding image to PDF:", error);
         }
@@ -576,7 +637,7 @@ export const generatePOPDF = async (
       });
 
       // Draw horizontal border after each row (except last row - outer border will cover it)
-      if (index < po.lineItems.length - 1) {
+      if (index < sortedLineItems.length - 1) {
         doc.setDrawColor(0, 0, 0);
         const rowBottomY = currentY - 6 + rowHeight;
         doc.line(margin, rowBottomY, margin + contentWidth, rowBottomY);

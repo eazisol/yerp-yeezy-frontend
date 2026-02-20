@@ -55,31 +55,14 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Orders() {
-  // Build current month default range for order list date filters.
-  const getCurrentMonthDateRange = () => {
-    const now = new Date();
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-    const formatAsDateInputValue = (date: Date) => {
-      const year = date.getFullYear();
-      const month = `${date.getMonth() + 1}`.padStart(2, "0");
-      const day = `${date.getDate()}`.padStart(2, "0");
-      return `${year}-${month}-${day}`;
-    };
-
-    return {
-      start: formatAsDateInputValue(firstDay),
-      end: formatAsDateInputValue(now),
-    };
-  };
-
-  const defaultOrderDateRange = getCurrentMonthDateRange();
+  // From/To not set in UI by default; when empty, no date filter is sent to backend
   const [searchTerm, setSearchTerm] = useState("");
   const [fulfillmentFilter, setFulfillmentFilter] = useState<string | null>(null); // null = all, "unfulfilled" = unfulfilled, "partial" = partial
   const [warehouseFilter, setWarehouseFilter] = useState<string | null>(null); // null = all, "na" = N/A, "cn" = China, "us" = US, "mixed" = CN+US
-  const [startDate, setStartDate] = useState<string>(defaultOrderDateRange.end); // Committed value used in API/query.
-  const [endDate, setEndDate] = useState<string>(defaultOrderDateRange.end); // Committed value used in API/query.
-  const [draftStartDate, setDraftStartDate] = useState<string>(defaultOrderDateRange.end); // Draft input value while picker is open.
-  const [draftEndDate, setDraftEndDate] = useState<string>(defaultOrderDateRange.end); // Draft input value while picker is open.
+  const [startDate, setStartDate] = useState<string>(""); // Committed value; empty = not set, no date filter
+  const [endDate, setEndDate] = useState<string>(""); // Committed value; empty = not set, no date filter
+  const [draftStartDate, setDraftStartDate] = useState<string>(""); // Draft input value while picker is open
+  const [draftEndDate, setDraftEndDate] = useState<string>(""); // Draft input value while picker is open
   const [page, setPage] = useState(1);
   const [pageSize] = useState(50);
   const [swellOrderCount, setSwellOrderCount] = useState<number | null>(null);
@@ -229,7 +212,7 @@ export default function Orders() {
     return hasChinaWarehouse && order.orderSyncTo === 0;
   };
 
-  // Fetch orders with pagination (do not block on warehouse assignment)
+  // Fetch orders with pagination; when From/To empty, no date filter is sent
   const { data: ordersData, isLoading: loadingOrders } = useQuery({
     queryKey: ["orders", page, pageSize, searchTerm, fulfillmentFilter, warehouseFilter, startDate, endDate],
     queryFn: () =>

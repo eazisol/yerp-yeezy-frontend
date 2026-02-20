@@ -187,8 +187,8 @@ export default function OrderProjections() {
       "TOTAL SOLD",
       "TOTAL INVENTORY",
       "SALES PER DAY",
-      "OPEN TO SELL",
       "OPEN PO QTY",
+      "OPEN TO SELL",
       "WEEKS ON HAND",
       "SUGGESTED ORDER",
       "ACTUAL ORDER",
@@ -204,8 +204,8 @@ export default function OrderProjections() {
           row.totalSold,
           row.totalInventory,
           row.salesPerDay,
-          row.openToSell,
           row.openPoQuantity ?? 0,
+          row.openToSell,
           row.weeksOnHand ?? "",
           row.suggestedOrder,
           row.actualOrder,
@@ -222,8 +222,8 @@ export default function OrderProjections() {
           totals.totalSold,
           totals.totalInventory,
           "",
-          totals.openToSell,
           totals.openPoQuantity,
+          totals.openToSell,
           "",
           totals.suggestedOrder,
           totals.actualOrder,
@@ -344,9 +344,9 @@ export default function OrderProjections() {
                   <Th column="totalSold" label="TOTAL SOLD" align="right" />
                   <Th column="totalInventory" label="TOTAL INVENTORY" align="right" />
                   <Th column="salesPerDay" label="SALES PER DAY" align="right" />
+                  <Th column="openPoQuantity" label="OPEN PO QTY" align="right" />
                   <Th column="openToSell" label="OPEN TO SELL" align="right" />
                   <Th column="weeksOnHand" label="WEEKS ON HAND" align="right" />
-                  <Th column="openPoQuantity" label="OPEN PO QTY" align="right" />
                   <Th column="suggestedOrder" label="SUGGESTED ORDER" align="right" />
                   <Th column="actualOrder" label="ACTUAL ORDER" align="right" />
                   <Th column="factory" label="FACTORY" />
@@ -375,11 +375,11 @@ export default function OrderProjections() {
                         <TableCell className="text-right">{formatNumber(row.totalSold)}</TableCell>
                         <TableCell className="text-right">{formatNumber(row.totalInventory)}</TableCell>
                         <TableCell className="text-right">{formatDecimal(row.salesPerDay)}</TableCell>
+                        <TableCell className="text-right">{formatNumber(row.openPoQuantity ?? 0)}</TableCell>
                         <TableCell className="text-right">{formatNumber(row.openToSell)}</TableCell>
                         <TableCell className="text-right">
                           {row.weeksOnHand != null ? formatDecimal(Number(row.weeksOnHand), 1) : ""}
                         </TableCell>
-                        <TableCell className="text-right">{formatNumber(row.openPoQuantity ?? 0)}</TableCell>
                         <TableCell className="text-right">{formatNumber(row.suggestedOrder)}</TableCell>
                         <TableCell className="text-right">{formatNumber(row.actualOrder)}</TableCell>
                         <TableCell>{row.factory ?? ""}</TableCell>
@@ -393,8 +393,8 @@ export default function OrderProjections() {
                         <TableCell className="text-right">{formatNumber(totals.totalSold)}</TableCell>
                         <TableCell className="text-right">{formatNumber(totals.totalInventory)}</TableCell>
                         <TableCell className="text-right">—</TableCell>
-                        <TableCell className="text-right">{formatNumber(totals.openToSell)}</TableCell>
                         <TableCell className="text-right">{formatNumber(totals.openPoQuantity)}</TableCell>
+                        <TableCell className="text-right">{formatNumber(totals.openToSell)}</TableCell>
                         <TableCell className="text-right">—</TableCell>
                         <TableCell className="text-right">{formatNumber(totals.suggestedOrder)}</TableCell>
                         <TableCell className="text-right">{formatNumber(totals.actualOrder)}</TableCell>
