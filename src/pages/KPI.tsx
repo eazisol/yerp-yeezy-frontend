@@ -3,6 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
@@ -33,6 +40,10 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { kpiService } from "@/services/kpi";
 import { dashboardService } from "@/services/dashboard";
 import { useQuery } from "@tanstack/react-query";
+import {
+  reportsService,
+  CategoryRevenueTimePeriod,
+} from "@/services/reports";
 
 // Role-based view types
 type KPIViewType = "executive" | "ops" | "merch";
@@ -60,7 +71,9 @@ export default function KPI() {
   // Auto-detect view based on user role, but allow manual override
   const userView = getViewFromRoles(roles || []);
   const [selectedRole, setSelectedRole] = useState<KPIViewType>(userView);
-  
+  const [categoryRevenueTimePeriod, setCategoryRevenueTimePeriod] =
+    useState<CategoryRevenueTimePeriod>("Month");
+
   // Update selectedRole when user changes
   useEffect(() => {
     if (user && roles && roles.length > 0) {
@@ -87,6 +100,14 @@ export default function KPI() {
   const { data: dashboardSummaryMetrics } = useQuery({
     queryKey: ["dashboard-metrics-summary-kpi"],
     queryFn: () => dashboardService.getDashboardSummaryMetrics(),
+    enabled: canAccess("DASHBOARD"),
+  });
+
+  // Category Revenue Contribution report (KPI page)
+  const { data: categoryRevenueReport, isLoading: loadingCategoryRevenue } = useQuery({
+    queryKey: ["category-revenue-report", categoryRevenueTimePeriod],
+    queryFn: () =>
+      reportsService.getCategoryRevenueContribution({ timePeriod: categoryRevenueTimePeriod }),
     enabled: canAccess("DASHBOARD"),
   });
 
@@ -1254,7 +1275,79 @@ export default function KPI() {
         </CardContent>
       </Card>
       )} */}
-      
+
+      {/* Category Revenue Contribution (last section on KPI page) */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <CardTitle className="text-lg">Category Revenue Contribution</CardTitle>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-muted-foreground">Time period</label>
+              <Select
+                value={categoryRevenueTimePeriod}
+                onValueChange={(v) => setCategoryRevenueTimePeriod(v as CategoryRevenueTimePeriod)}
+              >
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Day">Day</SelectItem>
+                  <SelectItem value="Week">Week</SelectItem>
+                  <SelectItem value="Month">Month</SelectItem>
+                  <SelectItem value="YTD">YTD</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          {categoryRevenueReport && (
+            <p className="text-sm text-muted-foreground mt-1">
+              {new Date(categoryRevenueReport.startDateUtc).toLocaleDateString()} –{" "}
+              {new Date(categoryRevenueReport.endDateUtc).toLocaleDateString()} · Grand total:{" "}
+              {formatCurrency(categoryRevenueReport.grandTotalRevenue)} {categoryRevenueReport.currency}
+            </p>
+          )}
+        </CardHeader>
+        <CardContent>
+          {loadingCategoryRevenue ? (
+            <div className="text-center py-8">Loading...</div>
+          ) : categoryRevenueReport ? (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Sales by category</TableHead>
+                    <TableHead className="text-right">$ Amount</TableHead>
+                    <TableHead className="text-right">Percent</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {categoryRevenueReport.rows.map((row, idx) => (
+                    <TableRow
+                      key={idx}
+                      className={row.isSubtotal ? "bg-muted/60 font-medium" : ""}
+                    >
+                      <TableCell>
+                        {row.categoryCode ? `${row.categoryCode} ${row.categoryName}` : row.categoryName}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {row.dollars.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {row.percent.toFixed(2)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              Choose a time period to load data.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
     </div>
   );
 }

@@ -229,6 +229,31 @@ export interface VariantsReport {
   totalPages: number;
 }
 
+// Category Revenue Contribution (KPI report; Day / Week / Month / YTD only)
+export type CategoryRevenueTimePeriod = "Day" | "Week" | "Month" | "YTD";
+
+export interface CategoryRevenueContributionFilter {
+  timePeriod: CategoryRevenueTimePeriod;
+}
+
+export interface CategoryRevenueContributionRow {
+  categoryCode: string | null;
+  categoryName: string;
+  dollars: number;
+  percent: number;
+  isSubtotal: boolean;
+  parentGroupKey: string | null;
+}
+
+export interface CategoryRevenueContributionResponse {
+  timePeriod: string;
+  startDateUtc: string;
+  endDateUtc: string;
+  grandTotalRevenue: number;
+  currency: string;
+  rows: CategoryRevenueContributionRow[];
+}
+
 // Order Projections (YEEZY ORDER PROJECTIONS)
 export interface OrderProjectionRow {
   item: string;
@@ -280,6 +305,15 @@ class ReportsService {
 
   async getOrderProjections(filter: ReportFilter): Promise<OrderProjectionsResponse> {
     return apiClient.post<OrderProjectionsResponse>("/api/Reports/order-projections", filter);
+  }
+
+  async getCategoryRevenueContribution(
+    filter: CategoryRevenueContributionFilter
+  ): Promise<CategoryRevenueContributionResponse> {
+    return apiClient.post<CategoryRevenueContributionResponse>(
+      "/api/Reports/category-revenue",
+      filter
+    );
   }
 
   async exportReport(
