@@ -343,7 +343,9 @@ export default function PODetail() {
     );
   }
 
-  const canSubmitForApproval = po.status === "Draft" && canModify("PURCHASE_ORDERS");
+  const canSubmitForApproval =
+    canModify("PURCHASE_ORDERS") &&
+    (po.status === "Draft" || po.status === "PendingApproval");
   const latestRejectedDate = getLatestRejectedDate(approvals);
   const hasEditAfterReject = isEditedAfterRejection(po.editDate, latestRejectedDate);
   const canResubmitForApproval =
