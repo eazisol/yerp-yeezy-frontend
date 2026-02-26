@@ -194,11 +194,6 @@ export interface DashboardMetrics {
   globalInventory?: GlobalInventoryKpis;
   warehouseInventory: WarehouseInventory[];
   topSkusByInventoryValue: TopSkuInventoryValue[];
-  topSellersByUnits: TopSellerKpi[]; // Top 15 SKUs by units (MTD)
-  topSellersByRevenue: TopSellerKpi[]; // Top 15 SKUs by revenue (MTD)
-  topSellersByMargin: TopSellerKpi[]; // Top 15 SKUs by gross margin $ (MTD)
-  bottomSellersByMargin: TopSellerKpi[]; // Bottom 10 SKUs by gross margin $ (MTD)
-  topSkusBacklogRisk: TopSkuBacklogRisk[]; // Top SKUs by backlog risk (backlog units + weeks on hand)
   stockAlerts: StockAlert[];
   stockAlertsCriticalCount: number;
   stockAlertsLowCount: number;

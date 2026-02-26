@@ -539,8 +539,8 @@ export default function ProductDetail() {
                     <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">COG Parent Account</TableHead>
                     <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">COG Sub Account</TableHead>
                     <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">Variant Slug</TableHead>
-                    <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">Stock</TableHead>
-                    <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">Vendors</TableHead>
+                    <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20 min-w-[120px]">Stock</TableHead>
+                    <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20 min-w-[120px]">Vendors</TableHead>
                     {/* <TableHead className="whitespace-nowrap sticky top-0 bg-background z-20">Attributes</TableHead> */}
                   </TableRow>
                 </TableHeader>
@@ -685,7 +685,7 @@ export default function ProductDetail() {
                               : "N/A"}
                           </span>
                         </TableCell>
-                        <TableCell className="whitespace-nowrap max-w-[200px]">
+                        <TableCell className="whitespace-nowrap max-w-[200px] min-w-[120px] overflow-x-auto">
                           <div className="flex flex-col gap-1.5">
                             {(() => {
                               if (!variant.warehouseInventories || !Array.isArray(variant.warehouseInventories)) {
@@ -755,7 +755,7 @@ export default function ProductDetail() {
                             })()}
                           </div>
                         </TableCell>
-                        <TableCell className="whitespace-nowrap max-w-[200px]">
+                        <TableCell className="whitespace-nowrap max-w-[200px] min-w-[120px]">
                           {variant.vendors && variant.vendors.length > 0 ? (
                             <div className="flex flex-col gap-1.5">
                               {variant.vendors.map((vendor: any, idx: number) => (

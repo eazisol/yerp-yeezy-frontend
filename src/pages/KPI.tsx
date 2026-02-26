@@ -37,7 +37,7 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
-import { kpiService } from "@/services/kpi";
+import { kpiService, TopSellersTimePeriod } from "@/services/kpi";
 import { dashboardService } from "@/services/dashboard";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -73,6 +73,7 @@ export default function KPI() {
   const [selectedRole, setSelectedRole] = useState<KPIViewType>(userView);
   const [categoryRevenueTimePeriod, setCategoryRevenueTimePeriod] =
     useState<CategoryRevenueTimePeriod>("Month");
+  const [topSellersTimePeriod, setTopSellersTimePeriod] = useState<TopSellersTimePeriod>("Month");
 
   // Update selectedRole when user changes
   useEffect(() => {
@@ -108,6 +109,13 @@ export default function KPI() {
     queryKey: ["category-revenue-report", categoryRevenueTimePeriod],
     queryFn: () =>
       reportsService.getCategoryRevenueContribution({ timePeriod: categoryRevenueTimePeriod }),
+    enabled: canAccess("DASHBOARD"),
+  });
+
+  // Top Sellers from dedicated API (Day, Week, Month, YTD)
+  const { data: topSellersData, isLoading: loadingTopSellers } = useQuery({
+    queryKey: ["kpi-top-sellers", topSellersTimePeriod],
+    queryFn: () => kpiService.getTopSellers(topSellersTimePeriod),
     enabled: canAccess("DASHBOARD"),
   });
 
@@ -153,14 +161,12 @@ export default function KPI() {
     return alerts;
   };
 
-  // Top Sellers Data (real-time from backend)
-  const topSellersByUnits = dashboardMetrics?.topSellersByUnits ?? [];
-  const topSellersByRevenue = dashboardMetrics?.topSellersByRevenue ?? [];
-  const topSellersByMargin = dashboardMetrics?.topSellersByMargin ?? [];
-  const bottomSKUsByMargin = dashboardMetrics?.bottomSellersByMargin ?? [];
-
-  // Top SKUs Backlog Risk (real-time from backend)
-  const topSKUsBacklogRisk = dashboardMetrics?.topSkusBacklogRisk || [];
+  // Top Sellers Data (from dedicated API with period filter)
+  const topSellersByUnits = topSellersData?.topSellersByUnits ?? [];
+  const topSellersByRevenue = topSellersData?.topSellersByRevenue ?? [];
+  const topSellersByMargin = topSellersData?.topSellersByMargin ?? [];
+  const bottomSKUsByMargin = topSellersData?.bottomSellersByMargin ?? [];
+  const topSKUsBacklogRisk = topSellersData?.topSkusBacklogRisk ?? [];
 
   // Shipping & Fulfillment Data
   const shippingKPIs = {
@@ -690,14 +696,33 @@ export default function KPI() {
             </TabsContent>
 
             <TabsContent value="top-sellers" className="space-y-4">
+              {loadingTopSellers ? (
+                <div className="text-center py-6 text-muted-foreground">Loading top sellers...</div>
+              ) : (
               <Tabs defaultValue="units">
-                <TabsList>
-                  <TabsTrigger value="units">Top 15 by Units</TabsTrigger>
-                  <TabsTrigger value="revenue">Top 15 by Revenue</TabsTrigger>
-                  <TabsTrigger value="margin">Top 15 by Gross Margin $</TabsTrigger>
-                  <TabsTrigger value="bottom">Bottom 10 by Margin</TabsTrigger>
-                  <TabsTrigger value="backlog">Top SKUs Backlog Risk</TabsTrigger>
-                </TabsList>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <TabsList>
+                    <TabsTrigger value="units">Top 15 by Units</TabsTrigger>
+                    <TabsTrigger value="revenue">Top 15 by Revenue</TabsTrigger>
+                    <TabsTrigger value="margin">Top 15 by Gross Margin $</TabsTrigger>
+                    <TabsTrigger value="bottom">Bottom 10 by Margin</TabsTrigger>
+                    <TabsTrigger value="backlog">Top SKUs Backlog Risk</TabsTrigger>
+                  </TabsList>
+                  <Select
+                    value={topSellersTimePeriod}
+                    onValueChange={(v) => setTopSellersTimePeriod(v as TopSellersTimePeriod)}
+                  >
+                    <SelectTrigger className="w-[120px] h-9">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Day">Daily</SelectItem>
+                      <SelectItem value="Week">WTD</SelectItem>
+                      <SelectItem value="Month">MTD</SelectItem>
+                      <SelectItem value="YTD">YTD</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
                 <TabsContent value="units">
                   <Table>
@@ -816,6 +841,7 @@ export default function KPI() {
                   </Table>
                 </TabsContent>
               </Tabs>
+              )}
             </TabsContent>
           </Tabs>
         </CardContent>
