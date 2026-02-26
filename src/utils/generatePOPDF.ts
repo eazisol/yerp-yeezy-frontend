@@ -148,6 +148,9 @@ const resizeAndCompressForPdf = (
           resolve(null);
           return;
         }
+        // Fill with white so transparent PNG areas become white in JPEG (JPEG has no transparency; default would be black)
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(0, 0, w, h);
         ctx.drawImage(img, 0, 0, w, h);
         resolve(canvas.toDataURL("image/jpeg", jpegQuality));
       } catch {
