@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ import {
   FileText,
   BarChart3,
   Eye,
+  Download,
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { useAuth } from "@/contexts/AuthContext";
@@ -47,6 +48,8 @@ import {
 
 // Role-based view types
 type KPIViewType = "executive" | "ops" | "merch";
+
+type TopSellersTabKey = "units" | "revenue" | "margin" | "bottom" | "backlog";
 
 // Helper function to determine view based on user roles
 const getViewFromRoles = (roles: string[]): KPIViewType => {
@@ -74,6 +77,7 @@ export default function KPI() {
   const [categoryRevenueTimePeriod, setCategoryRevenueTimePeriod] =
     useState<CategoryRevenueTimePeriod>("Month");
   const [topSellersTimePeriod, setTopSellersTimePeriod] = useState<TopSellersTimePeriod>("Month");
+  const [topSellersActiveTab, setTopSellersActiveTab] = useState<TopSellersTabKey>("units");
 
   // Update selectedRole when user changes
   useEffect(() => {
@@ -167,6 +171,16 @@ export default function KPI() {
   const topSellersByMargin = topSellersData?.topSellersByMargin ?? [];
   const bottomSKUsByMargin = topSellersData?.bottomSellersByMargin ?? [];
   const topSKUsBacklogRisk = topSellersData?.topSkusBacklogRisk ?? [];
+
+  const hasTopSellersData =
+    !loadingTopSellers &&
+    (
+      (topSellersActiveTab === "units" && topSellersByUnits.length > 0) ||
+      (topSellersActiveTab === "revenue" && topSellersByRevenue.length > 0) ||
+      (topSellersActiveTab === "margin" && topSellersByMargin.length > 0) ||
+      (topSellersActiveTab === "bottom" && bottomSKUsByMargin.length > 0) ||
+      (topSellersActiveTab === "backlog" && topSKUsBacklogRisk.length > 0)
+    );
 
   // Shipping & Fulfillment Data
   const shippingKPIs = {
@@ -404,6 +418,131 @@ export default function KPI() {
         return status || "N/A";
     }
   };
+
+  // CSV escape for Category Revenue export (commas, quotes, newlines)
+  const escapeCsvField = (val: string | number): string => {
+    const s = String(val);
+    if (s.includes(",") || s.includes('"') || s.includes("\n") || s.includes("\r"))
+      return `"${s.replace(/"/g, '""')}"`;
+    return s;
+  };
+
+  // Export Category Revenue Contribution report as CSV (client-side)
+  const handleCategoryRevenueExportCsv = useCallback(() => {
+    if (!categoryRevenueReport?.rows?.length) return;
+    const headers = ["Sales by category", "$ Amount", "Percent"];
+    const rows: string[] = [headers.map(escapeCsvField).join(",")];
+    categoryRevenueReport.rows.forEach((row) => {
+      const categoryLabel = row.categoryCode
+        ? `${row.categoryCode} ${row.categoryName}`.trim()
+        : row.categoryName;
+      rows.push(
+        [
+          categoryLabel,
+          row.dollars.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+          row.percent.toFixed(2),
+        ].map(escapeCsvField).join(",")
+      );
+    });
+    const csv = rows.join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `category-revenue-contribution-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [categoryRevenueReport]);
+
+  // Export Top Sellers (current tab only) as CSV
+  const handleTopSellersExportCsv = useCallback(() => {
+    if (loadingTopSellers) return;
+
+    let headers: string[] = [];
+    let data: any[] = [];
+
+    switch (topSellersActiveTab) {
+      case "units":
+        headers = ["Product", "Units", "Revenue", "Gross Margin $"];
+        data = topSellersByUnits;
+        break;
+      case "revenue":
+        headers = ["Product", "Units", "Revenue", "Gross Margin $"];
+        data = topSellersByRevenue;
+        break;
+      case "margin":
+        headers = ["Product", "Units", "Revenue", "Gross Margin $"];
+        data = topSellersByMargin;
+        break;
+      case "bottom":
+        headers = ["Product", "Units", "Revenue", "Gross Margin $"];
+        data = bottomSKUsByMargin;
+        break;
+      case "backlog":
+        headers = ["Product", "Backlog Units", "Weeks on Hand"];
+        data = topSKUsBacklogRisk;
+        break;
+      default:
+        return;
+    }
+
+    if (!data || data.length === 0) return;
+
+    const rows: string[] = [headers.map(escapeCsvField).join(",")];
+
+    if (topSellersActiveTab === "backlog") {
+      data.forEach((item) => {
+        const product = item.name || item.sku || "—";
+        const backlogUnits = item.backlogUnits ?? 0;
+        const weeksOnHand =
+          typeof item.weeksOnHand === "number"
+            ? item.weeksOnHand.toFixed(1)
+            : "";
+        rows.push(
+          [
+            product,
+            backlogUnits,
+            weeksOnHand,
+          ].map(escapeCsvField).join(",")
+        );
+      });
+    } else {
+      data.forEach((item) => {
+        const product = item.name || item.sku || "—";
+        const units = item.units ?? 0;
+        const revenue = item.revenue ?? 0;
+        const margin = item.margin ?? 0;
+        rows.push(
+          [
+            product,
+            units,
+            revenue,
+            margin,
+          ].map(escapeCsvField).join(",")
+        );
+      });
+    }
+
+    const csv = rows.join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const date = new Date().toISOString().slice(0, 10);
+    const period = topSellersTimePeriod.toLowerCase();
+    a.href = url;
+    a.download = `top-sellers-${topSellersActiveTab}-${period}-${date}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [
+    loadingTopSellers,
+    topSellersActiveTab,
+    topSellersByUnits,
+    topSellersByRevenue,
+    topSellersByMargin,
+    bottomSKUsByMargin,
+    topSKUsBacklogRisk,
+    topSellersTimePeriod,
+  ]);
 
   return (
     <div className="space-y-6 p-6">
@@ -699,7 +838,10 @@ export default function KPI() {
               {loadingTopSellers ? (
                 <div className="text-center py-6 text-muted-foreground">Loading top sellers...</div>
               ) : (
-              <Tabs defaultValue="units">
+              <Tabs
+                value={topSellersActiveTab}
+                onValueChange={(v) => setTopSellersActiveTab(v as TopSellersTabKey)}
+              >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <TabsList>
                     <TabsTrigger value="units">Top 15 by Units</TabsTrigger>
@@ -722,6 +864,15 @@ export default function KPI() {
                       <SelectItem value="YTD">YTD</SelectItem>
                     </SelectContent>
                   </Select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleTopSellersExportCsv}
+                    disabled={!hasTopSellersData}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export CSV
+                  </Button>
                 </div>
 
                 <TabsContent value="units">
@@ -1323,6 +1474,15 @@ export default function KPI() {
                   <SelectItem value="YTD">YTD</SelectItem>
                 </SelectContent>
               </Select>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCategoryRevenueExportCsv}
+                disabled={!categoryRevenueReport?.rows?.length || loadingCategoryRevenue}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export CSV
+              </Button>
             </div>
           </div>
           {categoryRevenueReport && (
