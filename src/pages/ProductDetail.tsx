@@ -97,11 +97,13 @@ export default function ProductDetail() {
 
   // (moved below productDetail initialization)
 
-  // Fetch product detail
+  // Fetch product detail - refetch every time page is visited (no cache reuse)
   const { data: product, isLoading } = useQuery({
     queryKey: ["product", productId],
     queryFn: () => productService.getProductById(productId),
     enabled: !!productId,
+    staleTime: 0,
+    refetchOnMount: true,
   });
 
   // Delete mutation
@@ -755,7 +757,7 @@ export default function ProductDetail() {
                             })()}
                           </div>
                         </TableCell>
-                        <TableCell className="whitespace-nowrap max-w-[200px] min-w-[120px]">
+                        <TableCell className="whitespace-nowrap max-w-[250px] min-w-[120px] overflow-x-auto">
                           {variant.vendors && variant.vendors.length > 0 ? (
                             <div className="flex flex-col gap-1.5">
                               {variant.vendors.map((vendor: any, idx: number) => (

@@ -67,7 +67,12 @@ export function ProductCombobox({
           undefined,
           vendorId
         );
-        setProducts(response.data);
+        // Sort products A-Z by name for consistent dropdown order
+        setProducts(
+          [...response.data].sort((a, b) =>
+            (a.name || "").localeCompare(b.name || "", undefined, { sensitivity: "base" })
+          )
+        );
       } catch (error) {
         console.error("Failed to fetch products:", error);
         setProducts([]);

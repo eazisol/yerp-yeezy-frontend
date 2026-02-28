@@ -166,6 +166,20 @@ class ProductService {
     
     return apiClient.post<ProductImportResult>("/api/Products/import-excel", formData);
   }
+
+  // Import products from CSV file (same column format as export)
+  async importProductsFromCsv(file: File): Promise<ProductImportResult> {
+    const formData = new FormData();
+    formData.append("file", file);
+    return apiClient.post<ProductImportResult>("/api/Products/import-csv", formData);
+  }
+
+  // Get low-stock variants for a vendor (WeeksOnHand formula; for PO "Load low stock variants"). Returns cost price as vendorCost.
+  async getLowStockVariantsByVendor(vendorId: number): Promise<LowStockVariantForVendor[]> {
+    return apiClient.get<LowStockVariantForVendor[]>(
+      `/api/Products/low-stock-variants-by-vendor?vendorId=${encodeURIComponent(vendorId)}`
+    );
+  }
 }
 
 export interface ProductSyncResult {
@@ -188,6 +202,21 @@ export interface ProductImportResult {
   errors: number;
   errorMessages: string[];
   message: string;
+}
+
+// Low-stock variant for a vendor (WeeksOnHand formula). VendorCost = cost price for PO line.
+export interface LowStockVariantForVendor {
+  productId: number;
+  variantId: number;
+  productName: string;
+  productSku: string;
+  variantName: string | null;
+  variantSku: string | null;
+  currentStock: number;
+  weeksOnHand: number;
+  averageDailySales: number;
+  vendorCost: number; // Cost price from this vendor (for PO unit price)
+  status: string; // "low" | "critical"
 }
 
 // Product Variant interface

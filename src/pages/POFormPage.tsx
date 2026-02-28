@@ -33,7 +33,7 @@ import {
 } from "@/services/purchaseOrders";
 import { vendorService, Vendor } from "@/services/vendors";
 import { warehouseService, Warehouse } from "@/services/warehouses";
-import { productService, Product, ProductVariant, ProductDetail } from "@/services/products";
+import { productService, Product, ProductVariant, ProductDetail, LowStockVariantForVendor } from "@/services/products";
 import { getTerms, Term } from "@/services/terms";
 import { useToast } from "@/hooks/use-toast";
 import { usePOPdfUpload } from "@/contexts/POPdfUploadContext";
@@ -711,6 +711,77 @@ Packing List:
     });
   };
 
+  // Load low-stock variants for selected vendor (WeeksOnHand formula). Adds lines with cost price as unit price.
+  const [loadingLowStock, setLoadingLowStock] = useState(false);
+  const loadLowStockVariants = async () => {
+    const vendorId = form.watch("vendorId");
+    if (!vendorId || vendorId <= 0) {
+      toast({
+        title: "Select vendor first",
+        description: "Please select a vendor to load low-stock variants.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setLoadingLowStock(true);
+    try {
+      const items = await productService.getLowStockVariantsByVendor(vendorId);
+      if (items.length === 0) {
+        toast({
+          title: "No low-stock variants",
+          description: "This vendor has no variants currently in low stock (by weeks-on-hand).",
+        });
+        return;
+      }
+      const startIndex = fields.length;
+      for (const item of items) {
+        append({
+          productId: item.productId,
+          productVariantId: item.variantId,
+          orderedQuantity: 1,
+          unitPrice: item.vendorCost, // Cost price from vendor
+          notes: "",
+        });
+      }
+      // Populate lineItemProducts and lineItemVariants for new rows (so dropdowns display)
+      const productIds = [...new Set(items.map((i) => i.productId))];
+      const productDetailsMap = new Map<number, ProductDetail>();
+      for (const pid of productIds) {
+        productDetailsMap.set(pid, await getProductDetailCached(pid));
+      }
+      setLineItemProducts((prev) => {
+        const next = { ...prev };
+        items.forEach((item, i) => {
+          const idx = startIndex + i;
+          const detail = productDetailsMap.get(item.productId);
+          if (detail) next[idx] = mapProductDetailToProduct(detail);
+        });
+        return next;
+      });
+      setLineItemVariants((prev) => {
+        const next = { ...prev };
+        items.forEach((item, i) => {
+          const idx = startIndex + i;
+          const detail = productDetailsMap.get(item.productId);
+          if (detail) next[idx] = detail.variants || [];
+        });
+        return next;
+      });
+      toast({
+        title: "Low-stock variants added",
+        description: `Added ${items.length} line item(s) with cost price. You can adjust quantities.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to load low-stock variants",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingLowStock(false);
+    }
+  };
+
   // Get variant display name: show Color and Size (from variantOptions or attributes).
   const getVariantDisplayName = (variant: ProductVariant): string => {
     // Prefer variantOptions when present (e.g. "Color: Black\nSize: 16") – shows both color and size.
@@ -848,6 +919,28 @@ Packing List:
                   </FormItem>
                 )}
               />
+
+              {/* Load low-stock variants for selected vendor (adds lines with cost price) */}
+              {form.watch("vendorId") > 0 && (
+                <div className="flex items-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={loadLowStockVariants}
+                    disabled={loadingLowStock}
+                  >
+                    {loadingLowStock ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      "Load low-stock variants"
+                    )}
+                  </Button>
+                </div>
+              )}
 
               <FormField
                 control={form.control}
@@ -1003,7 +1096,9 @@ Packing List:
                     <React.Fragment key={`ungrouped-${group.indices[0]}`}>
                       {group.indices.map((index) => {
                     const field = fields[index];
-                    const variants = lineItemVariants[index] || [];
+                    const variants = [...(lineItemVariants[index] || [])].sort((a, b) =>
+                      getVariantDisplayName(a).localeCompare(getVariantDisplayName(b), undefined, { sensitivity: "base" })
+                    );
                     const isLoadingVariants = loadingVariants[index] || false;
                     const selectedProductId = form.watch(`lineItems.${index}.productId`);
                     return (
@@ -1166,7 +1261,9 @@ Packing List:
                     </div>
                     <div className="space-y-3">
                       {group.indices.map((index) => {
-                        const variants = lineItemVariants[index] || [];
+                        const variants = [...(lineItemVariants[index] || [])].sort((a, b) =>
+                          getVariantDisplayName(a).localeCompare(getVariantDisplayName(b), undefined, { sensitivity: "base" })
+                        );
                         const isLoadingVariants = loadingVariants[index] || false;
                         return (
                           <div key={fields[index].id} className="grid grid-cols-12 gap-4 items-center rounded-lg border bg-muted/30 p-3">

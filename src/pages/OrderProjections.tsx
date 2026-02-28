@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -12,7 +13,8 @@ import {
 } from "@/components/ui/table";
 import { useQuery } from "@tanstack/react-query";
 import { reportsService, ReportFilter, OrderProjectionRow } from "@/services/reports";
-import { ArrowUpDown, ArrowUp, ArrowDown, Download } from "lucide-react";
+import { ArrowUpDown, ArrowUp, ArrowDown, Download, Loader2, FileText } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 // Today as YYYY-MM-DD for default From/To date
 function getTodayYMD(): string {
@@ -48,6 +50,8 @@ type SortKey =
   | "openPoQuantity";
 
 export default function OrderProjections() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const today = getTodayYMD();
   const [dateRangePreset, setDateRangePreset] = useState<DateRangePreset>("30");
   const [fromDate, setFromDate] = useState(() => getFromToForPreset("30").from);
@@ -58,6 +62,7 @@ export default function OrderProjections() {
   const [skuFilterDebounced, setSkuFilterDebounced] = useState("");
   const [sortBy, setSortBy] = useState<SortKey>("totalSold");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [creatingDraftPos, setCreatingDraftPos] = useState(false);
 
   // When preset changes (30/60/90/120), set From/To
   const handlePresetChange = useCallback((preset: DateRangePreset) => {
@@ -243,6 +248,37 @@ export default function OrderProjections() {
     URL.revokeObjectURL(url);
   }, [filteredRows, totals]);
 
+  const handleCreateDraftPos = useCallback(async () => {
+    setCreatingDraftPos(true);
+    try {
+      const result = await reportsService.createDraftPosFromOrderProjections(filter);
+      if (result.createdCount === 0) {
+        toast({
+          title: "No draft POs created",
+          description: "No rows with ACTUAL ORDER > 0 and a valid Factory were found for the current filter.",
+        });
+        return;
+      }
+      toast({
+        title: "Draft POs created",
+        description: `Created ${result.createdCount} draft purchase order(s). You can edit them before submitting.`,
+        action: (
+          <Button variant="outline" size="sm" onClick={() => navigate("/purchase-orders")}>
+            View POs
+          </Button>
+        ),
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create draft POs from report",
+        variant: "destructive",
+      });
+    } finally {
+      setCreatingDraftPos(false);
+    }
+  }, [filter, navigate, toast]);
+
   const SortIcon = ({ column }: { column: SortKey }) => {
     if (sortBy !== column)
       return <ArrowUpDown className="ml-1 h-3.5 w-3.5 inline opacity-50" />;
@@ -324,6 +360,23 @@ export default function OrderProjections() {
             </div>
             <Button onClick={handleApplyDates} disabled={loading}>
               Apply
+            </Button>
+            <Button
+              variant="default"
+              disabled={creatingDraftPos || loading || filteredRows.filter((r) => (r.actualOrder ?? 0) > 0).length === 0}
+              onClick={handleCreateDraftPos}
+            >
+              {creatingDraftPos ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating…
+                </>
+              ) : (
+                <>
+                  <FileText className="mr-2 h-4 w-4" />
+                  CREATE PO's
+                </>
+              )}
             </Button>
             <Button variant="outline" onClick={handleExportCsv} disabled={filteredRows.length === 0}>
               <Download className="mr-2 h-4 w-4" />

@@ -20,6 +20,7 @@ export interface Order {
   itemCount: number;
   warehouseIds?: number[];
   orderSyncTo?: number;
+  hold?: boolean; // Whether order is on hold
 }
 
 export interface OrderStats {

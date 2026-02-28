@@ -810,6 +810,7 @@ export default function Orders() {
                     <TableHead>Customer</TableHead>
                     <TableHead>Payment</TableHead>
                     <TableHead>Fulfillment</TableHead>
+                    <TableHead className="w-10 text-center"></TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Warehouse</TableHead>
                     <TableHead className="text-right">Total</TableHead>
@@ -820,7 +821,7 @@ export default function Orders() {
                   {orders.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={9}
+                        colSpan={10}
                         className="text-center py-8 text-muted-foreground"
                       >
                         No orders found
@@ -874,6 +875,20 @@ export default function Orders() {
                             <span>{fulfillmentStatus.label}</span>
                           </div>
                         </TableCell>
+                        <TableCell className="text-center">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span
+                                className={`inline-block h-2 w-2 rounded-full ${
+                                  order.hold ? "bg-red-500" : "bg-emerald-500"
+                                }`}
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{order.hold ? "On hold" : "Not on hold"}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TableCell>
                         <TableCell>
                           <Badge variant="outline">{order.status}</Badge>
                         </TableCell>
@@ -901,6 +916,7 @@ export default function Orders() {
                             </Tooltip>
                           )}
                         </TableCell>
+                        
                         <TableCell className="text-right font-medium">
                           {formatCurrency(order.total, order.currency || "USD")}
                         </TableCell>

@@ -209,9 +209,13 @@ export default function Products() {
     syncMutation.mutate();
   };
 
-  // Excel import mutation
+  // Import mutation: Excel or CSV based on file extension
   const importMutation = useMutation({
-    mutationFn: (file: File) => productService.importProductsFromExcel(file),
+    mutationFn: (file: File) => {
+      const ext = (file.name || "").toLowerCase().replace(/.*\./, "");
+      if (ext === "csv") return productService.importProductsFromCsv(file);
+      return productService.importProductsFromExcel(file);
+    },
     onSuccess: (result: ProductImportResult) => {
       setImportResult(result);
       toast({
@@ -227,7 +231,7 @@ export default function Products() {
     onError: (error: any) => {
       toast({
         title: "Import Failed",
-        description: error.message || "Failed to import products from Excel",
+        description: error.message || "Failed to import products",
         variant: "destructive",
         duration: 5000,
       });
@@ -241,15 +245,13 @@ export default function Products() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Validate file type
-      const allowedTypes = [
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "application/vnd.ms-excel",
-      ];
-      if (!allowedTypes.includes(file.type) && !file.name.endsWith(".xlsx") && !file.name.endsWith(".xls")) {
+      const name = (file.name || "").toLowerCase();
+      const isExcel = name.endsWith(".xlsx") || name.endsWith(".xls");
+      const isCsv = name.endsWith(".csv");
+      if (!isExcel && !isCsv) {
         toast({
           title: "Invalid File",
-          description: "Please select an Excel file (.xlsx or .xls)",
+          description: "Please select an Excel (.xlsx, .xls) or CSV (.csv) file",
           variant: "destructive",
         });
         return;
@@ -327,21 +329,21 @@ export default function Products() {
         <div className="flex gap-2">
           {canModify("PRODUCTS") && (
             <>
-              <Button
+              {/* <Button
                 variant="outline"
                 onClick={handleImportClick}
                 disabled={importMutation.isPending}
               >
                 <Upload className="h-4 w-4 mr-2" />
-                {importMutation.isPending ? "Importing..." : "Import Excel"}
+                {importMutation.isPending ? "Importing..." : "Import Excel / CSV"}
               </Button>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".xlsx,.xls"
+                accept=".xlsx,.xls,.csv"
                 onChange={handleFileChange}
                 className="hidden"
-              />
+              /> */}
               {/* <Button
                 variant="outline"
                 onClick={handleCheckSwellCount}
@@ -791,14 +793,14 @@ export default function Products() {
                 ? "Importing Products..."
                 : importResult
                 ? "Import Completed"
-                : "Import Products from Excel"}
+                : "Import Products (Excel or CSV)"}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {importMutation.isPending
-                ? "Please wait while we process your Excel file. This may take a few moments..."
+                ? "Please wait while we process your file. This may take a few moments..."
                 : importResult
                 ? "Products have been imported successfully."
-                : "Select an Excel file (.xlsx or .xls) to import products."}
+                : "Select an Excel (.xlsx, .xls) or CSV (.csv) file to import products. Same column format as export."}
             </AlertDialogDescription>
           </AlertDialogHeader>
 
@@ -806,7 +808,7 @@ export default function Products() {
             <div className="py-4">
               <div className="flex items-center justify-center gap-2 text-muted-foreground">
                 <RefreshCw className="h-5 w-5 animate-spin" />
-                <span>Processing Excel file...</span>
+                <span>Processing file...</span>
               </div>
             </div>
           )}

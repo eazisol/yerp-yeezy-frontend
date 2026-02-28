@@ -274,6 +274,19 @@ export interface OrderProjectionsResponse {
   items: OrderProjectionRow[];
 }
 
+// Response from Create Draft POs from Order Projections
+export interface CreatedPurchaseOrderSummary {
+  poNumber: string;
+  purchaseOrderId: number;
+  vendorName: string;
+  lineItemCount: number;
+}
+
+export interface CreateDraftPosFromOrderProjectionsResponse {
+  createdCount: number;
+  purchaseOrders: CreatedPurchaseOrderSummary[];
+}
+
 class ReportsService {
   async getOrdersReport(filter: ReportFilter): Promise<OrdersReport> {
     return apiClient.post<OrdersReport>("/api/Reports/orders", filter);
@@ -305,6 +318,11 @@ class ReportsService {
 
   async getOrderProjections(filter: ReportFilter): Promise<OrderProjectionsResponse> {
     return apiClient.post<OrderProjectionsResponse>("/api/Reports/order-projections", filter);
+  }
+
+  /** Create draft POs from order projections (same filter). Groups by Factory/Vendor, quantities = ACTUAL ORDER, price = variant cost. */
+  async createDraftPosFromOrderProjections(filter: ReportFilter): Promise<CreateDraftPosFromOrderProjectionsResponse> {
+    return apiClient.post<CreateDraftPosFromOrderProjectionsResponse>("/api/Reports/order-projections/create-draft-pos", filter);
   }
 
   async getCategoryRevenueContribution(
